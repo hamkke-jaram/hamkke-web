@@ -13,7 +13,7 @@
     "check:expressions": "node scripts/check-expressions.mjs"
   },
   "dependencies": {
-    "@hamkke-jaram/analysis": "github:hamkke-jaram/hamkke-ai#v0.1.0",
+    "@hamkke-jaram/analysis": "https://github.com/hamkke-jaram/hamkke-ai/archive/refs/tags/v0.1.0.tar.gz",
     "@mediapipe/tasks-vision": "0.10.35",
     "react": "18.3.1",
     "react-dom": "18.3.1",
