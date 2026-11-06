@@ -1,0 +1,13 @@
+{
+  "name": "함께자람",
+  "short_name": "함께자람",
+  "description": "부모-아이 상호작용 기록과 양육 코칭",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#2f6f5e",
+  "lang": "ko",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

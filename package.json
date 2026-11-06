@@ -1,0 +1,30 @@
+{
+  "name": "hamkke-jaram-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "prepare-models": "node node_modules/@hamkke-jaram/analysis/scripts/prepare-models.mjs public",
+    "dev": "npm run prepare-models && vite",
+    "build": "npm run prepare-models && tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test": "vitest run --passWithNoTests",
+    "check:expressions": "node scripts/check-expressions.mjs"
+  },
+  "dependencies": {
+    "@hamkke-jaram/analysis": "github:hamkke-jaram/hamkke-ai#v0.1.0",
+    "@mediapipe/tasks-vision": "0.10.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.6"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "typescript": "5.9.3",
+    "vite": "6.4.5",
+    "vitest": "3.2.7"
+  }
+}
