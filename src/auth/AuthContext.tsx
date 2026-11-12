@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, getRefreshToken, hasSession, onSessionChange, setSession } from '../api/client';
 import type { Policies, TokenResponse, User } from '../api/types';
 
@@ -6,6 +6,10 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   policies: Policies | null;
+  /** 약관·고지 정보를 여러 번 시도해도 못 불러왔을 때의 오류. 불러오면 다시 null. */
+  policiesError: unknown;
+  /** 약관·고지 정보를 다시 불러온다(화면의 '다시 시도' 버튼용). */
+  reloadPolicies: () => void;
   login: (t: TokenResponse) => void;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
@@ -16,10 +20,49 @@ const Ctx = createContext<AuthState | null>(null);
 export const FALLBACK_DISCLAIMER =
   '본 서비스는 의료기기가 아니며 발달 상태를 판단하지 않습니다. 걱정되는 점은 전문의와 상담하세요.';
 
+/** /policies 재시도 간격(ms). 처음 시도 + 이 횟수만큼 더 시도한 뒤 오류를 알린다. */
+const POLICY_RETRY_DELAYS = [1000, 2000, 4000];
+/** 오류를 알린 뒤에도 화면이 멈춰 있지 않도록 이 간격으로 조용히 다시 시도한다. */
+const POLICY_BACKGROUND_RETRY_MS = 30000;
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [policies, setPolicies] = useState<Policies | null>(null);
+  const [policiesError, setPoliciesError] = useState<unknown>(null);
+  const policyRun = useRef(0);
+
+  /**
+   * 약관·고지 정보를 불러온다. 실패하면 간격을 늘려 가며 몇 번 더 시도하고, 그래도 안 되면 policiesError를 채운다.
+   * quiet이면 이미 보이는 오류 안내를 지우지 않는다(백그라운드 재시도).
+   */
+  const loadPolicies = useCallback(async (quiet = false) => {
+    const run = ++policyRun.current;
+    if (!quiet) setPoliciesError(null);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const p = await api<Policies>('GET', '/policies');
+        if (run !== policyRun.current) return;
+        setPolicies(p);
+        setPoliciesError(null);
+        return;
+      } catch (e) {
+        if (run !== policyRun.current) return;
+        if (attempt >= POLICY_RETRY_DELAYS.length) {
+          setPoliciesError(e);
+          return;
+        }
+        await wait(POLICY_RETRY_DELAYS[attempt]);
+        if (run !== policyRun.current) return;
+      }
+    }
+  }, []);
+
+  const reloadPolicies = useCallback(() => {
+    void loadPolicies();
+  }, [loadPolicies]);
 
   const reload = useCallback(async () => {
     if (!hasSession()) {
@@ -38,11 +81,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void reload();
-    api<Policies>('GET', '/policies').then(setPolicies).catch(() => undefined);
     return onSessionChange(() => {
       if (!hasSession()) setUser(null);
     });
   }, [reload]);
+
+  useEffect(() => {
+    void loadPolicies();
+    return () => {
+      policyRun.current++; // 진행 중인 시도를 멈춘다
+    };
+  }, [loadPolicies]);
+
+  // 여러 번 실패한 뒤에도 연결이 돌아오면(또는 일정 시간이 지나면) 조용히 다시 시도한다.
+  // 그래서 policies가 null인 동안 로딩만 보여 주는 화면도 결국 풀린다.
+  useEffect(() => {
+    if (policies || !policiesError) return;
+    const retry = () => void loadPolicies(true);
+    const timer = setTimeout(retry, POLICY_BACKGROUND_RETRY_MS);
+    window.addEventListener('online', retry);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [policies, policiesError, loadPolicies]);
 
   const login = useCallback((t: TokenResponse) => {
     setSession(t);
@@ -56,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return <Ctx.Provider value={{ user, loading, policies, login, logout, reload }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, policies, policiesError, reloadPolicies, login, logout, reload }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

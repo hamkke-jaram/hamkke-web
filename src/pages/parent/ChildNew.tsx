@@ -7,6 +7,8 @@ import { ErrorText, Loading } from '../../components/ui';
 
 function monthsAgo(n: number) {
   const d = new Date();
+  // 1일로 먼저 옮겨야 31일 같은 말일에 달을 빼도 날짜가 다음 달로 넘치지 않는다.
+  d.setDate(1);
   d.setMonth(d.getMonth() - n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }

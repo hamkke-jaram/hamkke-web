@@ -124,12 +124,29 @@ export default function TeacherChild() {
       {sharesCards && cards.data && cards.data.length > 0 && (
         <Section title="가정에서 받은 코칭">
           {cards.data.map((d) => (
-            <div key={d.id} className="list-item" style={{ alignItems: 'flex-start' }}>
+            <div key={d.id} className="list-item coach-card" style={{ alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <strong>{d.card.title}</strong>
                 <div className="muted">
                   {formatDate(d.deliveredAt)}
                   {d.triedAt && ' · 가정에서 해봤어요'}
+                </div>
+                <p style={{ margin: '6px 0 0' }}>{d.card.body}</p>
+                <div className="evidence">
+                  <div>{d.card.evidenceTag}</div>
+                  <div>
+                    출처:{' '}
+                    {d.card.sourceUrl ? (
+                      <a href={d.card.sourceUrl} target="_blank" rel="noopener noreferrer">
+                        {d.card.sourceTitle}
+                      </a>
+                    ) : (
+                      d.card.sourceTitle
+                    )}
+                  </div>
+                  <div>
+                    작성: {d.card.author} · 검수: {d.card.reviewer ?? '전문가 검수 진행 중'}
+                  </div>
                 </div>
               </div>
             </div>

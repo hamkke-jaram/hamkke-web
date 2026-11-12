@@ -21,6 +21,8 @@ npm run build
 node scripts/check-expressions.mjs   # 금지 표현 검수
 ```
 
+`/support` 상담·기관 안내는 서버에 닿지 못해도(점검·오프라인) `src/support/fallback.ts`의 내장 목록을 바로 보여 준다. hamkke-api의 `V3__seed_support_resources.sql`을 바꾸면 이 파일도 함께 바꾼다.
+
 ## 화면
 
 | 사용자 | 경로 |
@@ -32,3 +34,4 @@ node scripts/check-expressions.mjs   # 금지 표현 검수
 ## 배포
 
 `Dockerfile`(nginx, CSP·HSTS·본문 64KB 제한 포함)은 hamkke-api의 `deploy/docker-compose.yml`에서 함께 빌드된다.
+배포 절차는 hamkke-api의 `docs/deploy.md`를 본다. nginx가 맨 앞단이라는 전제로 `X-Forwarded-For`를 실제 접속 주소(`$remote_addr`)로 덮어쓴다. nginx 앞에 다른 프록시를 두면 이 설정을 함께 손봐야 한다. 분석 모델(`public/mediapipe`)은 이미지 빌드 중 다시 받으므로 `.dockerignore`에서 뺀다.

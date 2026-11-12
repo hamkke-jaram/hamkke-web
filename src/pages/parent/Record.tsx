@@ -15,7 +15,7 @@ import { runAudioInWorker } from '../../analysis/runAudioInWorker';
 import { CoachingCardView, ErrorText, SupportList, formatDuration } from '../../components/ui';
 
 type Phase =
-  | { kind: 'guide' }
+  | { kind: 'guide'; notice?: string }
   | { kind: 'analyzing'; stage: Stage; ratio: number }
   | { kind: 'sending'; metrics: DeviceMetrics; clientRecordId: string; error?: unknown }
   | { kind: 'result'; data: SaveRecordResponse }
@@ -86,22 +86,36 @@ export default function Record() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    // 멈춘 분석(또는 새 분석으로 바뀐 분석)은 진행 상황도 결과도 화면에 반영하지 않고, 서버로도 보내지 않는다.
+    const stopped = () => ctrl.signal.aborted || abortRef.current !== ctrl;
     setPhase({ kind: 'analyzing', stage: 'loading-model', ratio: 0 });
     try {
-      const metrics = await analyzeVideo(file, (stage, ratio) => setPhase({ kind: 'analyzing', stage, ratio }), {
-        signal: ctrl.signal,
-        runAudio: runAudioInWorker,
-      });
+      const metrics = await analyzeVideo(
+        file,
+        (stage, ratio) => {
+          if (!stopped()) setPhase({ kind: 'analyzing', stage, ratio });
+        },
+        { signal: ctrl.signal, runAudio: runAudioInWorker },
+      );
+      if (stopped()) return;
       await send(metrics, crypto.randomUUID());
     } catch (err) {
+      if (stopped()) return;
       const message =
         err instanceof AnalysisError
           ? err.message
           : `분석하지 못했어요. 다른 영상으로 다시 시도해 주세요. (${errorMessage(err)})`;
       setPhase({ kind: 'failed', message });
     }
+  }
+
+  // 어느 단계에서든 바로 멈출 수 있게, 분석이 신호를 확인하기를 기다리지 않고 화면을 먼저 되돌린다.
+  function stop() {
+    abortRef.current?.abort();
+    setPhase({ kind: 'guide', notice: '분석을 멈췄어요. 아무것도 저장하거나 보내지 않았어요. 준비되면 언제든 다시 해 주세요.' });
   }
 
   const fileInputs = (
@@ -117,6 +131,11 @@ export default function Record() {
         {fileInputs}
         <h1>함께 논 영상 기록하기</h1>
         <p className="lead">영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.</p>
+        {phase.kind === 'guide' && phase.notice && (
+          <p className="muted" role="status">
+            {phase.notice}
+          </p>
+        )}
         {phase.kind === 'failed' && (
           <p className="error" role="alert">
             {phase.message}
@@ -139,7 +158,7 @@ export default function Record() {
           </button>
         </div>
         <p className="muted" style={{ marginTop: 16 }}>
-          처음 분석할 때는 분석 도구(약 6MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
+          처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
         </p>
       </div>
     );
@@ -166,12 +185,7 @@ export default function Record() {
             <div style={{ width: `${p * 100}%` }} />
           </div>
         </section>
-        <button
-          className="btn secondary block"
-          onClick={() => {
-            abortRef.current?.abort();
-          }}
-        >
+        <button type="button" className="btn secondary block" onClick={stop}>
           멈추기
         </button>
       </div>

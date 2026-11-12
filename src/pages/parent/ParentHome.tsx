@@ -4,6 +4,9 @@ import type { Child } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorText, Loading, formatAge, useLoad } from '../../components/ui';
 
+/** 서버의 ChildService.MAX_CHILDREN_PER_PARENT와 같은 값. */
+const MAX_CHILDREN = 5;
+
 export default function ParentHome() {
   const { user } = useAuth();
   const { data, error, loading } = useLoad(() => api<Child[]>('GET', '/children'), []);
@@ -37,10 +40,14 @@ export default function ParentHome() {
               <span aria-hidden>›</span>
             </Link>
           ))}
-          {data.length < 5 && (
+          {data.length < MAX_CHILDREN ? (
             <Link to="/p/children/new" className="btn ghost">
               + 아이 추가
             </Link>
+          ) : (
+            <p className="muted" style={{ margin: '8px 0 0' }}>
+              아이는 {MAX_CHILDREN}명까지 등록할 수 있어요.
+            </p>
           )}
         </section>
       )}

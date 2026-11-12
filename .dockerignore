@@ -1,0 +1,13 @@
+node_modules
+dist
+*.tsbuildinfo
+.git
+# 개발자 로컬 설정(.env.local 등)이 번들에 섞이지 않게 .gitignore와 맞춘다
+**/*.local
+# 분석 모델은 빌드 중 npm run build(prepare-models)가 다시 받는다
+public/mediapipe
+# 촬영 영상은 이미지에 넣지 않는다
+**/*.mp4
+**/*.mov
+**/*.webm
+**/*.m4v

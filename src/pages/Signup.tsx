@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ErrorText, Loading } from '../components/ui';
 
 export default function Signup() {
-  const { login, policies } = useAuth();
+  const { login, policies, policiesError, reloadPolicies } = useAuth();
   const nav = useNavigate();
   const [role, setRole] = useState<Role>('PARENT');
   const [email, setEmail] = useState('');
@@ -17,7 +17,21 @@ export default function Signup() {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!policies) return <Loading />;
+  if (!policies) {
+    if (!policiesError) return <Loading />;
+    return (
+      <div>
+        <h1>가입하기</h1>
+        <div className="card">
+          <p style={{ marginTop: 0 }}>가입에 필요한 약관 안내를 아직 불러오지 못했어요.</p>
+          <ErrorText error={policiesError} />
+          <button type="button" className="btn block" onClick={reloadPolicies}>
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();

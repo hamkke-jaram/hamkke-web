@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api } from '../../api/client';
+import { api, errorMessage } from '../../api/client';
 import type { InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
 import { ErrorText, Loading, Section, formatDate, useLoad } from '../../components/ui';
 
@@ -19,10 +19,15 @@ export default function Share() {
   const [code, setCode] = useState<InviteCode | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  // 렌더링 전에 연달아 눌러도 저장이 겹치지 않도록 ref로 한 번 더 막는다.
+  const savingRef = useRef(false);
 
   async function toggle(key: keyof Omit<ShareSettings, 'updatedAt'>, value: boolean) {
-    if (!settings.data) return;
-    const next = { ...settings.data, [key]: value };
+    if (!settings.data || savingRef.current) return;
+    const confirmed = settings.data; // 마지막으로 서버가 확인해 준 상태
+    const next = { ...confirmed, [key]: value };
+    savingRef.current = true;
     settings.setData(next);
     setSaving(true);
     setError(null);
@@ -36,19 +41,24 @@ export default function Share() {
         }),
       );
     } catch (e) {
-      setError(e);
-      settings.reload();
+      settings.setData(confirmed);
+      setError(new Error(`공유 설정을 저장하지 못해서 이전 설정으로 되돌려 두었어요. (${errorMessage(e)})`));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   async function issue() {
+    if (issuing) return;
+    setIssuing(true);
     setError(null);
     try {
       setCode(await api<InviteCode>('POST', `/children/${id}/invite-codes`));
     } catch (e) {
       setError(e);
+    } finally {
+      setIssuing(false);
     }
   }
 
@@ -83,6 +93,7 @@ export default function Share() {
                 type="checkbox"
                 role="switch"
                 checked={settings.data![it.key] as boolean}
+                disabled={saving}
                 onChange={(e) => void toggle(it.key, e.target.checked)}
               />
             </label>
@@ -93,7 +104,7 @@ export default function Share() {
         <p className="muted" style={{ marginTop: 0 }}>
           코드를 선생님께 전해 주세요. 72시간 동안 한 번만 쓸 수 있어요.
         </p>
-        {code ? (
+        {code && (
           <>
             <div className="code-box" aria-label="초대 코드">
               {code.code.slice(0, 4)}-{code.code.slice(4)}
@@ -102,9 +113,14 @@ export default function Share() {
               {new Date(code.expiresAt).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               까지 쓸 수 있어요.
             </p>
+            <p className="muted">
+              코드는 이 화면에서 한 번만 보여 드려요. 화면을 나가기 전에 선생님께 전해 주세요. 새 코드를 만들어도 앞서
+              만든 코드는 기한까지 쓸 수 있고, 아직 쓰지 않은 코드는 3개까지 둘 수 있어요.
+            </p>
             {typeof navigator.share === 'function' && (
               <button
                 className="btn secondary block"
+                style={{ marginBottom: 12 }}
                 onClick={() =>
                   void navigator
                     .share({ text: `함께자람 초대 코드: ${code.code} (72시간 동안 한 번 사용 가능)` })
@@ -115,11 +131,10 @@ export default function Share() {
               </button>
             )}
           </>
-        ) : (
-          <button className="btn block" onClick={() => void issue()}>
-            초대 코드 만들기
-          </button>
         )}
+        <button className={code ? 'btn block ghost' : 'btn block'} disabled={issuing} onClick={() => void issue()}>
+          {issuing ? '만드는 중…' : code ? '새 초대 코드 만들기' : '초대 코드 만들기'}
+        </button>
       </Section>
 
       <Section title="연결된 선생님">

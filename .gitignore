@@ -3,3 +3,8 @@ dist/
 public/mediapipe/
 *.tsbuildinfo
 *.local
+# 촬영 영상은 기기 밖으로 나가지 않는다. 실수로 커밋되지 않게 막는다.
+*.mp4
+*.mov
+*.webm
+*.m4v

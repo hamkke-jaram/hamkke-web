@@ -107,22 +107,55 @@ export async function api<T>(method: Method, path: string, body?: unknown, retry
     throw new ApiError(0, 'NETWORK', '인터넷 연결을 확인해 주세요.');
   }
 
-  if (res.status === 401 && retry && session && !path.startsWith('/auth/')) {
-    if (await refresh()) return api<T>(method, path, body, false);
-  }
   if (res.status === 204) return undefined as T;
 
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : undefined;
+  const text = await res.text().catch(() => '');
+  const data = parseBody(text);
+
+  // 비밀번호가 틀린 경우(INVALID_CREDENTIALS, 예: DELETE /me)도 401이지만 토큰 문제가 아니므로 갱신하지 않는다.
+  if (res.status === 401 && retry && session && !path.startsWith('/auth/') && data?.code !== 'INVALID_CREDENTIALS') {
+    if (await refresh()) return api<T>(method, path, body, false);
+  }
+
   if (!res.ok) {
     throw new ApiError(
       res.status,
       data?.code ?? 'UNKNOWN',
-      data?.fieldErrors?.[0]?.message ?? data?.message ?? '잠시 문제가 생겼어요. 다시 시도해 주세요.',
+      data?.fieldErrors?.[0]?.message ?? data?.message ?? statusMessage(res.status),
       data?.fieldErrors ?? [],
     );
   }
+  if (data === undefined && text) {
+    // 성공 응답인데 JSON이 아니면(프록시 안내 페이지 등) 화면에 그대로 넘기지 않는다.
+    throw new ApiError(res.status, 'UNKNOWN', statusMessage(res.status));
+  }
   return data as T;
+}
+
+interface ErrorBody {
+  code?: string;
+  message?: string;
+  fieldErrors?: Array<{ field: string; message: string }>;
+}
+
+/** 응답 본문을 JSON으로 읽는다. nginx 안내 페이지(HTML) 등 JSON이 아니면 undefined. */
+function parseBody(text: string): ErrorBody | undefined {
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text) as ErrorBody;
+  } catch {
+    return undefined;
+  }
+}
+
+/** 서버가 JSON 안내를 주지 못했을 때 상태 코드에 맞춰 보여 줄 문구. */
+function statusMessage(status: number): string {
+  if (status === 413) return '요청이 너무 커요. 내용을 조금 줄여서 다시 시도해 주세요.';
+  if (status === 429) return '요청이 잠시 많았어요. 조금 뒤에 다시 시도해 주세요.';
+  if (status === 401) return '로그인이 필요해요.';
+  if (status === 404) return '찾는 내용이 없어요.';
+  if (status === 502 || status === 503 || status === 504) return '서버가 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.';
+  return '잠시 문제가 생겼어요. 다시 시도해 주세요.';
 }
 
 export function errorMessage(e: unknown): string {
