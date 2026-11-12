@@ -1,0 +1,175 @@
+/* 전체 흐름 보기(시연) 안내 패널. 기본 색 변수(styles.css의 :root)를 그대로 쓴다. */
+
+/* 패널 높이(DemoTour가 재서 --demo-pad로 넣음)만큼 아래 여백을 둬서 면책 문구·버튼이 가려지지 않게 한다. */
+body.demo-on .app {
+  padding-bottom: var(--demo-pad, 280px);
+}
+
+.demo-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  max-height: min(55vh, 420px);
+  overflow-y: auto;
+  z-index: 50;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--brand);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
+  padding: 12px 16px 14px;
+}
+
+.demo-panel.collapsed {
+  padding: 8px 14px;
+}
+
+.demo-panel .demo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.demo-panel .demo-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.demo-panel .demo-count {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.demo-panel .demo-spacer {
+  flex: 1;
+}
+
+.demo-panel .demo-link {
+  background: none;
+  border: 0;
+  min-height: 32px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.demo-panel h2 {
+  font-size: 17px;
+  margin: 8px 0 6px;
+}
+
+.demo-panel p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.demo-panel .demo-tip {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.demo-panel .demo-warn {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.demo-panel .demo-warn p {
+  color: var(--ink);
+}
+
+/* 단계 점: 누르는 영역은 24×24 이상, 점 자체는 테두리로 배경과 구분한다. */
+.demo-panel .demo-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.demo-panel .demo-dot {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.demo-panel .demo-dot span {
+  width: 22px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ink-3);
+  background: var(--surface);
+}
+
+.demo-panel .demo-dot.done span {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+}
+
+.demo-panel .demo-dot[aria-current='step'] span {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.demo-panel .demo-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.demo-panel .demo-actions .btn {
+  flex: 1;
+  min-height: 44px;
+}
+
+.demo-panel [aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.demo-panel .demo-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.demo-start .progress-bar {
+  height: 100%;
+  background: var(--brand);
+  transition: width 0.3s;
+}

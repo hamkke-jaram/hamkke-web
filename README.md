@@ -31,6 +31,16 @@ node scripts/check-expressions.mjs   # 금지 표현 검수
 | 부모 | `/p` · `/p/children/new`(법정대리인 동의) · `/p/children/:id`(주간 요약·코칭·선생님 이야기) · `/p/children/:id/record`(촬영·분석) · `/p/children/:id/share`(공유·초대 코드) |
 | 교사 | `/t`(초대 코드 연결) · `/t/children/:id`(공유된 요약·목표·관찰 메모) |
 
+## 전체 흐름 보기 (시연 모드)
+
+멘토·심사 시연용. 첫 화면의 **전체 흐름 보기 (시연용)** 버튼 또는 `/demo`에서 시작한다.
+
+- 데모 보호자·아이(동의 포함)·지난 4주 예시 기록·공유 설정·데모 선생님(초대 코드 연결)·목표·관찰 메모를 공개 API로 만든 뒤, 화면 아래 안내 패널로 9단계를 넘겨 보여 준다. 보호자·선생님 계정은 단계에 맞춰 자동으로 바뀐다.
+- 예시 기록은 영상 없이 넣은 숫자라 `modelVersion: demo-sample-data`로 저장된다. 영상 분석 단계에서는 직접 고른 영상을 기기 안에서 분석한다.
+- **데모 끝내기**를 누르면 데모 계정 두 개와 그 기록을 모두 지운다. 데모를 만드는 중에 실패해도 이미 만든 계정을 지운다.
+- 데모 진행 상태는 그 탭의 sessionStorage에 있지만, 로그인 토큰은 앱 전체가 쓰는 localStorage에 있어서 데모 중에는 같은 브라우저의 다른 탭도 데모 계정으로 보인다. 다른 탭에서 계정이 바뀌면 패널이 알려 주고, 데모 계정 토큰만 다룬다.
+- 개발 서버(`npm run dev`)에서만 켜진다. 배포 빌드에서 쓰려면 `VITE_DEMO_MODE=true npm run build`.
+
 ## 배포
 
 `Dockerfile`(nginx, CSP·HSTS·본문 64KB 제한 포함)은 hamkke-api의 `deploy/docker-compose.yml`에서 함께 빌드된다.

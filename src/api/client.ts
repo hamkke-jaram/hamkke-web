@@ -55,6 +55,16 @@ export function getRefreshToken() {
   return session?.refreshToken ?? null;
 }
 
+/** 지금 쓰는 토큰 한 쌍(데모에서 보호자·선생님 계정을 오갈 때 회전된 토큰을 잃지 않으려고 쓴다). */
+export function currentSession(): { accessToken: string; refreshToken: string } | null {
+  return session ? { ...session } : null;
+}
+
+/** 진행 중인 토큰 갱신이 있으면 끝날 때까지 기다린다(세션을 바꾸기 전에 회전 결과를 받으려고 쓴다). */
+export async function settleRefresh(): Promise<void> {
+  if (refreshing) await refreshing.catch(() => false);
+}
+
 export function onSessionChange(fn: () => void) {
   listeners.add(fn);
   return () => {
@@ -73,11 +83,15 @@ async function refresh(): Promise<boolean> {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken: token }),
         });
+        // 갱신하는 사이 다른 세션으로 바뀌었다면(데모의 계정 전환 등) 새 세션을 덮어쓰지 않는다.
+        const stillSame = () => session?.refreshToken === token;
         if (!res.ok) {
-          setSession(null);
+          if (stillSame()) setSession(null);
           return false;
         }
-        setSession((await res.json()) as TokenResponse);
+        const next = (await res.json()) as TokenResponse;
+        if (!stillSame()) return false;
+        setSession(next);
         return true;
       } catch {
         return false;

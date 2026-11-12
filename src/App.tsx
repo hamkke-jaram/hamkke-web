@@ -3,6 +3,9 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router
 import type { Role } from './api/types';
 import { useAuth } from './auth/AuthContext';
 import { Disclaimer, Loading } from './components/ui';
+import { DEMO_ENABLED } from './demo/DemoContext';
+import DemoStart from './demo/DemoStart';
+import DemoTour from './demo/DemoTour';
 import Account from './pages/Account';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -41,6 +44,7 @@ function Layout() {
         <Outlet />
       </main>
       <Disclaimer />
+      {DEMO_ENABLED && <DemoTour />}
     </div>
   );
 }
@@ -70,6 +74,7 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/support" element={<Support />} />
         <Route path="/privacy" element={<Privacy />} />
+        {DEMO_ENABLED && <Route path="/demo" element={<DemoStart />} />}
         <Route path="/account" element={<RequireUser><Account /></RequireUser>} />
 
         <Route path="/p" element={<RequireRole role="PARENT"><ParentHome /></RequireRole>} />

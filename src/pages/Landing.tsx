@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Loading } from '../components/ui';
+import { DEMO_ENABLED } from '../demo/DemoContext';
 
 export default function Landing() {
   const { user, loading } = useAuth();
@@ -36,6 +37,11 @@ export default function Landing() {
         <Link to="/login" className="btn block secondary">
           로그인
         </Link>
+        {DEMO_ENABLED && (
+          <Link to="/demo" className="btn block ghost">
+            전체 흐름 보기 (시연용)
+          </Link>
+        )}
       </div>
     </div>
   );
