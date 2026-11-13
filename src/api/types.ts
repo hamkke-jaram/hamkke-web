@@ -1,9 +1,15 @@
 export type Role = 'PARENT' | 'TEACHER';
 export type ChangeTrend = 'FIRST_RECORD' | 'GROWING' | 'STEADY' | 'NEEDS_ATTENTION';
 export type MetricChange = 'UP' | 'FLAT' | 'DOWN' | 'NA';
-export type MetricFocus = 'JOINT_PLAY' | 'RESPONSE' | 'CALM' | 'GENERAL';
+export type MetricFocus = 'JOINT_PLAY' | 'RESPONSE' | 'CALM' | 'GENERAL' | 'HARD_MOMENT';
 export type GoalStatus = 'IN_PROGRESS' | 'ACHIEVED' | 'ARCHIVED';
-export type SharedItem = 'JOINT_PLAY' | 'RESPONSE_LATENCY' | 'DISTRESS' | 'COACHING_CARDS';
+export type SharedItem =
+  | 'JOINT_PLAY'
+  | 'RESPONSE_LATENCY'
+  | 'DISTRESS'
+  | 'COACHING_CARDS'
+  | 'AI_OBSERVATIONS'
+  | 'INSTITUTION_CAPTURE';
 
 export interface User {
   id: number;
@@ -24,6 +30,10 @@ export interface Policies {
   privacyVersion: string;
   guardianVersion: string;
   disclaimer: string;
+  /** 'AI 관찰 기록' 동의 내용의 버전. 동의를 보낼 때 그대로 돌려준다. */
+  aiAnalysisVersion: string;
+  /** AI 서버가 설정되어 있는지. false면 새로 만드는 화면을 숨긴다(이미 있는 기록 보기·삭제·동의 끄기는 남긴다). */
+  aiObservationEnabled: boolean;
 }
 
 export interface Child {
@@ -103,6 +113,10 @@ export interface ShareSettings {
   responseLatency: boolean;
   distress: boolean;
   coachingCards: boolean;
+  /** 가정에서 만든 AI 관찰 기록을 선생님에게 보임 */
+  aiObservations: boolean;
+  /** 연결된 선생님이 기관에서 장면 사진을 찍어 관찰 기록을 남길 수 있음 */
+  institutionCapture: boolean;
   updatedAt?: string;
 }
 
@@ -156,4 +170,66 @@ export interface ConsentRecord {
   childId: number | null;
   agreedAt: string;
   revokedAt: string | null;
+}
+
+/* ── AI 관찰 기록 (hamkke-api/docs/ai-observation.md) ── */
+
+export type ObservationSource = 'HOME' | 'INSTITUTION';
+
+/** GET /children/{id}/ai-consent */
+export interface AiConsent {
+  agreed: boolean;
+  version: string | null;
+  agreedAt: string | null;
+}
+
+/** POST /children/{id}/ai-sessions — 분석 한 번에 쓰는 토큰(사용자 로그인 토큰과 다르다). */
+export interface AiSession {
+  token: string;
+  expiresAt: string;
+  maxFrames: number;
+}
+
+export interface ObservationMoment {
+  /** 보낸 장면 사진의 시각(초) */
+  t: number;
+  note: string;
+}
+
+/** AI 서버가 돌려주는 관찰 기록 객체(명세 6장). */
+export interface ObservationContent {
+  summary: string | null;
+  childStates: string[];
+  adultResponses: string[];
+  moments: ObservationMoment[];
+  /** 0~3. 3은 '3명 이상' */
+  peopleCount: number;
+}
+
+/** POST /ai/v1/analyze 응답 */
+export interface AnalyzeResponse {
+  observation: ObservationContent;
+  receipt: string;
+  modelVersion: string;
+  promptVersion: string;
+  analyzedFrames: number;
+}
+
+/** 저장된 AI 관찰 기록 한 건. 사진은 없고 글과 태그만 있다. */
+export interface AiObservation extends ObservationContent {
+  id: number;
+  source: ObservationSource;
+  recordedAt: string;
+  createdAt: string;
+  /** 기록을 만든 사람의 표시 이름 */
+  authorName?: string;
+  /** 지금 로그인한 사람이 만든 기록인지(선생님 화면의 삭제 버튼에 쓴다) */
+  mine?: boolean;
+  modelVersion: string;
+}
+
+/** POST /children/{id}/ai-observations 응답. 기관 기록이면 coaching은 null. */
+export interface SaveAiObservationResponse {
+  observation: AiObservation;
+  coaching: { delivery: Delivery | null } | null;
 }

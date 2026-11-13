@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import Observe from './ai/Observe';
 import type { Role } from './api/types';
 import { useAuth } from './auth/AuthContext';
 import { Disclaimer, Loading } from './components/ui';
@@ -82,9 +83,11 @@ export default function App() {
         <Route path="/p/children/:childId" element={<RequireRole role="PARENT"><ChildHome /></RequireRole>} />
         <Route path="/p/children/:childId/record" element={<RequireRole role="PARENT"><Record /></RequireRole>} />
         <Route path="/p/children/:childId/share" element={<RequireRole role="PARENT"><Share /></RequireRole>} />
+        <Route path="/p/children/:childId/observe" element={<RequireRole role="PARENT"><Observe /></RequireRole>} />
 
         <Route path="/t" element={<RequireRole role="TEACHER"><TeacherHome /></RequireRole>} />
         <Route path="/t/children/:childId" element={<RequireRole role="TEACHER"><TeacherChild /></RequireRole>} />
+        <Route path="/t/children/:childId/observe" element={<RequireRole role="TEACHER"><Observe /></RequireRole>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

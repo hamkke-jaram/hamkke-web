@@ -1,14 +1,36 @@
-import { useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { api, errorMessage } from '../../api/client';
-import type { InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
+import type { AiConsent, InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import { ErrorText, Loading, Section, formatDate, useLoad } from '../../components/ui';
 
-const ITEMS: Array<{ key: keyof Omit<ShareSettings, 'updatedAt'>; label: string; hint: string }> = [
+type ShareKey = keyof Omit<ShareSettings, 'updatedAt'>;
+interface ShareItem {
+  key: ShareKey;
+  label: string;
+  hint: string;
+}
+
+const ITEMS: ShareItem[] = [
   { key: 'jointPlay', label: '함께한 시간', hint: '주별 함께한 시간과 비율' },
   { key: 'responseLatency', label: '반응까지 걸린 시간', hint: '주별 평균' },
   { key: 'distress', label: '크게 운 횟수', hint: '주별 10분당 횟수' },
   { key: 'coachingCards', label: '받은 코칭 카드', hint: '카드 제목과 내용' },
+];
+
+/** AI 관찰 기록에 딸린 항목. AI 서버가 설정된 경우에 보여 준다(꺼져 있어도 이미 켜 둔 항목이 있으면 끌 수 있게 보여 준다). */
+const AI_ITEMS: ShareItem[] = [
+  {
+    key: 'aiObservations',
+    label: '가정의 AI 관찰 기록',
+    hint: '가정에서 만든 AI 관찰 기록(글)을 연결된 선생님도 볼 수 있어요.',
+  },
+  {
+    key: 'institutionCapture',
+    label: '기관에서 촬영해 관찰 기록 남기기',
+    hint: '연결된 선생님이 기관에서 이 아이의 장면 사진을 찍어 AI 관찰 기록을 남길 수 있어요. AI 관찰 기록이 켜져 있는 동안에만 돼요.',
+  },
 ];
 
 export default function Share() {
@@ -16,6 +38,21 @@ export default function Share() {
   const id = Number(childId);
   const settings = useLoad(() => api<ShareSettings>('GET', `/children/${id}/share-settings`), [id]);
   const teachers = useLoad(() => api<LinkedTeacher[]>('GET', `/children/${id}/teachers`), [id]);
+  const { policies } = useAuth();
+  const aiOn = policies?.aiObservationEnabled === true;
+  // 기관 촬영은 AI 관찰 기록이 켜져 있어야 동작한다. 꺼져 있으면 그 사실을 알려 준다(확인하지 못하면 안내만 생략).
+  const aiConsent = useLoad(
+    () => (aiOn ? api<AiConsent>('GET', `/children/${id}/ai-consent`).catch(() => null) : Promise.resolve(null)),
+    [id, aiOn],
+  );
+  // AI 서버가 꺼져 있어도, 이미 켜 둔 AI 공유 항목은 여기서 끌 수 있어야 한다(선생님에게는 이미 있는 기록이 계속 보인다).
+  // 한 번 보인 항목은 끈 뒤에도 이 화면에 있는 동안은 그대로 둔다(누르자마자 줄이 사라지지 않게).
+  const aiShared = settings.data?.aiObservations === true || settings.data?.institutionCapture === true;
+  const [aiSharedSeen, setAiSharedSeen] = useState(false);
+  useEffect(() => {
+    if (aiShared) setAiSharedSeen(true);
+  }, [aiShared]);
+  const showAiItems = aiOn || aiShared || aiSharedSeen;
   const [code, setCode] = useState<InviteCode | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
@@ -23,7 +60,7 @@ export default function Share() {
   // 렌더링 전에 연달아 눌러도 저장이 겹치지 않도록 ref로 한 번 더 막는다.
   const savingRef = useRef(false);
 
-  async function toggle(key: keyof Omit<ShareSettings, 'updatedAt'>, value: boolean) {
+  async function toggle(key: ShareKey, value: boolean) {
     if (!settings.data || savingRef.current) return;
     const confirmed = settings.data; // 마지막으로 서버가 확인해 준 상태
     const next = { ...confirmed, [key]: value };
@@ -38,6 +75,8 @@ export default function Share() {
           responseLatency: next.responseLatency,
           distress: next.distress,
           coachingCards: next.coachingCards,
+          aiObservations: next.aiObservations === true,
+          institutionCapture: next.institutionCapture === true,
         }),
       );
     } catch (e) {
@@ -71,6 +110,23 @@ export default function Share() {
     }
   }
 
+  const switchRow = (it: ShareItem) => (
+    <label key={it.key} className="switch-row">
+      <span>
+        <strong>{it.label}</strong>
+        <br />
+        <span className="muted">{it.hint}</span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={settings.data?.[it.key] === true}
+        disabled={saving}
+        onChange={(e) => void toggle(it.key, e.target.checked)}
+      />
+    </label>
+  );
+
   return (
     <div>
       <h1>선생님과 나누기</h1>
@@ -81,24 +137,28 @@ export default function Share() {
 
       <Section title="공유할 항목" action={saving ? <span className="muted">저장 중…</span> : undefined}>
         {settings.loading && <Loading />}
-        {settings.data &&
-          ITEMS.map((it) => (
-            <label key={it.key} className="switch-row">
-              <span>
-                <strong>{it.label}</strong>
-                <br />
-                <span className="muted">{it.hint}</span>
-              </span>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={settings.data![it.key] as boolean}
-                disabled={saving}
-                onChange={(e) => void toggle(it.key, e.target.checked)}
-              />
-            </label>
-          ))}
+        {settings.data && ITEMS.map(switchRow)}
       </Section>
+
+      {showAiItems && settings.data && (
+        <Section title="AI 관찰 기록 나누기" action={saving ? <span className="muted">저장 중…</span> : undefined}>
+          <p className="muted" style={{ marginTop: 0 }}>
+            AI 관찰 기록은 AI가 장면 사진을 보고 적은 짧은 글이에요. 사진은 살펴본 직후 지워서 누구에게도 보이지 않아요.
+          </p>
+          {policies != null && !aiOn && (
+            <p className="notice">
+              지금은 AI 서버가 쉬고 있어서 새 관찰 기록은 만들 수 없어요. 켜 둔 항목은 여기서 끌 수 있어요.
+            </p>
+          )}
+          {AI_ITEMS.map(switchRow)}
+          {aiConsent.data && !aiConsent.data.agreed && (
+            <p className="notice" style={{ marginBottom: 0 }}>
+              지금은 이 아이의 AI 관찰 기록이 꺼져 있어요. <Link to={`/p/children/${id}`}>아이 홈</Link>에서 켜야 선생님이
+              기관에서 촬영할 수 있어요.
+            </p>
+          )}
+        </Section>
+      )}
 
       <Section title="선생님 초대">
         <p className="muted" style={{ marginTop: 0 }}>

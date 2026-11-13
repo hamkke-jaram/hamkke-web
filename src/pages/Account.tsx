@@ -39,7 +39,7 @@ export default function Account() {
       <h1>내 정보</h1>
       <section className="card">
         <div>
-          <strong>{user?.displayName}</strong> <span className="chip">{user?.role === 'PARENT' ? '보호자' : '교사'}</span>
+          <strong>{user?.displayName}</strong> <span className="chip">{user?.role === 'PARENT' ? '보호자' : '기관 선생님'}</span>
         </div>
         <div className="muted">{user?.email}</div>
         <button

@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import ObservationCard from '../../ai/ObservationCard';
+import ObservationRunStatus from '../../ai/ObservationRunStatus';
+import { MAX_FRAMES, sampleFramesFromFile } from '../../ai/frames';
+import { useObservationRun } from '../../ai/useObservationRun';
 import { api, errorMessage } from '../../api/client';
-import type { SaveRecordResponse } from '../../api/types';
+import type { AiConsent, SaveRecordResponse } from '../../api/types';
+import { newUuid } from '../../api/uuid';
+import { useAuth } from '../../auth/AuthContext';
 import {
   AnalysisError,
   MODEL_VERSION,
@@ -12,7 +18,7 @@ import {
   type Stage,
 } from '@hamkke-jaram/analysis';
 import { runAudioInWorker } from '../../analysis/runAudioInWorker';
-import { CoachingCardView, ErrorText, SupportList, formatDuration } from '../../components/ui';
+import { CoachingCardView, ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
 
 type Phase =
   | { kind: 'guide'; notice?: string }
@@ -56,10 +62,55 @@ export default function Record() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
+  // AI 관찰 기록: 보호자가 이 아이에 대해 켜 두었고 AI 서버가 설정된 경우에만 쓴다.
+  // 동의 여부를 확인하지 못하면 꺼진 것으로 보고 사진을 한 장도 보내지 않는다.
+  const { policies } = useAuth();
+  const aiOn = policies?.aiObservationEnabled === true;
+  const consent = useLoad(
+    () => (aiOn ? api<AiConsent>('GET', `/children/${id}/ai-consent`).catch(() => null) : Promise.resolve(null)),
+    [id, aiOn],
+  );
+  const aiAgreed = aiOn && consent.data?.agreed === true;
+  const ai = useObservationRun(id);
+  const { start: startAi, reset: resetAi } = ai;
+  /** 방금 분석한 영상(메모리에만 둔다). 같은 영상에서 장면 사진을 뽑을 때만 쓴다. */
+  const fileRef = useRef<File | null>(null);
+  const aiStartedRef = useRef(false);
+
   useEffect(() => {
     preloadModel();
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      fileRef.current = null;
+    };
   }, []);
+
+  /** 같은 영상에서 장면 사진을 뽑아 AI 관찰 기록을 만든다. 실패해도 이미 저장된 지표 기록에는 영향이 없다. */
+  const makeObservation = useCallback(
+    (recordedAt: string) => {
+      const file = fileRef.current;
+      if (!file) return;
+      void startAi(async (signal) => {
+        const sampled = await sampleFramesFromFile(file, MAX_FRAMES, signal);
+        return { frames: sampled.frames, durationSec: sampled.durationSec, recordedAt };
+      });
+    },
+    [startAi],
+  );
+
+  // 지표 기록이 저장되어 결과가 보인 뒤에만, 그리고 AI 동의가 있을 때만 한 번 시작한다.
+  const savedRecordedAt = phase.kind === 'result' ? phase.data.record.recordedAt : null;
+  useEffect(() => {
+    if (!savedRecordedAt || !aiAgreed || aiStartedRef.current) return;
+    aiStartedRef.current = true;
+    makeObservation(savedRecordedAt);
+  }, [savedRecordedAt, aiAgreed, makeObservation]);
+
+  // 관찰 기록이 저장되면 영상을 더 쥐고 있을 이유가 없다.
+  const aiDone = ai.state.kind === 'done' || ai.state.kind === 'saved';
+  useEffect(() => {
+    if (aiDone) fileRef.current = null;
+  }, [aiDone]);
 
   async function send(metrics: DeviceMetrics, clientRecordId: string) {
     setPhase({ kind: 'sending', metrics, clientRecordId });
@@ -87,6 +138,9 @@ export default function Record() {
     e.target.value = '';
     if (!file) return;
     abortRef.current?.abort();
+    resetAi();
+    aiStartedRef.current = false;
+    fileRef.current = file;
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     // 멈춘 분석(또는 새 분석으로 바뀐 분석)은 진행 상황도 결과도 화면에 반영하지 않고, 서버로도 보내지 않는다.
@@ -101,13 +155,14 @@ export default function Record() {
         { signal: ctrl.signal, runAudio: runAudioInWorker },
       );
       if (stopped()) return;
-      await send(metrics, crypto.randomUUID());
+      await send(metrics, newUuid()); // crypto.randomUUID()는 http 주소(LAN)에서는 없다
     } catch (err) {
       if (stopped()) return;
       const message =
         err instanceof AnalysisError
           ? err.message
           : `분석하지 못했어요. 다른 영상으로 다시 시도해 주세요. (${errorMessage(err)})`;
+      fileRef.current = null;
       setPhase({ kind: 'failed', message });
     }
   }
@@ -115,6 +170,8 @@ export default function Record() {
   // 어느 단계에서든 바로 멈출 수 있게, 분석이 신호를 확인하기를 기다리지 않고 화면을 먼저 되돌린다.
   function stop() {
     abortRef.current?.abort();
+    resetAi();
+    fileRef.current = null;
     setPhase({ kind: 'guide', notice: '분석을 멈췄어요. 아무것도 저장하거나 보내지 않았어요. 준비되면 언제든 다시 해 주세요.' });
   }
 
@@ -130,7 +187,11 @@ export default function Record() {
       <div>
         {fileInputs}
         <h1>함께 논 영상 기록하기</h1>
-        <p className="lead">영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.</p>
+        <p className="lead">
+          {aiAgreed
+            ? '영상 원본과 소리는 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요. AI 관찰 기록이 켜져 있어서, 분석이 끝나면 같은 영상의 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 바로 지워요.'
+            : '영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.'}
+        </p>
         {phase.kind === 'guide' && phase.notice && (
           <p className="muted" role="status">
             {phase.notice}
@@ -169,7 +230,11 @@ export default function Record() {
     return (
       <div>
         <h1>살펴보는 중이에요</h1>
-        <p className="lead">영상은 이 폰 밖으로 나가지 않아요.</p>
+        <p className="lead">
+          {aiAgreed
+            ? '영상 원본과 소리는 이 폰 밖으로 나가지 않아요. 분석이 끝나면 장면 사진만 AI 서버로 보내요.'
+            : '영상은 이 폰 밖으로 나가지 않아요.'}
+        </p>
         <section className="card">
           <div className="row between" style={{ marginBottom: 8 }}>
             <strong>{STAGE_LABEL[phase.stage]}</strong>
@@ -255,6 +320,23 @@ export default function Record() {
           <p style={{ marginTop: 0 }}>{coaching.guidance.message}</p>
           <SupportList resources={coaching.guidance.resources} />
         </section>
+      )}
+
+      {/* AI 관찰 기록: 위의 지표 기록은 이미 저장되었다. 여기서 실패하거나 멈춰도 그 기록은 그대로 남는다. */}
+      {ai.state.kind === 'done' ? (
+        <>
+          <h2>AI 관찰 기록</h2>
+          <ObservationCard observation={ai.state.data.observation} />
+          {ai.state.data.coaching?.delivery && <CoachingCardView card={ai.state.data.coaching.delivery.card} />}
+        </>
+      ) : (
+        <ObservationRunStatus
+          state={ai.state}
+          workingTitle="AI 관찰 기록을 만드는 중이에요 (1~2분 걸릴 수 있어요)"
+          reassurance="오늘의 기록(숫자 3개)은 이미 저장되어 있어요."
+          onStop={ai.stop}
+          onRetry={fileRef.current ? () => makeObservation(record.recordedAt) : undefined}
+        />
       )}
 
       <Link to={`/p/children/${id}`} className="btn block">

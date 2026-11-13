@@ -1,11 +1,16 @@
 import { useState, type FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import ObservationList from '../../ai/ObservationList';
 import { api } from '../../api/client';
-import type { Delivery, Goal, GoalStatus, Observation, SharedSummary } from '../../api/types';
+import type { Delivery, Goal, GoalStatus, Observation, SharedItem, SharedSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { ErrorText, Loading, Section, WeeklyBars, WeeklyTable, formatAge, formatDate, useLoad } from '../../components/ui';
 
 const STATUS_LABEL: Record<GoalStatus, string> = { IN_PROGRESS: '진행 중', ACHIEVED: '이뤘어요', ARCHIVED: '보관' };
+/** 주간 요약(숫자)으로 보이는 공유 항목. 카드·AI 관찰 기록·기관 촬영은 여기에 들지 않는다. */
+const METRIC_ITEMS: SharedItem[] = ['JOINT_PLAY', 'RESPONSE_LATENCY', 'DISTRESS'];
+/** 선생님 화면에 보여 줄 AI 관찰 기록 개수(최신순). */
+const AI_LIST_LIMIT = 20;
 
 function today() {
   const d = new Date();
@@ -15,7 +20,8 @@ function today() {
 export default function TeacherChild() {
   const { childId } = useParams();
   const id = Number(childId);
-  const { user } = useAuth();
+  const { user, policies } = useAuth();
+  const aiOn = policies?.aiObservationEnabled === true;
   const summary = useLoad(() => api<SharedSummary>('GET', `/teacher/children/${id}/shared-summary?weeks=8`), [id]);
   const goals = useLoad(() => api<Goal[]>('GET', `/children/${id}/goals`), [id]);
   const notes = useLoad(() => api<Observation[]>('GET', `/children/${id}/observations?limit=30`), [id]);
@@ -34,7 +40,9 @@ export default function TeacherChild() {
   if (summary.loading) return <Loading />;
   if (summary.error || !summary.data) return <ErrorText error={summary.error ?? new Error('찾을 수 없어요.')} />;
   const s = summary.data;
-  const metricShared = s.sharedItems.some((i) => i !== 'COACHING_CARDS');
+  const metricShared = s.sharedItems.some((i) => METRIC_ITEMS.includes(i));
+  // 보호자가 '기관에서 촬영해 관찰 기록 남기기'를 켠 아이만 촬영할 수 있다(서버가 다시 확인한다).
+  const canCapture = aiOn && s.sharedItems.includes('INSTITUTION_CAPTURE');
 
   async function addGoal(e: FormEvent) {
     e.preventDefault();
@@ -99,6 +107,18 @@ export default function TeacherChild() {
       </div>
       <ErrorText error={error} />
 
+      {canCapture && (
+        <>
+          <Link to={`/t/children/${id}/observe`} className="btn block" style={{ marginBottom: 8, minHeight: 56, fontSize: 17 }}>
+            기관에서 관찰 기록하기
+          </Link>
+          <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>
+            보호자가 허락한 아이예요. 카메라로 장면 사진 6장을 찍어 AI가 본 모습을 글로 남겨요. 다른 아이가 함께
+            찍히지 않게 해 주세요.
+          </p>
+        </>
+      )}
+
       <Section title="가정에서 공유한 기록">
         {!metricShared ? (
           <p className="muted" style={{ margin: 0 }}>
@@ -153,6 +173,17 @@ export default function TeacherChild() {
           ))}
         </Section>
       )}
+
+      {/* 기관에서 만든 기록은 항상, 가정에서 만든 기록은 보호자가 공유를 켠 경우에만 서버가 보내 준다.
+          삭제는 자기가 만든 기록만 할 수 있어서, 다른 사람의 기록에는 버튼을 보여 주지 않는다.
+          AI 서버가 꺼져 있어도(aiOn=false) 이미 있는 기록은 보고 지울 수 있게 목록은 남긴다(없으면 제목까지 숨긴다). */}
+      <ObservationList
+        childId={id}
+        limit={AI_LIST_LIMIT}
+        canDelete={(o) => o.mine === true}
+        hideWhenEmpty={!canCapture && !(aiOn && s.sharedItems.includes('AI_OBSERVATIONS'))}
+        emptyText="아직 AI 관찰 기록이 없어요."
+      />
 
       <Section title="아이 목표">
         {goals.data?.length === 0 && <p className="muted">아직 목표가 없어요.</p>}

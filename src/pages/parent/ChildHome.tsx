@@ -1,7 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import AiConsentCard from '../../ai/AiConsentCard';
+import ObservationList from '../../ai/ObservationList';
 import { api, errorMessage } from '../../api/client';
-import type { Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
+import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
   CoachingCardView,
   ErrorText,
@@ -19,6 +22,8 @@ const GOAL_STATUS: Record<string, string> = { IN_PROGRESS: '진행 중', ACHIEVE
 const MAX_CHILDREN = 5;
 /** 서버의 기록 목록 최대 개수(RecordService.list). */
 const RECORD_WINDOW = 100;
+/** 아이 홈에 보여 줄 AI 관찰 기록 개수(최신순). */
+const AI_LIST_LIMIT = 5;
 
 /** 서버 RecordResponse에는 저장 시각(createdAt)도 있다. 저장 순서를 알아내는 데만 쓴다. */
 type SavedRecord = RecordItem & { createdAt: string };
@@ -42,6 +47,20 @@ export default function ChildHome() {
   const { childId } = useParams();
   const id = Number(childId);
   const nav = useNavigate();
+  const { policies } = useAuth();
+  // AI 서버가 설정되지 않았으면(또는 아직 모르면) 새로 만드는 화면(켜기, 촬영 버튼)을 숨긴다. 나머지 기능은 그대로다.
+  // 다만 이미 동의해 둔 아이라면, 그동안 쌓인 기록을 보고 지우거나 동의를 끄는 것은 AI 서버가 꺼져 있어도 할 수 있어야
+  // 하므로(서버도 허용한다) 동의 상태는 늘 확인한다.
+  const aiOn = policies?.aiObservationEnabled === true;
+  const aiConsent = useLoad(() => api<AiConsent>('GET', `/children/${id}/ai-consent`), [id]);
+  // 방금 켜거나 껐을 때의 결과 안내. 동의 카드는 켜짐·꺼짐에 따라 자리가 달라서(꺼짐: 위쪽, 켜짐: 아래쪽 설정 자리)
+  // 누른 카드가 그 자리에서 사라진다. 사라진 자리에 결과를 알리고 포커스를 옮긴다.
+  const [aiChange, setAiChange] = useState<'on' | 'off' | null>(null);
+  const aiChangeRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => setAiChange(null), [id]);
+  useEffect(() => {
+    if (aiChange) aiChangeRef.current?.focus();
+  }, [aiChange]);
   const child = useLoad(() => api<Child>('GET', `/children/${id}`), [id]);
   const weekly = useLoad(() => api<{ weeks: WeekSummary[] }>('GET', `/children/${id}/weekly-summary?weeks=8`), [id]);
   const cards = useLoad(() => api<Delivery[]>('GET', `/children/${id}/card-deliveries?limit=10`), [id]);
@@ -74,6 +93,28 @@ export default function ChildHome() {
   const pastCards = cards.data ? (showGuidance ? cards.data : cards.data.slice(1)) : [];
   const activeGoals = (goals.data ?? []).filter((g) => g.status !== 'ARCHIVED');
   const childCount = siblings.data?.length ?? 0;
+  // consented: 이 아이의 AI 동의가 켜져 있다(기록을 보고 지우고 끌 수 있다). aiAgreed: 지금 새 관찰 기록도 만들 수 있다.
+  const consented = aiConsent.data?.agreed === true;
+  const aiAgreed = aiOn && consented;
+  const consentCard = aiConsent.data && (
+    <AiConsentCard
+      childId={id}
+      nickname={c.nickname}
+      consent={aiConsent.data}
+      paused={policies != null && !aiOn}
+      onChange={(next) => {
+        aiConsent.setData(next);
+        setAiChange(next.agreed ? 'on' : 'off');
+      }}
+    />
+  );
+  const aiChangeNotice = aiChange && (
+    <p ref={aiChangeRef} className="notice" role="status" tabIndex={-1} style={{ marginBottom: 14 }}>
+      {aiChange === 'on'
+        ? `AI 관찰 기록을 켰어요. 이제 ${c.nickname}의 영상을 기록하거나 실시간 카메라로 관찰 기록을 남길 수 있어요. 끄는 곳은 이 화면 아래쪽에 있어요.`
+        : `AI 관찰 기록을 껐어요. 그동안 쌓인 ${c.nickname}의 AI 관찰 기록도 모두 지웠어요. 이제 장면 사진을 한 장도 보내지 않아요.`}
+    </p>
+  );
 
   async function markTried(d: Delivery) {
     if (triedBusy.current) return;
@@ -114,6 +155,27 @@ export default function ChildHome() {
       <Link to={`/p/children/${id}/record`} className="btn block" style={{ marginBottom: 16, minHeight: 56, fontSize: 17 }}>
         오늘 함께 논 영상 기록하기
       </Link>
+
+      {aiAgreed && (
+        <Link to={`/p/children/${id}/observe`} className="btn block secondary" style={{ marginBottom: 16 }}>
+          실시간 카메라로 관찰 기록하기
+        </Link>
+      )}
+
+      {/* 꺼져 있을 때는 위쪽에서 켜기를 안내하고(AI 서버가 설정된 경우만), 켜져 있을 때는 아래쪽(설정 자리)에 둔다. */}
+      {aiOn && !consented && consentCard}
+      {aiChange === 'on' && aiChangeNotice}
+      {aiOn && !aiConsent.loading && aiConsent.error != null && (
+        <section className="card">
+          <h2>AI 관찰 기록</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            AI 관찰 기록 설정을 불러오지 못했어요. 다른 기록은 그대로 쓸 수 있어요.
+          </p>
+          <button type="button" className="btn small secondary" style={{ minHeight: 44 }} onClick={aiConsent.reload}>
+            다시 불러오기
+          </button>
+        </section>
+      )}
 
       {showGuidance && (
         <section className="card warm" aria-label="상담·기관 연결 안내">
@@ -165,6 +227,18 @@ export default function ChildHome() {
           </>
         )}
       </Section>
+
+      {/* 동의가 켜져 있으면 AI 서버가 꺼져 있어도 그동안의 기록은 보고 지울 수 있다. */}
+      {consented && (
+        <ObservationList
+          childId={id}
+          limit={AI_LIST_LIMIT}
+          canDelete={() => true}
+          emptyText={
+            aiOn ? '아직 AI 관찰 기록이 없어요. 영상을 기록하거나 실시간 카메라로 남겨 보세요.' : '아직 AI 관찰 기록이 없어요.'
+          }
+        />
+      )}
 
       {(activeGoals.length > 0 || (notes.data?.length ?? 0) > 0) && (
         <Section title="선생님 이야기">
@@ -228,10 +302,14 @@ export default function ChildHome() {
         </div>
       )}
 
+      {consented && consentCard}
+      {aiChange === 'off' && aiChangeNotice}
+
       <details className="card">
         <summary>아이 정보 삭제(동의 철회)</summary>
         <p className="muted">
-          {c.nickname}의 모든 기록, 코칭 카드, 공유 설정, 선생님 연결과 메모가 즉시 지워지고 되돌릴 수 없어요.
+          {c.nickname}의 모든 기록(AI 관찰 기록 포함), 코칭 카드, 공유 설정, 선생님 연결과 메모가 즉시 지워지고 되돌릴 수
+          없어요.
         </p>
         <ErrorText error={deleteError} />
         {confirmDelete ? (

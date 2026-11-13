@@ -64,6 +64,7 @@ export default function ChildNew() {
         <ul className="muted" style={{ paddingLeft: 20 }}>
           <li>아이 별칭, 태어난 해와 달</li>
           <li>폰 안에서 계산한 상호작용 수치(영상·소리는 저장하지 않음)</li>
+          <li>AI 관찰 기록(AI가 적은 글) — 등록한 뒤 아이 홈에서 따로 동의해 켠 경우에만</li>
           <li>보호자가 공유를 허락한 항목에 한해 연결된 선생님이 보는 주간 요약</li>
         </ul>
         <p className="muted">아이 정보를 삭제하면 언제든 동의를 철회할 수 있고, 관련 기록은 즉시 지워져요.</p>

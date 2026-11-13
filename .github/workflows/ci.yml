@@ -17,5 +17,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: 표현 규칙 검수
         run: node scripts/check-expressions.mjs
+      - name: 단위 테스트
+        run: npm test
       - name: 타입 검사·빌드 (분석 모델 내려받기 포함)
         run: npm run build

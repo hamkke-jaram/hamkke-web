@@ -1,4 +1,5 @@
 import type { Child, InviteCode, Policies, TokenResponse } from '../api/types';
+import { newUuid } from '../api/uuid';
 
 /**
  * 시연용 데이터 만들기. 공개 API만 쓴다(백엔드에 데모 전용 기능을 두지 않는다).
@@ -127,7 +128,7 @@ async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAcco
   const now = Date.now();
   for (const r of SAMPLE_RECORDS) {
     await call(parent.accessToken, 'POST', `/children/${child.id}/interaction-records`, {
-      clientRecordId: crypto.randomUUID(),
+      clientRecordId: newUuid(),
       recordedAt: new Date(now - r.daysAgo * 86_400_000).toISOString(),
       analyzedSeconds: r.analyzed,
       jointPlaySeconds: r.joint,
@@ -146,6 +147,9 @@ async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAcco
     responseLatency: true,
     distress: false,
     coachingCards: true,
+    // AI 관찰 기록 관련 공유는 데모에서 켜지 않는다(AI 동의도 받지 않는다).
+    aiObservations: false,
+    institutionCapture: false,
   });
   tick('공유할 항목을 골랐어요');
 

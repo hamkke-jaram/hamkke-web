@@ -66,9 +66,14 @@ export default function Signup() {
           보호자
         </button>
         <button type="button" aria-pressed={role === 'TEACHER'} onClick={() => setRole('TEACHER')}>
-          어린이집 교사
+          기관 선생님
         </button>
       </div>
+      {role === 'TEACHER' && (
+        <p className="muted" style={{ marginTop: -8 }}>
+          어린이집·유치원·센터 등에서 아이를 돌보는 선생님이에요.
+        </p>
+      )}
       <label className="field">
         <span>이메일</span>
         <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -107,7 +112,8 @@ export default function Signup() {
             <strong>[필수] 개인정보 수집·이용 동의</strong>
             <br />
             <span className="muted">
-              이메일, 이름, 기기에서 계산한 상호작용 수치만 저장해요. 영상·소리는 저장하지 않아요.{' '}
+              이메일, 이름, 기기에서 계산한 상호작용 수치를 저장해요. 영상·소리는 저장하지 않아요. AI 관찰 기록은
+              아이마다 따로 동의한 경우에만 만들어요.{' '}
               <Link to="/privacy">자세히</Link>
             </span>
           </span>

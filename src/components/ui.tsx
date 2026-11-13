@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { FOCUS_LABEL } from '../ai/labels';
 import { errorMessage } from '../api/client';
 import type { Card, Delivery, SupportResource, WeekSummary } from '../api/types';
 import { FALLBACK_DISCLAIMER, useAuth } from '../auth/AuthContext';
@@ -67,13 +68,6 @@ export function formatDate(iso: string) {
   const d = new Date(iso);
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
-
-const FOCUS_LABEL: Record<string, string> = {
-  JOINT_PLAY: '함께 놀기',
-  RESPONSE: '반응 주고받기',
-  CALM: '편안한 마음',
-  GENERAL: '일상 속 양육',
-};
 
 export function CoachingCardView({ card, delivery, onTried }: { card: Card; delivery?: Delivery; onTried?: () => void }) {
   return (

@@ -1,0 +1,246 @@
+/* AI 관찰 기록 화면. 기본 색 변수(styles.css의 :root)만 쓴다. 새 색을 만들지 않는다. */
+
+/* 작은 버튼도 손가락으로 누르기 쉽게 44px 이상으로 */
+.btn.ai-tap {
+  min-height: 44px;
+}
+
+/* ── 관찰 기록 카드 ── */
+
+.ai-obs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.ai-obs-head .ai-obs-when {
+  margin-left: auto;
+}
+
+.ai-obs-summary {
+  margin: 0 0 4px;
+}
+
+.ai-tag-group {
+  margin-top: 10px;
+}
+
+.ai-tag-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 0 0 4px;
+}
+
+/* 태그는 모두 같은 중립색 칩으로 보여 준다. 색으로 좋고 나쁨을 나누지 않는다. */
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ai-moments {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.ai-moments li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px dashed var(--line);
+}
+
+.ai-time {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.ai-caveat {
+  margin: 12px 0 0;
+}
+
+.ai-obs-actions {
+  margin-top: 10px;
+}
+
+.ai-confirm {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  /* --edge는 고대비 모드용 테두리 변수다. 정의되어 있지 않은 styles.css에서도 선언이 무효가 되지 않게 대체값을 둔다. */
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+
+.ai-confirm p {
+  margin: 0 0 10px;
+}
+
+/* 목록 안의 한 건: 카드 안에 카드를 넣지 않고 줄로 나눈다 */
+.ai-obs-row {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.ai-obs-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ai-obs-row:last-child {
+  padding-bottom: 0;
+}
+
+/* ── 동의 내용 ── */
+
+.ai-facts {
+  margin: 0 0 4px;
+}
+
+.ai-facts dt {
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+.ai-facts dt:first-child {
+  margin-top: 0;
+}
+
+.ai-facts dd {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+}
+
+/* ── 진행 상태 ── */
+
+.ai-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-status .spinner {
+  flex: none;
+  margin: 0;
+}
+
+.ai-status p {
+  margin: 0;
+}
+
+/* ── 실시간 카메라 ── */
+
+.ai-preview {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ai-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 앞 카메라는 거울처럼 보여 준다(보내는 사진은 뒤집지 않는다) */
+.ai-preview video.mirrored {
+  transform: scaleX(-1);
+}
+
+.ai-preview-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+/* 촬영 중에는 이 표시가 화면에 계속 보인다. 글자로 알리고, 점은 꾸밈이다. */
+.ai-capture-indicator {
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 68px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 2px solid var(--brand);
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.ai-capture-indicator .ai-remaining {
+  margin-left: auto;
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.ai-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: ai-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.ai-shots {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.ai-shots span {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ai-shots span.taken {
+  background: var(--brand);
+  box-shadow: none;
+}
+
+.ai-field-label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-dot {
+    animation: none;
+  }
+}
