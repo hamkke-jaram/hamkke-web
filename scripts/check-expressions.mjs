@@ -17,7 +17,7 @@ const FORBIDDEN = [
   /predict/i, /prevent/i, /borderline/i,
 ];
 // 고유명사(외부 기관·서비스 이름)와 바꿀 수 없는 웹 API 이름만 허용한다.
-const ALLOW = [/자살예방상담전화/g, /K-DST\s*발달선별검사/g, /\.preventDefault\(/g];
+const ALLOW = [/자살예방상담전화/g, /K-DST\s*발달선별검사/g, /\.preventDefault\(/g, /\bpreventScroll\b/g];
 
 async function* walk(p) {
   let entries;

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { AiConsent, Child, SharedSummary } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { BackLink } from '../components/feedback';
 import { CoachingCardView, ErrorText, Loading, useLoad } from '../components/ui';
 import ObservationCard from './ObservationCard';
 import ObservationRunStatus from './ObservationRunStatus';
@@ -384,6 +385,7 @@ export default function Observe() {
     if (!policiesError) return <Loading />;
     return (
       <div>
+        <BackLink fallback={home} />
         <h1>실시간 카메라로 관찰 기록하기</h1>
         <ErrorText error={policiesError} />
         <Link to={home} className="btn block secondary">
@@ -395,6 +397,7 @@ export default function Observe() {
   if (!aiOn) {
     return (
       <div>
+        <BackLink fallback={home} />
         <h1>실시간 카메라로 관찰 기록하기</h1>
         <p className="notice">지금은 AI 관찰 기록을 쓸 수 없어요. 다른 기록은 그대로 쓸 수 있어요.</p>
         <Link to={home} className="btn block secondary" style={{ marginTop: 12 }}>
@@ -407,6 +410,7 @@ export default function Observe() {
   if (access.error || !access.data) {
     return (
       <div>
+        <BackLink fallback={home} />
         <h1>실시간 카메라로 관찰 기록하기</h1>
         <ErrorText error={access.error ?? new Error('아이 정보를 찾을 수 없어요.')} />
         <button type="button" className="btn block secondary" onClick={access.reload}>
@@ -419,6 +423,7 @@ export default function Observe() {
   if (!allowed) {
     return (
       <div>
+        <BackLink fallback={home} />
         <h1>실시간 카메라로 관찰 기록하기</h1>
         <p className="notice">
           {isTeacher
@@ -439,6 +444,7 @@ export default function Observe() {
       const { observation, coaching } = run.state.data;
       return (
         <div>
+          <BackLink fallback={home} />
           <h1>관찰 기록을 남겼어요</h1>
           <p className="lead">보낸 장면 사진은 살펴본 직후 지워져요. 아래 글만 저장했어요.</p>
           <ObservationCard observation={observation} />
@@ -456,6 +462,7 @@ export default function Observe() {
     }
     return (
       <div>
+        {run.state.kind !== 'working' && <BackLink fallback={home} />}
         <h1>{nickname} 관찰 기록</h1>
         <p className="lead">장면 사진 {framesRef.current.length || shots}장을 찍었어요. 카메라는 껐어요.</p>
         <ObservationRunStatus
@@ -493,6 +500,7 @@ export default function Observe() {
 
   return (
     <div>
+      {!capturing && <BackLink fallback={home} />}
       <h1>{capturing ? `${nickname}의 모습을 담고 있어요` : '실시간 카메라로 관찰 기록하기'}</h1>
       {!capturing && (
         <p className="lead">

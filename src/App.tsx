@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router
 import Observe from './ai/Observe';
 import type { Role } from './api/types';
 import { useAuth } from './auth/AuthContext';
+import { useRouteFocus } from './components/feedback';
 import { Disclaimer, Loading } from './components/ui';
 import { DEMO_ENABLED } from './demo/DemoContext';
 import DemoStart from './demo/DemoStart';
@@ -23,6 +24,8 @@ import TeacherHome from './pages/teacher/TeacherHome';
 
 function Layout() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  useRouteFocus();
   const home = user ? (user.role === 'PARENT' ? '/p' : '/t') : '/';
   return (
     <div className="app">
@@ -32,11 +35,11 @@ function Layout() {
           함께자람
         </Link>
         <span className="spacer" />
-        <Link to="/support" className="icon-btn" aria-label="상담·기관 연결 안내">
+        <Link to="/support" className="icon-btn" aria-current={pathname === '/support' ? 'page' : undefined}>
           도움받기
         </Link>
         {user && (
-          <Link to="/account" className="icon-btn" aria-label="내 계정">
+          <Link to="/account" className="icon-btn" aria-current={pathname === '/account' ? 'page' : undefined}>
             내 정보
           </Link>
         )}

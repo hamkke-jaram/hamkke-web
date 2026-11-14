@@ -1,6 +1,9 @@
+import { BackLink } from '../components/feedback';
+
 export default function Privacy() {
   return (
     <div>
+      <BackLink />
       <h1>개인정보 처리 안내</h1>
       <p className="lead">함께자람이 무엇을 저장하고, 무엇을 저장하지 않는지 알려 드려요.</p>
 

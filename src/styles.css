@@ -13,6 +13,8 @@
   --accent-soft: #fbf1df;
   --danger: #a33a2c;
   --focus: #1d5fbf;
+  /* 색 차이만으로 구분되던 면의 테두리. 라이트·다크에서는 완전 투명이라 보이지 않고, 고대비 테마에서만 드러난다. */
+  --edge: #0000;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 16px rgb(0 0 0 / 0.04);
   color-scheme: light;
@@ -37,6 +39,117 @@
     --shadow: none;
     color-scheme: dark;
   }
+}
+
+/* 화면 설정에서 '어둡게'를 고른 경우(기기가 밝아도). 값은 바로 위 다크 블록과 같다. */
+:root[data-theme='dark'] {
+  --bg: #141917;
+  --surface: #1c2320;
+  --surface-2: #232b28;
+  --ink: #eaf0ed;
+  --ink-2: #b9c4bf;
+  --ink-3: #8f9b96;
+  --line: #2f3834;
+  --brand: #6fbfa5;
+  --brand-ink: #0f1d18;
+  --brand-soft: #1f3a31;
+  --accent: #e3b261;
+  --accent-soft: #3a2f1c;
+  --danger: #ef8a7c;
+  --focus: #8ab4ff;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+/* 고대비 테마(디자인 시스템 tokens.json의 hc-light·hc-dark). 글자 7:1(큰 글씨 4.5:1), 테두리·포커스·막대 3:1 이상.
+   - 자동: 운영체제의 '대비 높이기'(prefers-contrast: more)를 켜면 밝은 모드는 hc-light, 다크 모드는 hc-dark.
+     data-theme을 따로 정하지 않았을 때만 따른다(data-theme='light'처럼 직접 고른 테마가 우선).
+   - 직접 고르기: <html data-theme="hc-light"> 또는 <html data-theme="hc-dark">.
+   자동 블록과 직접 고르기 블록은 같은 값이다 — 한쪽을 고치면 다른 쪽도 함께 고친다.
+   각 블록은 모든 색 변수를 다시 정하므로, 위 다크 규칙(:root:not([data-theme='light']))이 함께 걸려도 값이 섞이지 않는다. */
+@media (prefers-contrast: more) {
+  :root:not([data-theme]) {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #f0ede5;
+    --ink: #111a16;
+    --ink-2: #2d3432;
+    --ink-3: #424846;
+    --line: #7e796c;
+    --edge: #6a655b;
+    --brand: #174a3d;
+    --brand-ink: #ffffff;
+    --brand-soft: #daefe5;
+    --accent: #634111;
+    --accent-soft: #feeed4;
+    --danger: #7b2c21;
+    --focus: #1d5cd7;
+    --shadow: none;
+    color-scheme: light;
+  }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #141917;
+    --surface: #1c2320;
+    --surface-2: #232b28;
+    --ink: #f2f6f4;
+    --ink-2: #d4dbd7;
+    --ink-3: #bdc5c2;
+    --line: #73887f;
+    --edge: #8b9e95;
+    --brand: #a4e4d0;
+    --brand-ink: #0f1d18;
+    --brand-soft: #17332a;
+    --accent: #e6bc74;
+    --accent-soft: #352914;
+    --danger: #f5b5ac;
+    --focus: #70a6f5;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='hc-light'] {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface-2: #f0ede5;
+  --ink: #111a16;
+  --ink-2: #2d3432;
+  --ink-3: #424846;
+  --line: #7e796c;
+  --edge: #6a655b;
+  --brand: #174a3d;
+  --brand-ink: #ffffff;
+  --brand-soft: #daefe5;
+  --accent: #634111;
+  --accent-soft: #feeed4;
+  --danger: #7b2c21;
+  --focus: #1d5cd7;
+  --shadow: none;
+  color-scheme: light;
+}
+
+:root[data-theme='hc-dark'] {
+  --bg: #141917;
+  --surface: #1c2320;
+  --surface-2: #232b28;
+  --ink: #f2f6f4;
+  --ink-2: #d4dbd7;
+  --ink-3: #bdc5c2;
+  --line: #73887f;
+  --edge: #8b9e95;
+  --brand: #a4e4d0;
+  --brand-ink: #0f1d18;
+  --brand-soft: #17332a;
+  --accent: #e6bc74;
+  --accent-soft: #352914;
+  --danger: #f5b5ac;
+  --focus: #70a6f5;
+  --shadow: none;
+  /* 체크박스·날짜 입력 같은 기본 컨트롤도 어두운 색으로 */
+  color-scheme: dark;
 }
 
 * {
@@ -161,13 +274,13 @@ h3 {
 
 .card.soft {
   background: var(--brand-soft);
-  border-color: transparent;
+  border-color: var(--edge);
   box-shadow: none;
 }
 
 .card.warm {
   background: var(--accent-soft);
-  border-color: transparent;
+  border-color: var(--edge);
   box-shadow: none;
 }
 
@@ -208,6 +321,13 @@ h3 {
 }
 
 .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 요청 중에도 포커스를 잃지 않게 disabled 대신 aria-disabled를 쓰는 곳 */
+.btn[aria-disabled='true'],
+.switch-row input[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -329,6 +449,7 @@ textarea {
   background: var(--surface-2);
   border-radius: 12px;
   padding: 12px 14px;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .disclaimer {
@@ -350,6 +471,7 @@ textarea {
   padding: 4px;
   border-radius: 12px;
   margin-bottom: 16px;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .tabs button {
@@ -406,6 +528,7 @@ textarea {
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .chip.brand {
@@ -424,6 +547,7 @@ textarea {
   border-radius: 12px;
   padding: 12px 10px;
   min-width: 0;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .metric .label {
@@ -467,6 +591,7 @@ textarea {
   border-radius: 999px;
   background: var(--surface-2);
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .progress > div {
@@ -486,6 +611,7 @@ textarea {
   border-radius: 12px;
   background: var(--surface-2);
   user-select: all;
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .chart {
@@ -548,8 +674,31 @@ details summary {
   min-height: 40px;
   display: flex;
   align-items: center;
+  gap: 8px;
   color: var(--ink-2);
   font-size: 14px;
+  list-style: none;
+}
+
+/* display:flex 때문에 브라우저 기본 ▶ 표시가 사라지므로 직접 그린다. Safari 기본 표시는 숨겨 겹치지 않게 한다. */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details summary::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+details[open] > summary::before {
+  transform: rotate(45deg);
 }
 
 .spinner {
@@ -572,7 +721,8 @@ details summary {
   .spinner {
     animation-duration: 3s;
   }
-  .progress > div {
+  .progress > div,
+  details summary::before {
     transition: none;
   }
 }
@@ -628,4 +778,362 @@ details summary {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* 고대비 테마 전용 — 색 변수만으로 못 하는 것. 직접 고른 고대비(data-theme)와 자동 고대비(prefers-contrast) 두 경우에 같은 규칙을 둔다.
+   - 상단바: 반투명 바탕에 아래 내용이 비쳐 워드마크 대비가 깎이지 않게 불투명하게.
+   - 플레이스홀더: 브라우저 기본 회색 대신 ink-3(7:1 이상).
+   - 고스트 버튼: brand와 ink의 밝기 차가 작아 색만으로 구분하지 않게 밑줄.
+   - 선택된 탭: 바탕·글자 차이가 3:1에 못 미쳐 edge 윤곽으로 선택을 알린다. 키보드 포커스 때는 바깥에 focus 링, 안쪽에 edge 선.
+     투명 outline도 Windows 강제 색 모드에서는 그려지므로 이 윤곽은 브랜드 테마에 두지 않는다. */
+:root[data-theme^='hc-'] .topbar {
+  background: var(--bg);
+  backdrop-filter: none;
+}
+
+:root[data-theme^='hc-'] ::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+
+:root[data-theme^='hc-'] .btn.ghost {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+:root[data-theme^='hc-'] .tabs button[aria-pressed='true'] {
+  outline: 2px solid var(--edge);
+  outline-offset: -2px;
+}
+
+:root[data-theme^='hc-'] .tabs button[aria-pressed='true']:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 2px var(--edge);
+}
+
+@media (prefers-contrast: more) {
+  :root:not([data-theme]) .topbar {
+    background: var(--bg);
+    backdrop-filter: none;
+  }
+
+  :root:not([data-theme]) ::placeholder {
+    color: var(--ink-3);
+    opacity: 1;
+  }
+
+  :root:not([data-theme]) .btn.ghost {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  :root:not([data-theme]) .tabs button[aria-pressed='true'] {
+    outline: 2px solid var(--edge);
+    outline-offset: -2px;
+  }
+
+  :root:not([data-theme]) .tabs button[aria-pressed='true']:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+    box-shadow: inset 0 0 0 2px var(--edge);
+  }
+}
+
+/* 상단바(sticky)가 포커스로 스크롤된 칸을 가리지 않게 */
+html {
+  scroll-padding-top: calc(env(safe-area-inset-top) + 72px);
+}
+
+/* 화면을 옮길 때·항목을 지운 뒤 화면 낭독기를 위해 포커스를 받는 제목(tabindex=-1)에는 테두리를 그리지 않는다. 버튼·입력칸의 포커스 테두리는 그대로. */
+h1[tabindex='-1']:focus,
+h2[tabindex='-1']:focus,
+h3[tabindex='-1']:focus {
+  outline: none;
+}
+
+/* ===== UX 보조 — 알림, 뒤로 줄, 확인 상자, 입력칸 도움말·오류, 비밀번호 보기 등 (src/components/feedback.tsx) ===== */
+
+/* 짧은 알림: 상단바 바로 아래(아래쪽의 시연 안내 패널·화면 키보드와 겹치지 않게). 비어 있어도 알림 영역은 남겨 둔다. */
+.toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 76px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(528px, calc(100vw - 32px));
+  z-index: 30;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+}
+.toast:not(.show) {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast.show {
+    animation: toast-in 0.18s ease-out;
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -6px);
+    }
+  }
+}
+
+/* 지금 화면을 상단바 버튼에 표시 */
+.topbar .icon-btn[aria-current='page'] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* 하위 화면 맨 위의 뒤로 줄 */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  margin: -10px 0 2px -4px;
+  padding: 0 10px 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--brand);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.back-link:hover {
+  background: var(--surface-2);
+}
+
+/* 글 속 링크·링크처럼 보이는 버튼: 위아래 안쪽 여백으로 누르는 영역을 44px 넘게, 같은 크기 음수 여백으로 줄 높이는 그대로 */
+.link-btn {
+  display: inline-block;
+  border: 0;
+  background: none;
+  padding: 12.5px 4px;
+  margin: -12.5px 0;
+  font: inherit;
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.disclaimer a {
+  display: inline-block;
+  padding: 12px 2px;
+  margin: -12px 0;
+}
+.link-row {
+  text-align: center;
+}
+
+/* 작은 버튼도 누르는 영역은 44px */
+.btn.small {
+  min-height: 44px;
+}
+
+/* 문장으로 된 .muted(p)는 ink-2 — ink-3은 날짜·버전 같은 짧은 메타에만(흰 카드 위 4.5:1 미만이라) */
+p.muted {
+  color: var(--ink-2);
+}
+
+/* 목록 행을 버튼으로 쓸 때 */
+button.list-item {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+}
+button.list-item:first-child {
+  border-top: 0;
+}
+a.list-item:hover,
+button.list-item:hover {
+  background: var(--surface-2);
+}
+.list-item .meta {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.item-body {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 아이 머리 줄: 아바타 + 별칭(h1)과 나이 (+ 오른쪽 버튼) */
+.child-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.child-head h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.child-head-text {
+  flex: 1;
+  min-width: 0;
+}
+.child-age {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* 스위치 줄의 이름과 설명 */
+.switch-text {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+}
+.switch-text .muted {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+
+/* 펼침(details) 표시 */
+.disclosure > summary {
+  min-height: 44px;
+  justify-content: space-between;
+  gap: 8px;
+  list-style: none;
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+/* .chev가 표시를 맡으므로 기본 details 표시(::before)는 끈다 */
+.disclosure > summary::before {
+  content: none;
+}
+.chev {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-2);
+}
+.disclosure[open] > summary .chev {
+  transform: rotate(90deg);
+}
+
+/* 입력칸 아래 도움말·오류·글자 수 (label.field 바로 다음 형제) */
+p.field-hint,
+p.field-error,
+p.counter {
+  margin: -8px 0 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+p.field-hint {
+  color: var(--ink-2);
+}
+p.counter {
+  text-align: right;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+p.field-hint + p.field-error {
+  margin-top: -10px;
+}
+input[aria-invalid='true'],
+textarea[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+.field-label {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+
+/* 비밀번호 보기 */
+.pw-field {
+  position: relative;
+}
+.pw-field input {
+  padding-right: 84px;
+}
+.pw-field .pw-toggle {
+  position: absolute;
+  right: 4px;
+  top: 30px;
+  padding: 0 12px;
+}
+
+/* 되돌릴 수 없는 동작의 확인 상자 */
+.confirm {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--edge, #0000);
+}
+.confirm > p:first-child {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.confirm .row > .btn {
+  flex: 1;
+}
+
+/* 분석 단계 */
+.stage-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.stage-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.stage-list li:first-child {
+  border-top: 0;
+}
+.stage-list li.now {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* 요약 줄·섹션 머리 */
+.status-line {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 8px 0 0;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.section-head h2 {
+  margin: 0;
 }

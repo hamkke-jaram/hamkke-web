@@ -10,7 +10,7 @@ export function Disclaimer() {
   return (
     <footer className="disclaimer">
       <p style={{ margin: 0 }}>{policies?.disclaimer ?? FALLBACK_DISCLAIMER}</p>
-      <p style={{ margin: '6px 0 0' }}>
+      <p style={{ margin: '12px 0 0' }}>
         <Link to="/support">상담·기관 연결 안내</Link> · <Link to="/privacy">개인정보 처리 안내</Link>
       </p>
     </footer>
@@ -51,10 +51,13 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
   return { data, error, loading, reload: () => setTick((t) => t + 1), setData };
 }
 
+/** 초 → '1분 52초'. 딱 떨어지면 '3분'(‘3분 0초’로 쓰지 않는다). */
 export function formatDuration(sec: number) {
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  return m > 0 ? `${m}분 ${s}초` : `${s}초`;
+  const total = Math.max(0, Math.round(sec));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  if (m === 0) return `${s}초`;
+  return s ? `${m}분 ${s}초` : `${m}분`;
 }
 
 export function formatAge(months: number) {
