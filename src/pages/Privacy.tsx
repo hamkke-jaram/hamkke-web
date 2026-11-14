@@ -76,6 +76,15 @@ export default function Privacy() {
           지워져요. 선생님은 자신이 만든 관찰 기록만 지울 수 있어요.
         </p>
       </section>
+
+      <section className="card">
+        <h2>내 데이터 보기·내려받기</h2>
+        <p style={{ marginBottom: 0 }}>
+          내 정보에서 계정 정보, 동의 기록, 아이 기록과 선생님 목표·메모, AI 관찰 기록을 한 파일로 내려받을 수 있어요.
+          파일에는 비밀번호나 로그인 정보가 들어 있지 않아요. 개인정보 처리 방침이 바뀌면 다음에 앱을 열 때 바뀐 내용을
+          알려 드리고 다시 동의를 받아요.
+        </p>
+      </section>
       <p className="muted">문서 버전 2026-11-v2 (초안)</p>
     </div>
   );

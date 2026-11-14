@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { setSession } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorText } from '../components/ui';
@@ -94,6 +95,17 @@ export default function DemoStart() {
           {error != null && <ErrorText error={error} />}
         </div>
       )}
+
+      <section className="card" aria-labelledby="demo-features-h" style={{ marginTop: 16 }}>
+        <h2 id="demo-features-h">기능 하나씩 보기</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          가입, 아이 등록, 영상 기록, 공유, 초대 코드 같은 기능을 하나씩 골라, 입력하는 과정과 서버로 간 내용까지 실제 화면으로
+          보여 드려요.
+        </p>
+        <Link to="/demo/features" className="btn block secondary" data-demo="demo-features-link">
+          기능별로 보기
+        </Link>
+      </section>
     </div>
   );
 }

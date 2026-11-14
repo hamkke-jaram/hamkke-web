@@ -2,21 +2,25 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AiConsentCard from '../../ai/AiConsentCard';
 import ObservationList from '../../ai/ObservationList';
-import { ApiError, api, errorMessage } from '../../api/client';
+import { ApiError, api } from '../../api/client';
 import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import TriableCard from '../../components/TriableCard';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
+import { usePagedList } from '../../components/paging';
 import {
-  CoachingCardView,
   ErrorText,
   Loading,
-  WeeklyBars,
+  MoreButton,
+  WeeklyChart,
   WeeklyTable,
   formatAge,
   formatDate,
+  loadStateView,
   useLoad,
 } from '../../components/ui';
 import { thisWeekStart } from './week';
+import '../extra.css';
 
 const GOAL_STATUS: Record<string, string> = { IN_PROGRESS: '진행 중', ACHIEVED: '이뤘어요', ARCHIVED: '보관' };
 /** 서버의 ChildService.MAX_CHILDREN_PER_PARENT와 같은 값. */
@@ -25,8 +29,12 @@ const MAX_CHILDREN = 5;
 const RECORD_WINDOW = 100;
 /** 주간 기록에 보여 줄 주 수. */
 const WEEKS = 8;
-/** 아이 홈에 보여 줄 AI 관찰 기록 개수(최신순). */
+/** 아이 홈에 보여 줄 AI 관찰 기록 개수(최신순). 더 있으면 '더 보기'로 이어서 가져온다. */
 const AI_LIST_LIMIT = 5;
+/** 코칭 카드 이력을 한 번에 가져오는 개수(이번 코칭 1장 + 지난 카드). */
+const CARD_PAGE = 10;
+/** 선생님 관찰 메모를 한 번에 가져오는 개수. */
+const NOTE_PAGE = 5;
 
 /** 서버 RecordResponse에는 저장 시각(createdAt)도 있다. 저장 순서를 알아내는 데만 쓴다. */
 type SavedRecord = RecordItem & { createdAt: string };
@@ -79,9 +87,9 @@ export default function ChildHome() {
   }, [aiChange]);
   const child = useLoad(() => api<Child>('GET', `/children/${id}`), [id]);
   const weekly = useLoad(() => api<{ weeks: WeekSummary[] }>('GET', `/children/${id}/weekly-summary?weeks=${WEEKS}`), [id]);
-  const cards = useLoad(() => api<Delivery[]>('GET', `/children/${id}/card-deliveries?limit=10`), [id]);
+  const cards = usePagedList<Delivery>(`/children/${id}/card-deliveries`, CARD_PAGE, [id]);
   const goals = useLoad(() => api<Goal[]>('GET', `/children/${id}/goals`), [id]);
-  const notes = useLoad(() => api<Observation[]>('GET', `/children/${id}/observations?limit=5`), [id]);
+  const notes = usePagedList<Observation>(`/children/${id}/observations`, NOTE_PAGE, [id]);
   // 최근 기록들. 가장 나중에 저장된 기록에 카드 대신 상담·기관 안내가 나갔는지 확인하는 데 쓴다.
   const records = useLoad(
     () => api<SavedRecord[]>('GET', `/children/${id}/interaction-records?limit=${RECORD_WINDOW}`),
@@ -89,22 +97,6 @@ export default function ChildHome() {
   );
   // 아이가 둘 이상일 때만 '우리 아이'로 돌아가는 줄을 둔다(한 명이면 부모 홈이 바로 이 화면으로 보낸다).
   const siblings = useLoad(() => api<Child[]>('GET', '/children'), []);
-  // state는 다시 그려진 뒤에야 바뀌므로, 빠르게 두 번 눌러도 한 번만 보내도록 ref로도 막는다.
-  const triedBusy = useRef(false);
-  const [triedError, setTriedError] = useState<unknown>(null);
-  // '오늘 해봤어요'를 누르면 그 버튼이 '✓ 해봤어요' 표시로 바뀌어 포커스가 갈 곳을 잃는다. 그때 '이번 코칭' 제목으로 옮긴다.
-  const coachHeadRef = useRef<HTMLHeadingElement>(null);
-  const [triedSaved, setTriedSaved] = useState(0);
-  useEffect(() => {
-    if (!triedSaved) return;
-    const active = document.activeElement;
-    const head = coachHeadRef.current;
-    if (!head || (active && active !== document.body)) return;
-    // 화면은 그 자리에 두고 포커스만 옮긴다(제목이 화면 위로 지나가 있어도 끌어올리지 않는다).
-    const { scrollX, scrollY } = window;
-    head.focus();
-    window.scrollTo(scrollX, scrollY);
-  }, [triedSaved]);
   // 오류 화면의 '다시 불러오기'를 누르면 화면 전체가 불러오는 표시로 바뀌어 버튼(포커스)이 사라진다. 다 불러온 뒤 제목으로 돌려준다.
   // 제목은 결과(아이 화면, 찾을 수 없음, 불러오지 못함)에 따라 다르지만 한 번에 하나만 그려지므로 같은 ref를 쓴다.
   const h1Ref = useRef<HTMLHeadingElement>(null);
@@ -172,11 +164,13 @@ export default function ChildHome() {
   // 예전 카드는 모두 지난 카드 목록으로 보낸다. 카드는 기록 저장 직후에 전달되므로, 그 안내 기록보다
   // 나중에 전달된 카드가 있으면(=그 뒤에 저장된 기록의 카드) 카드를 보여 준다.
   const newest = newestSaved(records.data);
-  const newestCard = cards.data?.[0];
+  const newestCard = cards.items?.[0];
   const showGuidance =
     newest?.changeTrend === 'NEEDS_ATTENTION' && (!newestCard || Date.parse(newest.createdAt) >= Date.parse(newestCard.deliveredAt));
   const latest = records.loading || showGuidance ? undefined : newestCard;
-  const pastCards = cards.data ? (showGuidance ? cards.data : cards.data.slice(1)) : [];
+  const pastCards = cards.items ? (showGuidance ? cards.items : cards.items.slice(1)) : [];
+  const replaceCard = (d: Delivery) => cards.setItems((list) => list?.map((x) => (x.id === d.id ? d : x)) ?? null);
+  const dropCard = (d: Delivery) => cards.setItems((list) => list?.filter((x) => x.id !== d.id) ?? null);
   const activeGoals = (goals.data ?? []).filter((g) => g.status !== 'ARCHIVED');
   // 기록 버튼 아래 한 줄: 기록이 하나도 없으면 첫 기록 안내, 있으면 이번 주(한국 시간 월요일부터) 기록 수.
   // 목록이 비어 있으면 기록이 정말 없는 것이고, 주간 요약은 기록이 있는 주만 준다.
@@ -206,6 +200,8 @@ export default function ChildHome() {
       onChange={(next) => {
         aiConsent.setData(next);
         setAiChange(next.agreed ? 'on' : 'off');
+        // 끄면 서버가 AI 관찰 기록으로 받은 코칭 카드도 함께 지우므로 카드 목록을 다시 불러온다.
+        if (!next.agreed) cards.reload();
       }}
     />
   );
@@ -216,22 +212,6 @@ export default function ChildHome() {
         : `AI 관찰 기록을 껐어요. 그동안 쌓인 ${c.nickname}의 AI 관찰 기록도 모두 지웠어요. 이제 장면 사진을 한 장도 보내지 않아요.`}
     </p>
   );
-
-  async function markTried(d: Delivery) {
-    if (triedBusy.current) return;
-    triedBusy.current = true;
-    setTriedError(null);
-    try {
-      const updated = await api<Delivery>('POST', `/children/${id}/card-deliveries/${d.id}/tried`);
-      cards.setData((list) => list?.map((x) => (x.id === d.id ? updated : x)) ?? null);
-      toast(`'해봤어요'로 남겼어요. 잘하셨어요.`);
-      setTriedSaved((n) => n + 1);
-    } catch (e) {
-      setTriedError(new Error(`'해봤어요'를 저장하지 못했어요. 잠시 후 다시 눌러 주세요. (${errorMessage(e)})`));
-    } finally {
-      triedBusy.current = false;
-    }
-  }
 
   async function removeChild() {
     // 실패하면 DangerAction이 확인 상자 안에 오류를 보여 준다.
@@ -251,15 +231,25 @@ export default function ChildHome() {
           <h1 ref={h1Ref} tabIndex={-1}>
             {c.nickname}
           </h1>
-          <div className="child-age">{formatAge(c.ageMonths)}</div>
+          <div className="child-age">
+            {formatAge(c.ageMonths)} ·{' '}
+            <Link to={`/p/children/${id}/edit`} className="link-btn" data-demo="childhome-edit-link" aria-label={`${c.nickname} 정보 고치기`}>
+              정보 고치기
+            </Link>
+          </div>
         </div>
-        <Link to={`/p/children/${id}/share`} className="btn small secondary">
+        <Link to={`/p/children/${id}/share`} className="btn small secondary" data-demo="childhome-share-link">
           선생님과 공유
         </Link>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <Link to={`/p/children/${id}/record`} className="btn block" style={{ minHeight: 56, fontSize: 17 }}>
+        <Link
+          to={`/p/children/${id}/record`}
+          className="btn block"
+          style={{ minHeight: 56, fontSize: 17 }}
+          data-demo="childhome-record-link"
+        >
           오늘 함께 논 영상 기록하기
         </Link>
         {/* 한 줄이 늦게 끼어들어 아래 내용이 밀리지 않게 자리를 늘 남겨 둔다. */}
@@ -269,7 +259,12 @@ export default function ChildHome() {
       </div>
 
       {aiAgreed && (
-        <Link to={`/p/children/${id}/observe`} className="btn block secondary" style={{ marginBottom: 16 }}>
+        <Link
+          to={`/p/children/${id}/observe`}
+          className="btn block secondary"
+          style={{ marginBottom: 16 }}
+          data-demo="childhome-observe-link"
+        >
           실시간 카메라로 관찰 기록하기
         </Link>
       )}
@@ -304,11 +299,17 @@ export default function ChildHome() {
 
       {latest && (
         <section aria-labelledby="childhome-coach-h">
-          <h2 id="childhome-coach-h" ref={coachHeadRef} tabIndex={-1}>
+          <h2 id="childhome-coach-h" tabIndex={-1}>
             이번 코칭
           </h2>
-          <CoachingCardView card={latest.card} delivery={latest} onTried={() => void markTried(latest)} />
-          <ErrorText error={triedError} />
+          <TriableCard childId={id} delivery={latest} onUpdated={replaceCard} onGone={dropCard} />
+        </section>
+      )}
+      {/* 카드를 못 불러오면 '이번 코칭'이 조용히 사라지지 않게 알린다. */}
+      {!showGuidance && cards.error != null && !cards.items && (
+        <section className="card" aria-labelledby="childhome-coach-err-h">
+          <h2 id="childhome-coach-err-h">코칭 카드</h2>
+          {loadStateView(cards, '코칭 카드를')}
         </section>
       )}
 
@@ -340,15 +341,17 @@ export default function ChildHome() {
           )
         ) : (
           <>
-            <p className="muted" style={{ margin: '0 0 4px' }}>
-              주별 함께한 시간 비율
-            </p>
-            <WeeklyBars weeks={weeks} />
+            <WeeklyChart weeks={weeks} idPrefix="childhome-week" />
             <details className="disclosure">
               <DisclosureSummary>주별 숫자로 보기</DisclosureSummary>
               <WeeklyTable weeks={weeks} />
             </details>
           </>
+        )}
+        {records.data && records.data.length > 0 && (
+          <Link to={`/p/children/${id}/records`} className="btn small ghost" data-demo="childhome-records-link">
+            기록 하나씩 보기·지우기
+          </Link>
         )}
       </section>
 
@@ -358,6 +361,8 @@ export default function ChildHome() {
           childId={id}
           limit={AI_LIST_LIMIT}
           canDelete={() => true}
+          // 지운 기록으로 받은 코칭 카드도 서버에서 함께 지워진다.
+          onDeleted={() => cards.reload()}
           emptyText={
             aiOn ? '아직 AI 관찰 기록이 없어요. 영상을 기록하거나 실시간 카메라로 남겨 보세요.' : '아직 AI 관찰 기록이 없어요.'
           }
@@ -365,11 +370,14 @@ export default function ChildHome() {
       )}
 
       {/* 선생님이 남긴 목표와 메모: 사람이 건네는 이야기라 card warm */}
-      {(activeGoals.length > 0 || (notes.data?.length ?? 0) > 0) && (
+      {/* 연결된 선생님이 없으면 둘 다 비어 있어 숨긴다. 못 불러왔으면 비어 있는 것과 구별되게 알린다. */}
+      {(activeGoals.length > 0 || (notes.items?.length ?? 0) > 0 || goals.error != null || notes.error != null) && (
         <section className="card warm" aria-labelledby="childhome-story-h">
           <div className="section-head">
             <h2 id="childhome-story-h">선생님 이야기</h2>
           </div>
+          {loadStateView(goals, '선생님 목표를')}
+          {loadStateView(notes, '관찰 메모를')}
           {activeGoals.map((g) => (
             <div key={g.id} className="list-item" style={{ alignItems: 'flex-start' }}>
               <div className="item-body">
@@ -386,33 +394,44 @@ export default function ChildHome() {
               </div>
             </div>
           ))}
-          {notes.data?.map((n) => (
+          {notes.items?.map((n) => (
             <div key={n.id} className="list-item" style={{ alignItems: 'flex-start' }}>
               <div className="item-body">
-                <div>{n.content}</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{n.content}</div>
                 <div className="meta">
                   {n.observedOn.slice(5).replace('-', '/')} · {n.teacherName}
                 </div>
               </div>
             </div>
           ))}
+          <MoreButton list={notes} demo="childhome-notes-more" label="관찰 메모 더 보기" />
         </section>
       )}
 
       {pastCards.length > 0 && (
         <details className="card disclosure">
-          <DisclosureSummary>지난 코칭 카드 {pastCards.length}장</DisclosureSummary>
+          <DisclosureSummary>
+            지난 코칭 카드 {pastCards.length}
+            {cards.hasMore ? '장+' : '장'}
+          </DisclosureSummary>
+          <p className="muted" style={{ margin: '0 0 6px' }}>
+            카드를 누르면 내용과 출처를 다시 볼 수 있어요.
+          </p>
           {pastCards.map((d) => (
-            <div key={d.id} className="list-item">
-              <div className="item-body">
-                <strong>{d.card.title}</strong>
-                <div className="meta">
-                  {formatDate(d.deliveredAt)}
-                  {d.triedAt && ' · 해봤어요'}
-                </div>
-              </div>
-            </div>
+            <details key={d.id} className="past-card">
+              <summary>
+                <span className="item-body">
+                  <strong>{d.card.title}</strong>
+                  <span className="meta">
+                    {formatDate(d.deliveredAt)}
+                    {d.triedAt && ' · 해봤어요'}
+                  </span>
+                </span>
+              </summary>
+              <TriableCard childId={id} delivery={d} onUpdated={replaceCard} onGone={dropCard} />
+            </details>
           ))}
+          <MoreButton list={cards} demo="childhome-cards-more" label="지난 카드 더 보기" />
         </details>
       )}
 
@@ -446,6 +465,7 @@ export default function ChildHome() {
           detail={`${c.nickname}의 모든 기록(AI 관찰 기록 포함), 코칭 카드, 공유 설정, 선생님 연결과 선생님이 남긴 목표·메모가 즉시 지워지고 되돌릴 수 없어요.`}
           confirmLabel="삭제하기"
           busyLabel="삭제하는 중…"
+          demo="childhome-delete"
           onConfirm={removeChild}
         />
       </details>

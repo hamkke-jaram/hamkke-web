@@ -175,6 +175,7 @@ export default function TeacherHome() {
         <form onSubmit={link} noValidate>
           <Field
             id="th-code"
+            data-demo="th-code"
             ref={codeRef}
             label="초대 코드"
             hint="보호자에게 받은 8자리 코드예요."
@@ -191,7 +192,7 @@ export default function TeacherHome() {
             onChange={onCode}
           />
           <ErrorText error={formError} />
-          <button type="submit" className="btn block" disabled={busy}>
+          <button type="submit" className="btn block" data-demo="th-link-submit" disabled={busy}>
             {busy ? '연결하는 중…' : '연결하기'}
           </button>
         </form>

@@ -1,12 +1,25 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import ObservationList from '../../ai/ObservationList';
 import { ApiError, api } from '../../api/client';
 import type { Delivery, Goal, GoalStatus, Observation, SharedItem, SharedSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { BackLink, DangerAction, Field, TextAreaField, refocus, useToast } from '../../components/feedback';
-import { ErrorText, Loading, Section, WeeklyBars, WeeklyTable, formatAge, formatDate, useLoad } from '../../components/ui';
+import { usePagedList } from '../../components/paging';
+import {
+  ErrorText,
+  Loading,
+  MoreButton,
+  Section,
+  WeeklyChart,
+  WeeklyTable,
+  formatAge,
+  formatDate,
+  loadStateView,
+  useLoad,
+} from '../../components/ui';
+import '../extra.css';
 
 const STATUS_LABEL: Record<GoalStatus, string> = { IN_PROGRESS: '진행 중', ACHIEVED: '이뤘어요', ARCHIVED: '보관' };
 /** 상태를 바꾼 뒤 잠깐 보여 줄 알림. 보관한 목표는 보호자 화면(아이 홈)에 보이지 않는다. */
@@ -27,8 +40,8 @@ const SHARED_NAMES: [SharedItem, string][] = [
 ];
 /** 선생님 화면에 보여 줄 AI 관찰 기록 개수(최신순). */
 const AI_LIST_LIMIT = 20;
-/** 관찰 메모를 가져오는 개수(최신순). */
-const NOTE_LIMIT = 30;
+/** 관찰 메모를 한 번에 가져오는 개수(최신순). 더 있으면 '더 보기'로 이어서 가져온다. */
+const NOTE_LIMIT = 20;
 
 type Tab = 'records' | 'goals' | 'notes';
 const TABS: { key: Tab; label: string }[] = [
@@ -42,6 +55,16 @@ const GOALS_HEADING = 'tc-goals-h';
 const NOTES_HEADING = 'tc-notes-h';
 const goalTitleId = (g: Goal) => `tc-goal-${g.id}-title`;
 
+/** 고치고 있는 목표(한 번에 하나). */
+interface GoalEdit {
+  id: number;
+  title: string;
+  description: string;
+  titleError: string | null;
+  error: unknown;
+  busy: boolean;
+}
+
 function today() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -52,10 +75,11 @@ export default function TeacherChild() {
   const id = Number(childId);
   const { user, policies } = useAuth();
   const toast = useToast();
+  const nav = useNavigate();
   const aiOn = policies?.aiObservationEnabled === true;
   const summary = useLoad(() => api<SharedSummary>('GET', `/teacher/children/${id}/shared-summary?weeks=8`), [id]);
   const goals = useLoad(() => api<Goal[]>('GET', `/children/${id}/goals`), [id]);
-  const notes = useLoad(() => api<Observation[]>('GET', `/children/${id}/observations?limit=${NOTE_LIMIT}`), [id]);
+  const notes = usePagedList<Observation>(`/children/${id}/observations`, NOTE_LIMIT, [id]);
   const sharesCards = summary.data?.sharedItems.includes('COACHING_CARDS') ?? false;
   const cards = useLoad(
     () => (sharesCards ? api<Delivery[]>('GET', `/children/${id}/card-deliveries?limit=5`) : Promise.resolve([] as Delivery[])),
@@ -72,6 +96,13 @@ export default function TeacherChild() {
   const [goalBusy, setGoalBusy] = useState(false);
   const [statusError, setStatusError] = useState<unknown>(null);
   const [statusBusy, setStatusBusy] = useState<number | null>(null);
+  const [edit, setEdit] = useState<GoalEdit | null>(null);
+  const editTitleRef = useRef<HTMLInputElement>(null);
+  // 고치기 상자가 열리면 제목 칸으로 포커스를 옮긴다.
+  const editingId = edit?.id ?? null;
+  useEffect(() => {
+    if (editingId !== null) editTitleRef.current?.focus();
+  }, [editingId]);
 
   const [note, setNote] = useState('');
   const [noteDate, setNoteDate] = useState(today());
@@ -214,6 +245,51 @@ export default function TeacherChild() {
     }
   }
 
+  function startEdit(g: Goal) {
+    setStatusError(null);
+    setEdit({ id: g.id, title: g.title, description: g.description ?? '', titleError: null, error: null, busy: false });
+  }
+
+  function cancelEdit(g: Goal) {
+    focusAfter.current = goalTitleId(g);
+    setEdit(null);
+  }
+
+  async function saveEdit(e: FormEvent, g: Goal) {
+    e.preventDefault();
+    if (!edit || edit.busy) return;
+    if (!edit.title.trim()) {
+      flushSync(() => setEdit({ ...edit, titleError: '목표를 한 줄로 써 주세요.', error: null }));
+      refocus(editTitleRef.current);
+      return;
+    }
+    // 바뀐 칸만 보낸다.
+    const body: { title?: string; description?: string } = {};
+    if (edit.title.trim() !== g.title) body.title = edit.title.trim();
+    if (edit.description !== (g.description ?? '')) body.description = edit.description;
+    if (Object.keys(body).length === 0) {
+      cancelEdit(g);
+      return;
+    }
+    setEdit({ ...edit, busy: true, error: null, titleError: null });
+    try {
+      const saved = await api<Goal>('PATCH', `/children/${id}/goals/${g.id}`, body);
+      focusAfter.current = goalTitleId(g);
+      goals.setData((cur) => (cur ? cur.map((x) => (x.id === g.id ? { ...x, ...saved } : x)) : cur));
+      setEdit(null);
+      toast('목표를 고쳤어요.');
+      goals.reload();
+    } catch (err) {
+      const field = err instanceof ApiError ? err.fieldErrors[0] : undefined;
+      if (field?.field === 'title') {
+        flushSync(() => setEdit((cur) => cur && { ...cur, busy: false, titleError: field.message }));
+        refocus(editTitleRef.current);
+      } else {
+        setEdit((cur) => cur && { ...cur, busy: false, error: err });
+      }
+    }
+  }
+
   async function removeGoal(g: Goal) {
     // 실패하면 확인 상자 안에 오류가 보인다(DangerAction).
     await api('DELETE', `/children/${id}/goals/${g.id}`);
@@ -257,28 +333,20 @@ export default function TeacherChild() {
   async function removeNote(n: Observation) {
     await api('DELETE', `/children/${id}/observations/${n.id}`);
     focusAfter.current = NOTES_HEADING;
-    notes.setData((cur) => (cur ? cur.filter((x) => x.id !== n.id) : cur));
+    notes.setItems((cur) => (cur ? cur.filter((x) => x.id !== n.id) : cur));
     toast('메모를 삭제했어요.');
-    notes.reload();
+  }
+
+  // ---------- 연결 끊기 ----------
+
+  async function unlink() {
+    // 실패하면 확인 상자 안에 오류가 보인다(DangerAction).
+    await api('DELETE', `/teacher/links/${id}`);
+    toast(`${s.child.nickname} 연결을 끊었어요. 남긴 목표와 메모는 보호자 화면에 남아요.`);
+    nav('/t', { replace: true });
   }
 
   // ---------- 그리기 ----------
-
-  /** 처음 불러오는 중·불러오지 못함을 목록 자리에 보여 준다. 둘 다 아니면 null. */
-  function loadState(load: { loading: boolean; error: unknown; data: unknown; reload: () => void }): ReactNode {
-    if (load.loading && !load.data) return <Loading />;
-    if (load.error && !load.data) {
-      return (
-        <>
-          <ErrorText error={load.error} />
-          <button type="button" className="btn small secondary" onClick={load.reload}>
-            다시 불러오기
-          </button>
-        </>
-      );
-    }
-    return null;
-  }
 
   function goalRow(g: Goal) {
     const titleId = goalTitleId(g);
@@ -311,9 +379,65 @@ export default function TeacherChild() {
             </p>
           )}
           <span className="meta">{g.teacherName}</span>
-          {/* 상태를 바꾸거나 지우는 건 목표를 쓴 선생님만 할 수 있다(서버도 확인한다). */}
-          {g.teacherId === me && (
+          {edit?.id === g.id && (
+            <form className="inline-edit" onSubmit={(e) => void saveEdit(e, g)} noValidate>
+              <Field
+                id="tc-goal-edit-title"
+                data-demo="tc-goal-edit-title"
+                ref={editTitleRef}
+                label="목표"
+                type="text"
+                maxLength={60}
+                showCount
+                error={edit.titleError}
+                value={edit.title}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEdit((cur) => cur && { ...cur, title: v, titleError: null });
+                }}
+              />
+              <TextAreaField
+                id="tc-goal-edit-desc"
+                data-demo="tc-goal-edit-desc"
+                label="설명 (선택)"
+                maxLength={500}
+                showCount
+                value={edit.description}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEdit((cur) => cur && { ...cur, description: v });
+                }}
+              />
+              <ErrorText error={edit.error} />
+              <div className="row">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  style={{ flex: 1 }}
+                  data-demo="tc-goal-edit-cancel"
+                  onClick={() => cancelEdit(g)}
+                >
+                  취소
+                </button>
+                <button type="submit" className="btn" style={{ flex: 1 }} data-demo="tc-goal-edit-save" disabled={edit.busy}>
+                  {edit.busy ? '저장하는 중…' : '저장하기'}
+                </button>
+              </div>
+            </form>
+          )}
+          {/* 상태를 바꾸거나 고치거나 지우는 건 목표를 쓴 선생님만 할 수 있다(서버도 확인한다). */}
+          {g.teacherId === me && edit?.id !== g.id && (
             <div style={{ marginTop: 6 }}>
+              <button
+                type="button"
+                className="btn small ghost"
+                aria-describedby={titleId}
+                data-demo="tc-goal-edit"
+                disabled={statusBusy !== null}
+                onClick={() => startEdit(g)}
+              >
+                고치기
+              </button>{' '}
               {statusButton('ACHIEVED', '이뤘어요', 'btn small secondary')}
               {statusButton('IN_PROGRESS', '다시 진행', 'btn small secondary')}
               {statusButton('ARCHIVED', '보관', 'btn small ghost')}
@@ -325,6 +449,7 @@ export default function TeacherChild() {
                 detail={g.status === 'ARCHIVED' ? '되돌릴 수 없어요.' : '보호자 화면에서도 사라지고 되돌릴 수 없어요.'}
                 confirmLabel="삭제하기"
                 busyLabel="삭제하는 중…"
+                demo="tc-goal-delete"
                 onConfirm={() => removeGoal(g)}
               />
             </div>
@@ -341,7 +466,12 @@ export default function TeacherChild() {
             촬영을 마치면 처음 탭(가정 기록)으로 돌아오므로 늘 이 자리에서 다시 찾을 수 있다. */}
         {canCapture && (
           <>
-            <Link to={`/t/children/${id}/observe`} className="btn block" style={{ marginBottom: 8, minHeight: 56, fontSize: 17 }}>
+            <Link
+              to={`/t/children/${id}/observe`}
+              className="btn block"
+              style={{ marginBottom: 8, minHeight: 56, fontSize: 17 }}
+              data-demo="tc-capture"
+            >
               기관에서 관찰 기록하기
             </Link>
             <p className="muted" style={{ marginTop: 0, marginBottom: 16 }}>
@@ -370,19 +500,15 @@ export default function TeacherChild() {
             </p>
           ) : (
             <>
-              {s.sharedItems.includes('JOINT_PLAY') && (
-                <>
-                  <p className="muted" style={{ margin: '0 0 4px' }}>
-                    주별 함께한 시간 비율
-                  </p>
-                  <WeeklyBars weeks={s.weeks} />
-                </>
-              )}
+              <WeeklyChart weeks={s.weeks} idPrefix="tc-week" />
               <WeeklyTable weeks={s.weeks} />
             </>
           )}
         </Section>
 
+        {sharesCards && cards.error != null && !cards.data && (
+          <Section title="가정에서 받은 코칭">{loadStateView(cards, '코칭 카드를')}</Section>
+        )}
         {sharesCards && cards.data && cards.data.length > 0 && (
           <Section title="가정에서 받은 코칭">
             <div>
@@ -445,7 +571,7 @@ export default function TeacherChild() {
         <p className="muted" style={{ margin: '-2px 0 8px' }}>
           진행 중이거나 이룬 목표는 보호자 화면에도 보여요. 바꾸거나 지우는 건 목표를 쓴 선생님만 할 수 있어요.
         </p>
-        {loadState(goals) ?? (
+        {loadStateView(goals, '목표를') ?? (
           <>
             <ErrorText error={statusError} />
             {active.length > 0 ? (
@@ -470,6 +596,7 @@ export default function TeacherChild() {
         <form onSubmit={addGoal} noValidate style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
           <Field
             id="tc-goal-title"
+            data-demo="tc-goal-title"
             ref={goalTitleRef}
             label="새 목표"
             type="text"
@@ -485,6 +612,7 @@ export default function TeacherChild() {
           />
           <TextAreaField
             id="tc-goal-desc"
+            data-demo="tc-goal-desc"
             label="설명 (선택)"
             maxLength={500}
             showCount
@@ -492,7 +620,7 @@ export default function TeacherChild() {
             onChange={(e) => setGoalDesc(e.target.value)}
           />
           <ErrorText error={goalFormError} />
-          <button type="submit" className="btn block" disabled={goalBusy}>
+          <button type="submit" className="btn block" data-demo="tc-goal-submit" disabled={goalBusy}>
             {goalBusy ? '추가하는 중…' : '목표 추가'}
           </button>
         </form>
@@ -501,8 +629,8 @@ export default function TeacherChild() {
   }
 
   function notesPanel() {
-    const list = notes.data ?? [];
-    const heading = list.length >= NOTE_LIMIT ? `최근 메모 ${list.length}개` : list.length > 0 ? `메모 ${list.length}개` : '메모';
+    const list = notes.items ?? [];
+    const heading = notes.hasMore ? `최근 메모 ${list.length}개` : list.length > 0 ? `메모 ${list.length}개` : '메모';
     return (
       <section className="card" aria-labelledby={NOTES_HEADING}>
         <h2 id={NOTES_HEADING} tabIndex={-1}>
@@ -514,6 +642,7 @@ export default function TeacherChild() {
         <form onSubmit={addNote} noValidate>
           <Field
             id="tc-note-date"
+            data-demo="tc-note-date"
             ref={noteDateRef}
             label="관찰한 날"
             type="date"
@@ -527,6 +656,7 @@ export default function TeacherChild() {
           />
           <TextAreaField
             id="tc-note-text"
+            data-demo="tc-note-text"
             ref={noteRef}
             label="메모"
             maxLength={1000}
@@ -540,13 +670,13 @@ export default function TeacherChild() {
             }}
           />
           <ErrorText error={noteFormError} />
-          <button type="submit" className="btn block" disabled={noteBusy}>
+          <button type="submit" className="btn block" data-demo="tc-note-submit" disabled={noteBusy}>
             {noteBusy ? '남기는 중…' : '메모 남기기'}
           </button>
         </form>
 
         <h3 style={{ margin: '20px 0 4px', paddingTop: 16, borderTop: '1px solid var(--line)' }}>{heading}</h3>
-        {loadState(notes) ??
+        {loadStateView(notes, '관찰 메모를') ??
           (list.length === 0 ? (
             <p className="muted" style={{ margin: 0 }}>
               아직 남긴 메모가 없어요.
@@ -575,6 +705,7 @@ export default function TeacherChild() {
                             detail="보호자 화면에서도 사라지고 되돌릴 수 없어요."
                             confirmLabel="삭제하기"
                             busyLabel="삭제하는 중…"
+                            demo="tc-note-delete"
                             onConfirm={() => removeNote(n)}
                           />
                         </div>
@@ -583,6 +714,7 @@ export default function TeacherChild() {
                   </div>
                 );
               })}
+              <MoreButton list={notes} demo="tc-notes-more" label="이전 메모 더 보기" />
             </div>
           ))}
       </section>
@@ -606,7 +738,7 @@ export default function TeacherChild() {
 
       <div className="tabs" role="group" aria-label="볼 내용">
         {TABS.map((t) => (
-          <button key={t.key} type="button" aria-pressed={tab === t.key} onClick={() => setTab(t.key)}>
+          <button key={t.key} type="button" aria-pressed={tab === t.key} data-demo={`tc-tab-${t.key}`} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
@@ -615,6 +747,27 @@ export default function TeacherChild() {
       {tab === 'records' && recordsPanel()}
       {tab === 'goals' && goalsPanel()}
       {tab === 'notes' && notesPanel()}
+
+      <details key={id} className="card disclosure" style={{ marginTop: 16 }}>
+        <summary>
+          <span style={{ flex: 1, minWidth: 0 }}>이 아이와 연결 끊기</span>
+          <span className="chev" aria-hidden="true">
+            ›
+          </span>
+        </summary>
+        <p className="muted" style={{ marginTop: 0 }}>
+          반이 바뀌었거나 졸업한 아이라면 연결을 끊어 주세요. 끊은 뒤에는 이 아이의 기록을 볼 수 없어요.
+        </p>
+        <DangerAction
+          label="연결 끊기"
+          question="이 아이와의 연결을 끊을까요?"
+          detail="더 이상 이 아이의 기록·목표·메모를 볼 수 없어요. 이미 남긴 목표와 메모는 보호자 화면에 남아요. 다시 연결하려면 보호자에게 새 초대 코드를 받아야 해요."
+          confirmLabel="연결 끊기"
+          busyLabel="끊는 중…"
+          demo="tc-unlink"
+          onConfirm={unlink}
+        />
+      </details>
     </div>
   );
 }

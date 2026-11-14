@@ -20,11 +20,12 @@ export default function Support() {
         아이를 돌보는 일은 혼자 감당하기 버거울 때가 있어요. 지치거나 마음이 쓰일 때 편하게 연락해 보세요.
         함께자람은 상담을 대신하지 않고, 도움받을 수 있는 곳을 안내해 드려요.
       </p>
-      <section className="card" aria-label="상담·기관 목록" aria-busy={loading}>
+      <section className="card" aria-label="상담·기관 목록" aria-busy={loading} data-demo="support-list">
         <SupportList resources={resources} />
       </section>
       {!fromServer && !loading && error != null && (
-        <p className="muted">지금은 최신 안내를 불러오지 못해 앱에 담긴 목록을 보여 드려요.</p>
+        <p className="muted" data-demo="support-fallback">
+          지금은 최신 안내를 불러오지 못해 앱에 담긴 목록을 보여 드려요.</p>
       )}
       <p className="muted">전화번호와 운영 시간은 기관 사정에 따라 바뀔 수 있어요.</p>
     </div>

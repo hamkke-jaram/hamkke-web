@@ -1,0 +1,51 @@
+/*
+ * 지난 코칭 카드 다시 보기, 초대 코드 목록, 계정 설정 카드 등 뒤에 더한 화면 조각.
+ * 색·간격은 styles.css의 변수만 쓴다(밝은·어두운·고대비 화면에 그대로 맞춰진다).
+ */
+
+/* 지난 코칭 카드 한 줄: 누르면 카드 전체(본문·출처·해봤어요)가 펼쳐진다. */
+.past-card {
+  border-top: 1px solid var(--line);
+}
+.past-card:first-of-type {
+  border-top: 0;
+}
+.past-card > summary {
+  min-height: 48px;
+  padding: 8px 0;
+  gap: 8px;
+}
+.past-card > summary .item-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.past-card[open] > summary {
+  margin-bottom: 4px;
+}
+.past-card .coach-card {
+  margin-bottom: 8px;
+}
+
+/* 초대 코드 목록의 코드: 한 글자씩 맞춰 보기 쉽게. */
+.invite-code {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 목표 고치기(제자리 편집) 상자 */
+.inline-edit {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+/* 계정 화면의 작은 폼 묶음 */
+.account-form + .account-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}

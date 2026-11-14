@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { currentSession, setSession, settleRefresh } from '../api/client';
 import type { TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { FeatureHostLazy } from './features/entry';
 import { deleteDemoAccount, type DemoAccount, type DemoData } from './seed';
 import { DEMO_STEPS, type DemoRole } from './steps';
 
@@ -192,6 +193,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       value={{ active, step: stored?.step ?? 0, total: DEMO_STEPS.length, switching, mismatch, start, goTo, resume, end }}
     >
       {children}
+      {/* 기능별로 보기(/demo/features)의 진행자. 시연을 시작할 때만 화면에 패널을 그린다. */}
+      {DEMO_ENABLED && <FeatureHostLazy />}
     </Ctx.Provider>
   );
 }

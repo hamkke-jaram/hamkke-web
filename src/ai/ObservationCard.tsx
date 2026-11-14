@@ -113,24 +113,35 @@ export default function ObservationCard({ observation: o, variant = 'card', onDe
           )}
           {confirming ? (
             <div className="ai-confirm" role="group" aria-label="관찰 기록 삭제 확인">
-              <p>이 관찰 기록을 지울까요? 지우면 되돌릴 수 없어요.</p>
+              <p>
+                이 관찰 기록을 지울까요? 지우면 되돌릴 수 없어요.
+                {o.source === 'HOME' && ' 이 기록으로 받은 코칭 카드도 함께 지워져요.'}
+              </p>
               <div className="row">
                 <button
                   type="button"
                   className="btn secondary ai-tap"
                   style={{ flex: 1 }}
                   disabled={deleting}
+                  data-demo="ai-obs-delete-cancel"
                   onClick={() => setConfirming(false)}
                 >
                   그대로 두기
                 </button>
-                <button type="button" className="btn danger ai-tap" style={{ flex: 1 }} disabled={deleting} onClick={() => void remove()}>
+                <button
+                  type="button"
+                  className="btn danger ai-tap"
+                  style={{ flex: 1 }}
+                  disabled={deleting}
+                  data-demo="ai-obs-delete-confirm"
+                  onClick={() => void remove()}
+                >
                   {deleting ? '지우는 중…' : '지우기'}
                 </button>
               </div>
             </div>
           ) : (
-            <button type="button" className="btn small ghost ai-tap" onClick={() => setConfirming(true)}>
+            <button type="button" className="btn small ghost ai-tap" data-demo="ai-obs-delete" onClick={() => setConfirming(true)}>
               이 기록 삭제
             </button>
           )}

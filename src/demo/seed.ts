@@ -89,8 +89,8 @@ async function signup(role: 'PARENT' | 'TEACHER', displayName: string, policies:
   return { userId: t.user.id, email, password, accessToken: t.accessToken, refreshToken: t.refreshToken };
 }
 
-/** 지난 4주 동안 조금씩 늘어난 모습의 예시 기록(오래된 것부터). */
-const SAMPLE_RECORDS = [
+/** 지난 4주 동안 조금씩 늘어난 모습의 예시 기록(오래된 것부터). 기능별 시연 준비(features/session.ts)도 쓴다. */
+export const SAMPLE_RECORDS = [
   { daysAgo: 26, analyzed: 150, joint: 57, latency: 3.2, bids: 12, responded: 7, distress: 2 },
   { daysAgo: 19, analyzed: 160, joint: 66, latency: 2.9, bids: 13, responded: 8, distress: 2 },
   { daysAgo: 12, analyzed: 155, joint: 72, latency: 2.6, bids: 12, responded: 8, distress: 1 },

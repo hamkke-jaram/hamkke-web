@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import ObservationCard from '../../ai/ObservationCard';
 import ObservationRunStatus from '../../ai/ObservationRunStatus';
 import { MAX_FRAMES, sampleFramesFromFile } from '../../ai/frames';
+import { healthNotice, useAiHealth } from '../../ai/health';
 import { useObservationRun } from '../../ai/useObservationRun';
 import { api, errorMessage } from '../../api/client';
 import type { AiConsent, Child, SaveRecordResponse } from '../../api/types';
@@ -18,8 +19,9 @@ import {
   type Stage,
 } from '@hamkke-jaram/analysis';
 import { runAudioInWorker } from '../../analysis/runAudioInWorker';
+import TriableCard from '../../components/TriableCard';
 import { BackLink, refocus } from '../../components/feedback';
-import { CoachingCardView, ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
+import { ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
 
 type Phase =
   | { kind: 'guide'; notice?: string }
@@ -104,6 +106,15 @@ export default function Record() {
     [id, aiOn],
   );
   const aiAgreed = aiOn && consent.data?.agreed === true;
+  // AI 서버가 지금 관찰 기록을 만들 수 있는지 미리 확인한다. 준비되지 않았으면 숫자 기록만 남기고 사진은 보내지 않는다.
+  const { health: aiHealth, recheck: recheckAi } = useAiHealth(aiAgreed);
+  // '다시 확인'을 누른 동안에는 앞선 안내와 버튼을 그대로 둔다(버튼이 사라지면 초점을 잃는다).
+  const lastAiNotice = useRef<string | null>(null);
+  if (aiHealth.kind !== 'checking') lastAiNotice.current = healthNotice(aiHealth);
+  const settledAiNotice = aiHealth.kind === 'checking' ? lastAiNotice.current : healthNotice(aiHealth);
+  const aiNotice = aiAgreed ? settledAiNotice : null;
+  /** 결과 화면에서 AI 서버가 준비되지 않아 관찰 기록을 만들지 않았다. */
+  const [aiSkipped, setAiSkipped] = useState(false);
   const ai = useObservationRun(id);
   const { start: startAi, reset: resetAi } = ai;
   /** 방금 분석한 영상(메모리에만 둔다). 같은 영상에서 장면 사진을 뽑을 때만 쓴다. */
@@ -131,13 +142,31 @@ export default function Record() {
     [startAi],
   );
 
+  /** 사진을 뽑기 직전에 AI 서버를 다시 확인하고, 준비되었을 때만 관찰 기록을 만든다. */
+  const tryObservation = useCallback(
+    async (recordedAt: string) => {
+      // '다시 확인' 버튼(누른 자리)은 확인하는 동안에도 그대로 둔다. 준비되었을 때만 안내를 거둔다.
+      const file = fileRef.current;
+      const h = await recheckAi();
+      // 확인하는 사이 다른 영상을 고르면(또는 화면을 나가면) 그 영상에서 사진을 뽑지 않는다.
+      if (!file || fileRef.current !== file) return;
+      if (h.kind !== 'ready') {
+        setAiSkipped(true);
+        return;
+      }
+      setAiSkipped(false);
+      makeObservation(recordedAt);
+    },
+    [recheckAi, makeObservation],
+  );
+
   // 지표 기록이 저장되어 결과가 보인 뒤에만, 그리고 AI 동의가 있을 때만 한 번 시작한다.
   const savedRecordedAt = phase.kind === 'result' ? phase.data.record.recordedAt : null;
   useEffect(() => {
     if (!savedRecordedAt || !aiAgreed || aiStartedRef.current) return;
     aiStartedRef.current = true;
-    makeObservation(savedRecordedAt);
-  }, [savedRecordedAt, aiAgreed, makeObservation]);
+    void tryObservation(savedRecordedAt);
+  }, [savedRecordedAt, aiAgreed, tryObservation]);
 
   // 관찰 기록이 저장되면 영상을 더 쥐고 있을 이유가 없다.
   const aiDone = ai.state.kind === 'done' || ai.state.kind === 'saved';
@@ -172,6 +201,7 @@ export default function Record() {
     if (!file) return;
     abortRef.current?.abort();
     resetAi();
+    setAiSkipped(false);
     aiStartedRef.current = false;
     fileRef.current = file;
     const ctrl = new AbortController();
@@ -210,8 +240,16 @@ export default function Record() {
 
   const fileInputs = (
     <>
-      <input ref={cameraRef} type="file" accept="video/*" capture="environment" hidden onChange={onFile} />
-      <input ref={galleryRef} type="file" accept="video/*" hidden onChange={onFile} />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        hidden
+        data-demo="record-camera-input"
+        onChange={onFile}
+      />
+      <input ref={galleryRef} type="file" accept="video/*" hidden data-demo="record-gallery-input" onChange={onFile} />
     </>
   );
 
@@ -228,11 +266,31 @@ export default function Record() {
             기록할 아이: {nickname}
           </p>
         )}
-        <p className="lead">
+        <p className="lead" data-demo="record-lead">
           {aiAgreed
             ? '영상 원본과 소리는 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요. AI 관찰 기록이 켜져 있어서, 분석이 끝나면 같은 영상의 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 바로 지워요.'
             : '영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.'}
         </p>
+        {aiNotice && (
+          // 숫자 기록은 그대로 할 수 있다. AI 관찰 기록만 이번에는 만들지 않을 수 있다는 안내.
+          <div className="notice" role="status" style={{ margin: '0 0 14px' }}>
+            <p style={{ margin: 0 }}>
+              {aiNotice} 숫자 기록은 지금도 그대로 남길 수 있어요. 그때까지 준비되지 않으면 장면 사진은 보내지 않아요.
+            </p>
+            <button
+              type="button"
+              className="btn small secondary"
+              style={{ marginTop: 8 }}
+              data-demo="record-ai-recheck"
+              aria-disabled={aiHealth.kind === 'checking' || undefined}
+              onClick={() => {
+                if (aiHealth.kind !== 'checking') void recheckAi();
+              }}
+            >
+              {aiHealth.kind === 'checking' ? '확인하는 중…' : 'AI 서버 다시 확인'}
+            </button>
+          </div>
+        )}
         {phase.kind === 'guide' && phase.notice && (
           <p ref={messageRef} className="notice" role="status" tabIndex={-1} style={{ margin: '0 0 14px' }}>
             {phase.notice}
@@ -257,10 +315,15 @@ export default function Record() {
           처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
         </p>
         <div className="stack">
-          <button type="button" className="btn block" onClick={() => cameraRef.current?.click()}>
+          <button type="button" className="btn block" data-demo="record-camera" onClick={() => cameraRef.current?.click()}>
             지금 촬영하기
           </button>
-          <button type="button" className="btn block secondary" onClick={() => galleryRef.current?.click()}>
+          <button
+            type="button"
+            className="btn block secondary"
+            data-demo="record-gallery"
+            onClick={() => galleryRef.current?.click()}
+          >
             앨범에서 영상 고르기
           </button>
         </div>
@@ -306,7 +369,7 @@ export default function Record() {
           >
             <div style={{ width: `${p * 100}%` }} />
           </div>
-          <ol className="stage-list">
+          <ol className="stage-list" data-demo="record-stages">
             {STAGE_STEPS.map((s, i) => {
               const state = i < nowIndex ? 'done' : i === nowIndex ? 'now' : undefined;
               return (
@@ -321,7 +384,7 @@ export default function Record() {
         <p className="muted" style={{ margin: '0 0 14px' }}>
           분석하는 동안 화면을 켜 두세요.
         </p>
-        <button type="button" className="btn secondary block" onClick={stop}>
+        <button type="button" className="btn secondary block" data-demo="record-stop" onClick={stop}>
           멈추기
         </button>
       </div>
@@ -371,7 +434,7 @@ export default function Record() {
       </h1>
       {msg.body && <p className="lead">{msg.body}</p>}
 
-      <section className="card" aria-labelledby="record-today-title">
+      <section className="card" aria-labelledby="record-today-title" data-demo="record-result">
         <h2 id="record-today-title">오늘의 기록</h2>
         <div className="metrics">
           <div className="metric">
@@ -408,10 +471,10 @@ export default function Record() {
         </p>
       </section>
 
-      {coaching.delivery && <CoachingCardView card={coaching.delivery.card} />}
+      {coaching.delivery && <TriableCard childId={id} delivery={coaching.delivery} />}
 
       {coaching.guidance && (
-        <section className="card warm">
+        <section className="card warm" data-demo="record-guidance">
           <p style={{ marginTop: 0 }}>{coaching.guidance.message}</p>
           <SupportList resources={coaching.guidance.resources} />
         </section>
@@ -422,8 +485,29 @@ export default function Record() {
         <>
           <h2>AI 관찰 기록</h2>
           <ObservationCard observation={ai.state.data.observation} />
-          {ai.state.data.coaching?.delivery && <CoachingCardView card={ai.state.data.coaching.delivery.card} />}
+          {ai.state.data.coaching?.delivery && <TriableCard childId={id} delivery={ai.state.data.coaching.delivery} />}
         </>
+      ) : aiSkipped && ai.state.kind === 'idle' ? (
+        <section className="card" aria-label="AI 관찰 기록">
+          <p role="status" style={{ marginTop: 0 }}>
+            {settledAiNotice ?? 'AI 서버를 확인하지 못했어요.'} 그래서 이번에는 AI 관찰 기록을 만들지 않았고, 장면
+            사진도 보내지 않았어요. 오늘의 기록(숫자 3개)은 이미 저장되어 있어요.
+          </p>
+          {fileRef.current && (
+            <button
+              type="button"
+              className="btn secondary block"
+              data-demo="record-ai-retry"
+              // 초점을 잃지 않게 disabled 대신 aria-disabled.
+              aria-disabled={aiHealth.kind === 'checking' || undefined}
+              onClick={() => {
+                if (aiHealth.kind !== 'checking') void tryObservation(record.recordedAt);
+              }}
+            >
+              {aiHealth.kind === 'checking' ? '확인하는 중…' : '다시 확인하고 관찰 기록 만들기'}
+            </button>
+          )}
+        </section>
       ) : (
         <ObservationRunStatus
           state={ai.state}
@@ -434,7 +518,7 @@ export default function Record() {
         />
       )}
 
-      <Link to={`/p/children/${id}`} className="btn block">
+      <Link to={`/p/children/${id}`} className="btn block" data-demo="record-done">
         확인했어요
       </Link>
     </div>

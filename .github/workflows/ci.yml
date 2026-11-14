@@ -21,3 +21,46 @@ jobs:
         run: npm test
       - name: 타입 검사·빌드 (분석 모델 내려받기 포함)
         run: npm run build
+
+  docker:
+    # 배포 이미지(nginx + 빌드 결과)를 만들고, 컨테이너가 시작할 때처럼 설정 틀을 채워 nginx -t 로 검사한다.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 이미지 빌드
+        run: docker build -t hamkke-web:ci .
+      - name: 시험용 자체 서명 인증서
+        run: |
+          mkdir -p "$RUNNER_TEMP/certs"
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj "/CN=localhost" \
+            -keyout "$RUNNER_TEMP/certs/privkey.pem" -out "$RUNNER_TEMP/certs/fullchain.pem"
+          chmod 644 "$RUNNER_TEMP/certs/"*.pem
+      - name: nginx -t (설정 틀 치환 포함)
+        run: |
+          # /api/ 의 upstream(api:8080)은 nginx 가 시작할 때 이름을 찾으므로 시험용 주소를 붙여 준다.
+          # /ai/ 는 요청할 때 찾으므로(resolver) AI 서버가 없어도 검사를 지난다.
+          docker run --rm --add-host api:127.0.0.1 -e SERVER_NAME=localhost \
+            -v "$RUNNER_TEMP/certs:/etc/nginx/certs:ro" hamkke-web:ci nginx -t
+      - name: 띄워서 경로 확인
+        run: |
+          docker run -d --name web --add-host api:127.0.0.1 -e SERVER_NAME=localhost \
+            -v "$RUNNER_TEMP/certs:/etc/nginx/certs:ro" -p 127.0.0.1:8443:443 -p 127.0.0.1:8080:80 hamkke-web:ci
+          for i in $(seq 1 20); do
+            curl -ks -o /dev/null https://127.0.0.1:8443/ && break
+            sleep 0.5
+          done
+          code() { curl -ks -o /dev/null -w '%{http_code}' "$@"; }
+          test "$(code https://127.0.0.1:8443/)" = 200
+          test "$(code http://127.0.0.1:8080/)" = 301
+          # AI 서버 지표는 밖에서 막는다(404). 내부 경로도 마찬가지.
+          test "$(code https://127.0.0.1:8443/ai/v1/metrics)" = 404
+          test "$(code https://127.0.0.1:8443/actuator/health)" = 404
+          # 보안 헤더
+          curl -ksI https://127.0.0.1:8443/ | grep -qi '^content-security-policy:'
+          curl -ksI https://127.0.0.1:8443/ | grep -qi '^strict-transport-security:'
+          # /api/ 본문 64KB 제한(원본 영상이 서버로 가는 길을 막는 두 번째 관문)
+          head -c 70000 /dev/zero > big.bin
+          test "$(code -X POST --data-binary @big.bin https://127.0.0.1:8443/api/v1/records)" = 413
+      - name: 정리
+        if: always()
+        run: docker rm -f web || true

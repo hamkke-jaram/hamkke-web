@@ -171,10 +171,10 @@ export default function Signup() {
     <form onSubmit={submit} noValidate>
       <h1>가입하기</h1>
       <div className="tabs" role="group" aria-label="가입 유형" aria-describedby="signup-role-hint">
-        <button type="button" aria-pressed={isParent} onClick={() => setRole('PARENT')}>
+        <button type="button" aria-pressed={isParent} data-demo="signup-role-parent" onClick={() => setRole('PARENT')}>
           보호자
         </button>
-        <button type="button" aria-pressed={!isParent} onClick={() => setRole('TEACHER')}>
+        <button type="button" aria-pressed={!isParent} data-demo="signup-role-teacher" onClick={() => setRole('TEACHER')}>
           기관 선생님
         </button>
       </div>
@@ -185,6 +185,7 @@ export default function Signup() {
       <Field
         ref={emailRef}
         id="signup-email"
+        data-demo="signup-email"
         label="이메일"
         type="email"
         autoComplete="email"
@@ -200,6 +201,7 @@ export default function Signup() {
       <PasswordField
         ref={pwRef}
         id="signup-pw"
+        data-demo="signup-pw"
         label="비밀번호"
         hint="영문과 숫자를 섞어 8자 이상"
         autoComplete="new-password"
@@ -215,6 +217,7 @@ export default function Signup() {
       <Field
         ref={nameRef}
         id="signup-name"
+        data-demo="signup-name"
         label={isParent ? '앱에서 부를 이름' : '표시 이름'}
         hint={isParent ? undefined : '보호자 화면에 이 이름으로 보여요.'}
         type="text"
@@ -232,7 +235,12 @@ export default function Signup() {
 
       <div className="card" role="group" aria-label="약관 동의" style={{ paddingTop: 6, paddingBottom: 6 }}>
         <label className="check">
-          <input type="checkbox" checked={terms && privacy} onChange={(e) => setAgree(e.target.checked, e.target.checked)} />
+          <input
+            type="checkbox"
+            data-demo="signup-agree-all"
+            checked={terms && privacy}
+            onChange={(e) => setAgree(e.target.checked, e.target.checked)}
+          />
           <span>
             <strong>모두 동의</strong>
           </span>
@@ -241,6 +249,7 @@ export default function Signup() {
           <input
             ref={termsRef}
             id="signup-terms"
+            data-demo="signup-terms"
             type="checkbox"
             checked={terms}
             onChange={(e) => setAgree(e.target.checked, privacy)}
@@ -252,12 +261,16 @@ export default function Signup() {
           </span>
         </label>
         <p className="field-hint" id="signup-terms-desc" style={CONSENT_DESC}>
-          함께자람은 의료기기가 아닌 개인 건강관리(웰니스) 서비스이며 발달 상태를 판단하지 않아요.
+          함께자람은 의료기기가 아닌 개인 건강관리(웰니스) 서비스이며 발달 상태를 판단하지 않아요.{' '}
+          <Link to="/terms" className="link-btn" aria-label="서비스 이용약관 자세히 보기">
+            자세히
+          </Link>
         </p>
         <label className="check">
           <input
             ref={privacyRef}
             id="signup-privacy"
+            data-demo="signup-privacy"
             type="checkbox"
             checked={privacy}
             onChange={(e) => setAgree(terms, e.target.checked)}
@@ -283,7 +296,7 @@ export default function Signup() {
       )}
 
       <ErrorText error={error} />
-      <button type="submit" className="btn block" style={{ marginTop: 6 }} disabled={busy}>
+      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="signup-submit" disabled={busy}>
         {busy ? '가입하는 중…' : '동의하고 가입하기'}
       </button>
       <p className="status-line link-row" style={{ marginTop: 14 }}>

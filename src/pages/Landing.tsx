@@ -46,6 +46,11 @@ export default function Landing() {
             전체 흐름 보기 (시연용)
           </Link>
         )}
+        {DEMO_ENABLED && (
+          <Link to="/demo/features" className="btn block ghost" data-demo="landing-features">
+            기능별로 보기 (시연용)
+          </Link>
+        )}
       </div>
     </div>
   );

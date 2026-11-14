@@ -10,9 +10,12 @@ interface AuthState {
   policiesError: unknown;
   /** 약관·고지 정보를 다시 불러온다(화면의 '다시 시도' 버튼용). */
   reloadPolicies: () => void;
+  /** 로그인·가입·비밀번호 변경으로 받은 새 토큰을 쓰고, 다시 동의할 약관이 있는지 /me로 확인한다. */
   login: (t: TokenResponse) => void;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
+  /** 표시 이름 수정처럼 서버가 돌려준 새 사용자 정보로 바꾼다. */
+  setUser: (u: User) => void;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -106,10 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [policies, policiesError, loadPolicies]);
 
-  const login = useCallback((t: TokenResponse) => {
-    setSession(t);
-    setUser(t.user);
-  }, []);
+  const login = useCallback(
+    (t: TokenResponse) => {
+      setSession(t);
+      // 로그인 응답에는 다시 동의할 약관 목록(pendingConsents)이 없을 수 있다. 앞서 알던 목록을 이어 두고 /me로 확인한다.
+      setUser((prev) => ({ ...t.user, pendingConsents: t.user.pendingConsents ?? (prev?.id === t.user.id ? prev.pendingConsents : undefined) }));
+      void api<User>('GET', '/me')
+        .then((me) => setUser((cur) => (cur && cur.id === me.id ? me : cur)))
+        .catch(() => undefined);
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     const token = getRefreshToken();
@@ -118,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return <Ctx.Provider value={{ user, loading, policies, policiesError, reloadPolicies, login, logout, reload }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, policies, policiesError, reloadPolicies, login, logout, reload, setUser }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

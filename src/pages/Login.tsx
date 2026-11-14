@@ -59,6 +59,7 @@ export default function Login() {
       <Field
         ref={emailRef}
         id="login-email"
+        data-demo="login-email"
         label="이메일"
         type="email"
         autoComplete="email"
@@ -73,6 +74,7 @@ export default function Login() {
       <PasswordField
         ref={pwRef}
         id="login-pw"
+        data-demo="login-pw"
         label="비밀번호"
         autoComplete="current-password"
         value={password}
@@ -84,7 +86,7 @@ export default function Login() {
         }}
       />
       <ErrorText error={error} />
-      <button type="submit" className="btn block" style={{ marginTop: 6 }} disabled={busy}>
+      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="login-submit" disabled={busy}>
         {busy ? '확인하는 중…' : '로그인'}
       </button>
       <p className="status-line link-row" style={{ marginTop: 14 }}>

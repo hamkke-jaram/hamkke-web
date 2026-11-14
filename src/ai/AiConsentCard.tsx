@@ -21,7 +21,7 @@ interface Props {
 /** 무엇이 어디로 가고 언제 지워지는지(명세 2장 1번). 켜기 전에도, 켠 뒤에도 같은 내용을 보여 준다. */
 function ConsentFacts() {
   return (
-    <dl className="ai-facts">
+    <dl className="ai-facts" data-demo="ai-facts">
       <dt>무엇을 보내나요</dt>
       <dd>장면 사진 최대 6장이에요. 소리는 보내지 않고, 영상 원본도 보내지 않아요.</dd>
       <dt>어디로 가나요</dt>
@@ -144,17 +144,25 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
                 className="btn secondary ai-tap"
                 style={{ flex: 1 }}
                 disabled={busy}
+                data-demo="ai-off-cancel"
                 onClick={() => setConfirmOff(false)}
               >
                 계속 켜 두기
               </button>
-              <button type="button" className="btn danger ai-tap" style={{ flex: 1 }} disabled={busy} onClick={turnOff}>
+              <button
+                type="button"
+                className="btn danger ai-tap"
+                style={{ flex: 1 }}
+                disabled={busy}
+                data-demo="ai-off-confirm"
+                onClick={turnOff}
+              >
                 {busy ? '끄는 중…' : '끄고 기록 지우기'}
               </button>
             </div>
           </div>
         ) : (
-          <button type="button" className="btn small ghost ai-tap" onClick={() => setConfirmOff(true)}>
+          <button type="button" className="btn small ghost ai-tap" data-demo="ai-off" onClick={() => setConfirmOff(true)}>
             AI 관찰 기록 끄기
           </button>
         )}
@@ -163,14 +171,14 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
   }
 
   return (
-    <section className="card soft" aria-labelledby={headingId}>
+    <section className="card soft" aria-labelledby={headingId} data-demo="ai-card">
       <h2 id={headingId}>AI 관찰 기록</h2>
       <p style={{ marginTop: 0 }}>
         AI가 장면 사진을 보고 아이와 어른의 모습을 짧은 글로 적어 드려요. 지금은 꺼져 있어서 사진을 한 장도 보내지
         않아요.
       </p>
       {!open ? (
-        <button type="button" className="btn block" onClick={() => setOpen(true)}>
+        <button type="button" className="btn block" data-demo="ai-open" onClick={() => setOpen(true)}>
           AI 관찰 기록 켜기
         </button>
       ) : (
@@ -180,6 +188,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
             <input
               type="checkbox"
               required
+              data-demo="ai-check"
               checked={checked}
               disabled={busy}
               onChange={(e) => setChecked(e.target.checked)}
@@ -203,6 +212,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
               className="btn secondary"
               style={{ flex: 1 }}
               disabled={busy}
+              data-demo="ai-later"
               onClick={() => {
                 setOpen(false);
                 setChecked(false);
@@ -211,7 +221,14 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
             >
               나중에
             </button>
-            <button type="button" className="btn" style={{ flex: 1 }} disabled={busy || !checked || !version} onClick={turnOn}>
+            <button
+              type="button"
+              className="btn"
+              style={{ flex: 1 }}
+              disabled={busy || !checked || !version}
+              data-demo="ai-agree"
+              onClick={turnOn}
+            >
               {busy ? '켜는 중…' : '동의하고 켜기'}
             </button>
           </div>

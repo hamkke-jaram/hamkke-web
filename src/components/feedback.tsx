@@ -144,6 +144,8 @@ interface DangerActionProps {
   describedBy?: string;
   /** 확인 상자 이름 앞에 붙일 요소 id(예: 선생님 이름) — 여러 행에 같은 상자가 있을 때 구별된다. */
   labelledBy?: string;
+  /** 시연·자동 확인용 data-demo 이름. 처음 버튼에 그대로, 확인·취소 버튼에는 '-confirm'·'-cancel'을 붙여 단다. */
+  demo?: string;
 }
 
 /**
@@ -162,6 +164,7 @@ export function DangerAction({
   confirmDisabled,
   describedBy: triggerDescribedBy,
   labelledBy,
+  demo,
 }: DangerActionProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -173,12 +176,13 @@ export function DangerAction({
   const alive = useRef(true);
   const qid = useId();
 
-  useEffect(
-    () => () => {
+  // 붙을 때마다 다시 true로 둔다(개발 모드의 StrictMode는 붙였다 떼었다 다시 붙여서, 떼는 데서만 바꾸면 false로 남는다).
+  useEffect(() => {
+    alive.current = true;
+    return () => {
       alive.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -204,7 +208,14 @@ export function DangerAction({
 
   if (!open) {
     return (
-      <button ref={triggerRef} type="button" className={triggerClassName} aria-describedby={triggerDescribedBy} onClick={() => setOpen(true)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={triggerClassName}
+        aria-describedby={triggerDescribedBy}
+        data-demo={demo}
+        onClick={() => setOpen(true)}
+      >
         {label}
       </button>
     );
@@ -222,6 +233,7 @@ export function DangerAction({
           ref={cancelRef}
           type="button"
           className="btn secondary"
+          data-demo={demo && `${demo}-cancel`}
           onClick={() => {
             backToTrigger.current = true;
             setError(null);
@@ -230,7 +242,13 @@ export function DangerAction({
         >
           취소
         </button>
-        <button type="button" className="btn danger" disabled={busy || confirmDisabled} onClick={() => void confirm()}>
+        <button
+          type="button"
+          className="btn danger"
+          data-demo={demo && `${demo}-confirm`}
+          disabled={busy || confirmDisabled}
+          onClick={() => void confirm()}
+        >
           {busy ? (busyLabel ?? '처리하는 중…') : confirmLabel}
         </button>
       </div>

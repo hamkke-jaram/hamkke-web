@@ -11,11 +11,19 @@ export type SharedItem =
   | 'AI_OBSERVATIONS'
   | 'INSTITUTION_CAPTURE';
 
+/** 다시 동의를 받을 수 있는 계정 약관 종류(POST /me/consents). */
+export type PolicyConsentType = 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY';
+
 export interface User {
   id: number;
   email: string;
   displayName: string;
   role: Role;
+  /**
+   * GET /me에만 있다. 약관·개인정보 처리 방침이 바뀌어 다시 동의가 필요한 항목(보통 빈 배열).
+   * 로그인 응답(TokenResponse.user)에는 없을 수 있어서, 로그인 뒤 /me를 다시 불러 확인한다.
+   */
+  pendingConsents?: PolicyConsentType[];
 }
 
 export interface TokenResponse {
@@ -123,6 +131,8 @@ export interface ShareSettings {
 export interface InviteCode {
   code: string;
   expiresAt: string;
+  /** GET /children/{id}/invite-codes 목록에만 있다. */
+  createdAt?: string;
 }
 
 export interface LinkedTeacher {

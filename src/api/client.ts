@@ -27,6 +27,26 @@ let session: Session | null = readSession();
 let refreshing: Promise<boolean> | null = null;
 const listeners = new Set<() => void>();
 
+/**
+ * 요청 관찰 고리(시연 전용). 기능별 시연이 '서버로 간 내용'을 보여 줄 때만 설정하고, 평소에는 비어 있어
+ * 아무 일도 하지 않는다. window.fetch는 바꾸지 않는다.
+ */
+export interface ApiObserver {
+  /** 보내기 직전. 'offline'을 돌려주면 보내지 않고 연결 실패로 처리한다(시연의 '서버에 닿지 못함' 흉내). */
+  before?(req: { method: string; path: string; body: unknown }): 'offline' | void;
+  /** 응답을 받은 뒤. 값을 돌려주면 그 값을 응답 본문으로 쓴다(시연의 응답 흉내, 화면에도 그렇게 표시한다). */
+  after?(res: { method: string; path: string; body: unknown; status: number; data: unknown }): unknown;
+  /** 서버에 닿지 못했을 때. */
+  failed?(req: { method: string; path: string; body: unknown }): void;
+}
+
+let observer: ApiObserver | null = null;
+
+/** 시연 코드만 부른다. null을 넣으면 관찰을 끝낸다. */
+export function setApiObserver(next: ApiObserver | null) {
+  observer = next;
+}
+
 function readSession(): Session | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -77,6 +97,7 @@ async function refresh(): Promise<boolean> {
   if (!refreshing) {
     const token = session.refreshToken;
     refreshing = (async () => {
+      const req = { method: 'POST', path: '/auth/refresh', body: { refreshToken: token } };
       try {
         const res = await fetch('/api/v1/auth/refresh', {
           method: 'POST',
@@ -86,10 +107,12 @@ async function refresh(): Promise<boolean> {
         // 갱신하는 사이 다른 세션으로 바뀌었다면(데모의 계정 전환 등) 새 세션을 덮어쓰지 않는다.
         const stillSame = () => session?.refreshToken === token;
         if (!res.ok) {
+          observer?.after?.({ ...req, status: res.status, data: undefined });
           if (stillSame()) setSession(null);
           return false;
         }
         const next = (await res.json()) as TokenResponse;
+        observer?.after?.({ ...req, status: res.status, data: next });
         if (!stillSame()) return false;
         setSession(next);
         return true;
@@ -112,19 +135,28 @@ export async function api<T>(method: Method, path: string, body?: unknown, retry
 
   let res: Response;
   try {
+    if (observer?.before?.({ method, path, body }) === 'offline') throw new TypeError('Failed to fetch');
     res = await fetch(`/api/v1${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    observer?.failed?.({ method, path, body });
     throw new ApiError(0, 'NETWORK', '인터넷 연결을 확인해 주세요.');
   }
 
-  if (res.status === 204) return undefined as T;
+  if (res.status === 204) {
+    observer?.after?.({ method, path, body, status: 204, data: undefined });
+    return undefined as T;
+  }
 
   const text = await res.text().catch(() => '');
-  const data = parseBody(text);
+  let data = parseBody(text);
+  if (observer?.after) {
+    const replaced = observer.after({ method, path, body, status: res.status, data });
+    if (replaced !== undefined) data = replaced as ErrorBody;
+  }
 
   // 비밀번호가 틀린 경우(INVALID_CREDENTIALS, 예: DELETE /me)도 401이지만 토큰 문제가 아니므로 갱신하지 않는다.
   if (res.status === 401 && retry && session && !path.startsWith('/auth/') && data?.code !== 'INVALID_CREDENTIALS') {

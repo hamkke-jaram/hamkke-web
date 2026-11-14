@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, errorMessage } from '../../api/client';
+import { ApiError, api, errorMessage } from '../../api/client';
 import type { AiConsent, Child, InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
-import { ErrorText, Loading, Section, formatDate, useLoad } from '../../components/ui';
+import { ErrorText, Loading, Section, formatDate, loadStateView, useLoad } from '../../components/ui';
+import '../extra.css';
 
 type ShareKey = keyof Omit<ShareSettings, 'updatedAt'>;
 interface ShareItem {
@@ -45,6 +46,11 @@ function formatCode(code: string) {
   return `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
+/** 초대 코드 기한: '11월 16일 오후 3:00' */
+function formatExpiry(iso: string) {
+  return new Date(iso).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 export default function Share() {
   const { childId } = useParams();
   const id = Number(childId);
@@ -55,6 +61,9 @@ export default function Share() {
   const nickname = child.data?.id === id ? child.data.nickname : undefined;
   const settings = useLoad(() => api<ShareSettings>('GET', `/children/${id}/share-settings`), [id]);
   const teachers = useLoad(() => api<LinkedTeacher[]>('GET', `/children/${id}/teachers`), [id]);
+  // 아직 쓰지 않았고 기한이 남은 초대 코드(최신순). 다시 보고 복사하거나 취소할 수 있다.
+  const codes = useLoad(() => api<InviteCode[]>('GET', `/children/${id}/invite-codes`), [id]);
+  const codesTitleRef = useRef<HTMLHeadingElement>(null);
   const { policies } = useAuth();
   const aiOn = policies?.aiObservationEnabled === true;
   // 기관 촬영은 AI 관찰 기록이 켜져 있어야 동작한다. 꺼져 있으면 그 사실을 알려 준다(확인하지 못하면 안내만 생략).
@@ -129,8 +138,16 @@ export default function Share() {
       const next = await api<InviteCode>('POST', `/children/${id}/invite-codes`);
       focusCopy.current = true;
       setCode(next);
+      codes.reload();
     } catch (e) {
-      setIssueError(e);
+      if (e instanceof ApiError && e.code === 'INVITE_LIMIT_REACHED') {
+        setIssueError(
+          new Error(`${e.message} 아래 '쓸 수 있는 초대 코드'에서 쓰지 않을 코드를 취소하면 새로 만들 수 있어요.`),
+        );
+        codes.reload();
+      } else {
+        setIssueError(e);
+      }
     } finally {
       setIssuing(false);
     }
@@ -144,6 +161,16 @@ export default function Share() {
     } catch {
       toast('복사하지 못했어요. 코드를 보고 직접 전해 주세요.');
     }
+  }
+
+  /** 초대 코드 취소. 실패하면 오류를 던져 확인 상자 안에 보이게 한다. */
+  async function revoke(c: InviteCode) {
+    await api('DELETE', `/children/${id}/invite-codes/${encodeURIComponent(c.code)}`);
+    // 줄이 사라지기 전에 초점을 목록 제목으로 옮겨 둔다.
+    codesTitleRef.current?.focus();
+    codes.setData((list) => list?.filter((x) => x.code !== c.code) ?? null);
+    if (code?.code === c.code) setCode(null);
+    toast('초대 코드를 취소했어요. 이제 이 코드로는 연결할 수 없어요.');
   }
 
   /** 실패하면 오류를 던져 확인 상자 안에 보이게 한다. */
@@ -169,6 +196,7 @@ export default function Share() {
         <input
           type="checkbox"
           role="switch"
+          data-demo={`share-switch-${it.key}`}
           aria-labelledby={`${base}-label`}
           aria-describedby={`${base}-hint`}
           checked={settings.data?.[it.key] === true}
@@ -195,7 +223,7 @@ export default function Share() {
       </p>
       {/* 두 카드(공유할 항목·AI 관찰 기록)를 함께 센 화면 전체 요약이라 카드보다 위에 둔다. */}
       {settings.data && (
-        <p className="status-line" style={{ margin: '0 0 16px' }}>
+        <p className="status-line" style={{ margin: '0 0 16px' }} data-demo="share-status">
           {sharedCount
             ? `선생님이 볼 수 있는 항목 ${sharedCount}개`
             : settings.data.institutionCapture
@@ -253,11 +281,10 @@ export default function Share() {
               <span id="share-invite-code">{formatCode(code.code)}</span>
             </div>
             <p className="muted" id="share-invite-exp">
-              {new Date(code.expiresAt).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-              까지 쓸 수 있어요.
+              {formatExpiry(code.expiresAt)}까지 쓸 수 있어요.
             </p>
             <p className="muted">
-              코드는 이 화면에서 한 번만 보여 드려요. 화면을 나가기 전에 선생님께 전해 주세요. 새 코드를 만들어도 앞서
+              아직 쓰지 않은 코드는 아래 '쓸 수 있는 초대 코드'에서 다시 보거나 취소할 수 있어요. 새 코드를 만들어도 앞서
               만든 코드는 기한까지 쓸 수 있고, 아직 쓰지 않은 코드는 3개까지 둘 수 있어요.
             </p>
             <div className="stack" style={{ marginBottom: 12 }}>
@@ -265,6 +292,7 @@ export default function Share() {
                 ref={copyRef}
                 type="button"
                 className="btn secondary block"
+                data-demo="share-code-copy"
                 aria-describedby="share-invite-code share-invite-exp"
                 onClick={() => void copyCode(code)}
               >
@@ -274,6 +302,7 @@ export default function Share() {
                 <button
                   type="button"
                   className="btn secondary block"
+                  data-demo="share-code-send"
                   onClick={() =>
                     void navigator
                       .share({ text: `함께자람 초대 코드: ${code.code} (72시간 동안 한 번 사용 가능)` })
@@ -290,6 +319,7 @@ export default function Share() {
         <button
           type="button"
           className={code ? 'btn block ghost' : 'btn block'}
+          data-demo="share-issue-code"
           // 초점을 잃지 않게 disabled 대신 aria-disabled. 겹친 요청은 issue()가 막는다.
           aria-disabled={issuing || undefined}
           onClick={() => void issue()}
@@ -297,6 +327,55 @@ export default function Share() {
           {issuing ? '만드는 중…' : code ? '새 초대 코드 만들기' : '초대 코드 만들기'}
         </button>
       </Section>
+
+      <section className="card" aria-labelledby="share-codes-title">
+        <div className="section-head">
+          <h2 id="share-codes-title" ref={codesTitleRef} tabIndex={-1}>
+            쓸 수 있는 초대 코드
+          </h2>
+        </div>
+        {loadStateView(codes, '초대 코드를') ??
+          (codes.data && codes.data.length === 0 ? (
+            <p className="muted" style={{ margin: 0 }}>
+              지금 쓸 수 있는 초대 코드가 없어요.
+            </p>
+          ) : (
+            codes.data?.map((c) => {
+              const codeId = `share-code-${c.code}`;
+              return (
+                <div key={c.code} className="list-item" style={{ flexWrap: 'wrap' }}>
+                  <span className="item-body">
+                    <strong id={codeId} className="invite-code">
+                      {formatCode(c.code)}
+                    </strong>
+                    <span className="meta">{formatExpiry(c.expiresAt)}까지</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn small secondary"
+                    data-demo="share-code-list-copy"
+                    aria-describedby={codeId}
+                    onClick={() => void copyCode(c)}
+                  >
+                    복사
+                  </button>
+                  <DangerAction
+                    label="취소"
+                    triggerClassName="btn small danger"
+                    question="이 초대 코드를 취소할까요?"
+                    detail="취소하면 이 코드로는 연결할 수 없어요. 이미 연결된 선생님은 그대로예요."
+                    confirmLabel="코드 취소하기"
+                    busyLabel="취소하는 중…"
+                    describedBy={codeId}
+                    labelledBy={codeId}
+                    demo="share-code-revoke"
+                    onConfirm={() => revoke(c)}
+                  />
+                </div>
+              );
+            })
+          ))}
+      </section>
 
       <section className="card" aria-labelledby="share-teachers-title">
         <div className="section-head">
@@ -340,6 +419,7 @@ export default function Share() {
                 busyLabel="해제하는 중…"
                 describedBy={nameId}
                 labelledBy={nameId}
+                demo="share-teacher-unlink"
                 onConfirm={() => unlink(t)}
               />
             </div>

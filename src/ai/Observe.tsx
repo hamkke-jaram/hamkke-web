@@ -3,11 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { AiConsent, Child, SharedSummary } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import TriableCard from '../components/TriableCard';
 import { BackLink } from '../components/feedback';
-import { CoachingCardView, ErrorText, Loading, useLoad } from '../components/ui';
+import { ErrorText, Loading, useLoad } from '../components/ui';
 import ObservationCard from './ObservationCard';
 import ObservationRunStatus from './ObservationRunStatus';
 import { MAX_FRAMES, captureFrame, discardFrames, type Frame } from './frames';
+import { healthNotice, useAiHealth, type AiHealth } from './health';
 import { formatClock } from './labels';
 import { useObservationRun } from './useObservationRun';
 import './ai.css';
@@ -106,6 +108,15 @@ export default function Observe() {
   // useLoad는 조건이 바뀐 직후 한 번은 앞선 결과를 그대로 들고 있다(주소로 바로 들어오면 policies가 도착하기 전의
   // '확인 안 함(null)'이 남아 있다). 이 아이에 대한 확인이 아직 끝나지 않았으면 오류가 아니라 불러오는 중으로 본다.
   const accessPending = access.loading || (!access.error && access.data?.childId !== id);
+  // 촬영을 시작하기 전에 AI 서버가 관찰 기록을 만들 수 있는지 확인한다. 준비되지 않았으면 '시작하기'를 막는다
+  // (1~2분 찍은 뒤에야 실패를 알게 되지 않게). 최종 확인은 분석할 때 서버가 다시 한다.
+  const canObserve = aiOn && access.data?.childId === id && access.data.allowed;
+  const { health, recheck } = useAiHealth(canObserve);
+  const aiReady = health.kind === 'ready';
+  // '다시 확인'을 누른 동안에는 앞선 안내와 버튼을 그대로 두어(버튼이 사라지면 초점을 잃는다) 버튼 글자만 바꾼다.
+  const lastSettled = useRef<AiHealth | null>(null);
+  if (health.kind !== 'checking') lastSettled.current = health;
+  const shownHealth: AiHealth = health.kind === 'checking' && lastSettled.current ? lastSettled.current : health;
 
   const run = useObservationRun(id);
   const startRun = run.start;
@@ -362,7 +373,7 @@ export default function Observe() {
   }, [run.state.kind]);
 
   function begin() {
-    if (camera.status !== 'on' || !streamRef.current) return;
+    if (camera.status !== 'on' || !streamRef.current || !aiReady) return;
     discardFrames(framesRef.current);
     captureInfo.current = { startedAt: new Date().toISOString(), seconds: duration };
     setShots(0);
@@ -448,12 +459,12 @@ export default function Observe() {
           <h1>관찰 기록을 남겼어요</h1>
           <p className="lead">보낸 장면 사진은 살펴본 직후 지워져요. 아래 글만 저장했어요.</p>
           <ObservationCard observation={observation} />
-          {!isTeacher && coaching?.delivery && <CoachingCardView card={coaching.delivery.card} />}
+          {!isTeacher && coaching?.delivery && <TriableCard childId={id} delivery={coaching.delivery} />}
           <div className="stack">
-            <Link to={home} className="btn block">
+            <Link to={home} className="btn block" data-demo="observe-done">
               확인했어요
             </Link>
-            <button type="button" className="btn block ghost" onClick={startOver}>
+            <button type="button" className="btn block ghost" data-demo="observe-again" onClick={startOver}>
               한 번 더 기록하기
             </button>
           </div>
@@ -559,6 +570,7 @@ export default function Observe() {
           <button
             type="button"
             className="btn secondary block"
+            data-demo="observe-stop"
             onClick={() => abortCapture('촬영을 멈췄어요. 찍은 사진은 버렸고 아무것도 보내지 않았어요.')}
           >
             멈추기
@@ -584,7 +596,7 @@ export default function Observe() {
           )}
 
           {!cameraOn && !starting && !envProblem && (
-            <button type="button" className="btn block" onClick={() => void startCamera(choice)}>
+            <button type="button" className="btn block" data-demo="observe-camera-on" onClick={() => void startCamera(choice)}>
               {camera.status === 'problem' ? '다시 켜 보기' : '카메라 켜기'}
             </button>
           )}
@@ -639,14 +651,45 @@ export default function Observe() {
             </span>
             <div className="tabs" role="group" aria-labelledby="ai-duration-label">
               {DURATIONS.map((d) => (
-                <button key={d.sec} type="button" aria-pressed={duration === d.sec} onClick={() => setDuration(d.sec)}>
+                <button
+                  key={d.sec}
+                  type="button"
+                  aria-pressed={duration === d.sec}
+                  data-demo={`observe-duration-${d.sec}`}
+                  onClick={() => setDuration(d.sec)}
+                >
                   {d.label}
                 </button>
               ))}
             </div>
           </div>
 
-          <button type="button" className="btn block" disabled={!cameraOn} onClick={begin}>
+          {shownHealth.kind === 'checking' ? (
+            <p className="muted" role="status" style={{ margin: '12px 0 8px' }}>
+              AI 서버가 준비되었는지 확인하고 있어요…
+            </p>
+          ) : (
+            shownHealth.kind !== 'ready' && (
+              <div className="notice" role="status" style={{ margin: '12px 0' }}>
+                <p style={{ margin: 0 }}>
+                  {healthNotice(shownHealth)} 준비되기 전에는 촬영을 시작하지 않고, 사진도 보내지 않아요.
+                </p>
+                <button
+                  type="button"
+                  className="btn small secondary"
+                  style={{ marginTop: 8 }}
+                  data-demo="observe-ai-recheck"
+                  aria-disabled={health.kind === 'checking' || undefined}
+                  onClick={() => {
+                    if (health.kind !== 'checking') void recheck();
+                  }}
+                >
+                  {health.kind === 'checking' ? '확인하는 중…' : '다시 확인'}
+                </button>
+              </div>
+            )
+          )}
+          <button type="button" className="btn block" data-demo="observe-start" disabled={!cameraOn || !aiReady} onClick={begin}>
             시작하기
           </button>
           <p className="muted">

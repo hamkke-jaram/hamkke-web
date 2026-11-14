@@ -1,0 +1,382 @@
+/* 기능별 시연(엔진·패널·메뉴). 기본 색 변수(styles.css의 :root)를 그대로 써서 밝은·어두운·고대비 화면을 따른다. */
+
+/* 패널 높이(Overlay가 재서 --fdemo-pad로 넣음)만큼 아래 여백을 둔다. */
+body.fdemo-on .app {
+  padding-bottom: var(--fdemo-pad, 320px);
+}
+
+/* 비추기: 대상 둘레 밝게, 나머지 살짝 어둡게. 화면 조작을 막지 않는다. */
+.fdemo-spot {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  border-radius: 12px;
+  border: 2px solid var(--brand);
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.38);
+  transition: left 0.25s ease, top 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.fdemo-hint {
+  position: fixed;
+  z-index: 61;
+  pointer-events: none;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 가짜 커서와 누름 물결 */
+.fdemo-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 62;
+  pointer-events: none;
+  transition: transform 0.35s ease;
+}
+
+.fdemo-cursor svg {
+  display: block;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.4));
+}
+
+.fdemo-ripple {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--brand);
+  opacity: 0;
+  animation: fdemo-ripple 0.6s ease-out;
+}
+
+@keyframes fdemo-ripple {
+  from {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fdemo-spot,
+  .fdemo-cursor {
+    transition: none;
+  }
+  .fdemo-ripple {
+    animation: none;
+  }
+}
+
+/* 아래 제어 패널 */
+.fdemo-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(600px, calc(100vw - 24px));
+  max-height: min(52vh, 460px);
+  overflow-y: auto;
+  z-index: 70;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--brand);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.2);
+  padding: 10px 14px 12px;
+}
+
+.fdemo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fdemo-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.fdemo-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fdemo-count {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.fdemo-link {
+  background: none;
+  border: 0;
+  min-height: 32px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fdemo-body {
+  margin-top: 6px;
+}
+
+.fdemo-bubble {
+  position: relative;
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+}
+
+.fdemo-bubble h2 {
+  font-size: 16px;
+  margin: 0 0 4px;
+}
+
+.fdemo-bubble p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.fdemo-where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fdemo-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.fdemo-tag.where-device {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.fdemo-tag.where-server {
+  border-color: var(--focus);
+  color: var(--focus);
+}
+
+.fdemo-tag.where-ai,
+.fdemo-tag.sim {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.fdemo-tag.ok {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.fdemo-zero {
+  font-weight: 700;
+  color: var(--brand) !important;
+}
+
+.fdemo-req {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.fdemo-req-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.fdemo-req-line code {
+  overflow-wrap: anywhere;
+}
+
+.fdemo-req summary {
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  min-height: 28px;
+}
+
+.fdemo-json {
+  margin: 4px 0 0;
+  padding: 8px;
+  max-height: 180px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fdemo-muted {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.fdemo-status {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.fdemo-alert {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.fdemo-alert.done {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.fdemo-alert p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.fdemo-row,
+.fdemo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fdemo-controls {
+  margin: 6px 0;
+}
+
+.fdemo-controls .btn,
+.fdemo-row .btn {
+  min-height: 40px;
+}
+
+.fdemo-panel [aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.fdemo-inspector {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+}
+
+.fdemo-inspector > summary {
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.fdemo-counts {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.fdemo-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.fdemo-reqs {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.fdemo-reqs {
+  margin: 4px 0 0;
+  padding-left: 22px;
+}
+
+.fdemo-reqs li {
+  margin-bottom: 6px;
+}
+
+.fdemo-tag.src-prep,
+.fdemo-tag.src-check,
+.fdemo-tag.src-sample {
+  border-style: dashed;
+}
+
+/* 메뉴 화면 */
+.fdemo-menu .fdemo-group {
+  margin: 20px 0 8px;
+  font-size: 17px;
+}
+
+.fdemo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fdemo-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.fdemo-card p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.fdemo-card .fdemo-where {
+  margin: 2px 0;
+}
+
+.fdemo-card .btn {
+  align-self: flex-start;
+  min-height: 44px;
+}

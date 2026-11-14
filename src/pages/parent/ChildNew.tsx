@@ -5,29 +5,8 @@ import { api } from '../../api/client';
 import type { Child } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { BackLink, Field, describedBy, refocus, useToast } from '../../components/feedback';
-import { ErrorText, Loading, formatAge, useLoad } from '../../components/ui';
-
-function monthsAgo(n: number) {
-  const d = new Date();
-  // 1일로 먼저 옮겨야 31일 같은 말일에 달을 빼도 날짜가 다음 달로 넘치지 않는다.
-  d.setDate(1);
-  d.setMonth(d.getMonth() - n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-/** 서버가 받는 생년월 모양(ChildDtos.YEAR_MONTH). */
-const YEAR_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
-
-/**
- * '지금 2세 3개월이에요'. 개월 수는 서버(Child.ageMonths)처럼 달만 세고, 표기는 아이 홈과 같은 formatAge라
- * 등록한 뒤 보이는 나이와 어긋나지 않는다. '세'로 끝나면 받침이 없어 '예요'.
- */
-function ageHint(birth: string) {
-  const now = new Date();
-  const months = (now.getFullYear() - Number(birth.slice(0, 4))) * 12 + (now.getMonth() + 1 - Number(birth.slice(5, 7)));
-  const age = formatAge(Math.max(0, months));
-  return `지금 ${age}${age.endsWith('세') ? '예요' : '이에요'}`;
-}
+import { ErrorText, Loading, useLoad } from '../../components/ui';
+import { YEAR_MONTH, ageHint, birthError, birthRange } from './childForm';
 
 interface FieldErrors {
   nickname?: string;
@@ -55,9 +34,8 @@ export default function ChildNew() {
   // 제목은 아이 목록을 기다리지 않고 먼저 그린다(화면을 옮길 때 제목으로 가는 포커스가 늦지 않게).
   if (!policies) return <Loading />;
 
-  const minMonth = monthsAgo(83);
-  const maxMonth = monthsAgo(0);
-  const birthOk = YEAR_MONTH.test(birth) && birth >= minMonth && birth <= maxMonth;
+  const { min: minMonth, max: maxMonth } = birthRange();
+  const birthOk = YEAR_MONTH.test(birth) && !birthError(birth);
   const hasChildren = (kids.data?.length ?? 0) > 0;
   // 가입 화면이 보호자를 여기로 보낼 때 state로 알려 준다.
   const onboarding = !hasChildren && (state as { onboarding?: unknown } | null)?.onboarding === true;
@@ -73,12 +51,7 @@ export default function ChildNew() {
     if (!policies || busy) return;
     const next: FieldErrors = {
       nickname: nickname.trim() ? undefined : '별칭을 써 주세요.',
-      // 달 고르기가 없는 브라우저에서는 범위 밖 달도 쓸 수 있어서, 모양은 맞는데 범위만 벗어나면 그렇게 알려 준다.
-      birth: birthOk
-        ? undefined
-        : YEAR_MONTH.test(birth)
-          ? '만 0~6세 아이만 등록할 수 있어요. 태어난 해와 달을 다시 확인해 주세요.'
-          : '태어난 해와 달을 골라 주세요.',
+      birth: birthError(birth),
       guardian: guardian ? undefined : '법정대리인 동의가 필요해요.',
     };
     if (next.nickname || next.birth || next.guardian) {
@@ -126,6 +99,7 @@ export default function ChildNew() {
             <Field
               ref={nicknameRef}
               id="child-nickname"
+              data-demo="child-nickname"
               label="별칭"
               type="text"
               maxLength={20}
@@ -142,6 +116,7 @@ export default function ChildNew() {
             <Field
               ref={birthRef}
               id="child-birth"
+              data-demo="child-birth"
               label="태어난 해와 달"
               type="month"
               min={minMonth}
@@ -157,7 +132,7 @@ export default function ChildNew() {
               error={errors.birth}
             />
 
-            <section className="card warm" aria-labelledby="child-guardian-title">
+            <section className="card warm" aria-labelledby="child-guardian-title" data-demo="child-guardian-info">
               <h2 id="child-guardian-title">법정대리인 동의</h2>
               <p style={{ marginTop: 0 }}>
                 만 14세 미만 아동의 정보는 법정대리인(보호자)의 동의가 있어야 저장할 수 있어요. 함께자람은 아래 정보만 저장해요.
@@ -173,6 +148,7 @@ export default function ChildNew() {
                 <input
                   ref={guardianRef}
                   id="child-guardian"
+                  data-demo="child-guardian"
                   type="checkbox"
                   checked={guardian}
                   onChange={(e) => {
@@ -194,7 +170,7 @@ export default function ChildNew() {
             )}
 
             <ErrorText error={error} />
-            <button type="submit" className="btn block" disabled={busy}>
+            <button type="submit" className="btn block" data-demo="child-submit" disabled={busy}>
               {busy ? '등록하는 중…' : '등록하기'}
             </button>
           </form>
