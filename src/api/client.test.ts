@@ -178,6 +178,23 @@ describe('api: 여러 탭', () => {
 
   let store: Map<string, string>;
 
+  /**
+   * 브라우저의 Web Locks(navigator.locks)를 흉내 낸다. 같은 이름의 잠금은 한 번에 하나씩 차례로 준다.
+   * Node 24에는 navigator.locks가 있지만 CI의 Node 22에는 없어서, 테스트가 Node 버전에 따라 갈리지 않게 늘 이것을 쓴다.
+   * 모든 탭이 같은 navigator를 보므로 실제 브라우저처럼 탭 사이에서 잠금을 나눠 쓴다.
+   */
+  function fakeLocks() {
+    const tails = new Map<string, Promise<unknown>>();
+    return {
+      request<T>(name: string, callback: () => Promise<T>): Promise<T> {
+        const previous = tails.get(name) ?? Promise.resolve();
+        const run = previous.then(callback, callback);
+        tails.set(name, run.catch(() => undefined));
+        return run;
+      },
+    };
+  }
+
   async function openTab(): Promise<Tab> {
     const win = new EventTarget();
     vi.stubGlobal('window', win);
@@ -198,6 +215,7 @@ describe('api: 여러 탭', () => {
 
   beforeEach(() => {
     store = new Map();
+    vi.stubGlobal('navigator', { locks: fakeLocks() });
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, String(v)),
