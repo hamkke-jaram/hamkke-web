@@ -36,6 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [policies, setPolicies] = useState<Policies | null>(null);
   const [policiesError, setPoliciesError] = useState<unknown>(null);
   const policyRun = useRef(0);
+  /** 다른 탭을 따라 받는 사용자 정보 회차. 그 사이 로그인·로그아웃하면 늦게 온 응답을 버린다. */
+  const userSync = useRef(0);
 
   /**
    * 약관·고지 정보를 불러온다. 실패하면 간격을 늘려 가며 몇 번 더 시도하고, 그래도 안 되면 policiesError를 채운다.
@@ -84,8 +86,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void reload();
-    return onSessionChange(() => {
-      if (!hasSession()) setUser(null);
+    return onSessionChange((fromOtherTab) => {
+      if (!hasSession()) {
+        userSync.current++;
+        setUser(null);
+        return;
+      }
+      // 다른 탭에서 로그인했거나 다른 계정으로 바뀌었을 수 있다. 사용자 정보를 다시 받는다.
+      // 실패해도 지금 화면은 그대로 둔다(세션이 정말 끝났으면 client가 세션을 지워 위의 분기로 온다).
+      if (fromOtherTab) {
+        const run = ++userSync.current;
+        void api<User>('GET', '/me')
+          .then((me) => {
+            if (run === userSync.current && hasSession()) setUser(me);
+          })
+          .catch(() => undefined);
+      }
     });
   }, [reload]);
 
@@ -111,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     (t: TokenResponse) => {
+      userSync.current++;
       setSession(t);
       // 로그인 응답에는 다시 동의할 약관 목록(pendingConsents)이 없을 수 있다. 앞서 알던 목록을 이어 두고 /me로 확인한다.
       setUser((prev) => ({ ...t.user, pendingConsents: t.user.pendingConsents ?? (prev?.id === t.user.id ? prev.pendingConsents : undefined) }));

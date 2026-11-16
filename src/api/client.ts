@@ -3,9 +3,17 @@ import type { TokenResponse } from './types';
 /**
  * API 호출 도우미. JSON만 주고받는다(영상·파일 업로드 기능 없음).
  * 액세스 토큰이 만료되면 리프레시 토큰으로 한 번 갱신한 뒤 다시 시도한다.
+ *
+ * 여러 탭: 세션은 localStorage 하나를 함께 쓴다. 리프레시 토큰은 쓸 때마다 바뀌고, 이미 바뀐(낡은) 토큰을 다시 보내면
+ * 서버는 탈취로 보고 그 사람의 모든 기기를 로그아웃시킨다(ACC-04). 그래서 탭마다 낡은 토큰을 들고 있지 않게
+ * - 다른 탭의 로그인·로그아웃·토큰 회전을 storage 이벤트로 바로 따르고,
+ * - 갱신하기 직전에 저장소를 다시 읽어 다른 탭이 이미 회전했으면 그 토큰을 쓰고,
+ * - 갱신은 탭 사이에서도 한 번에 하나씩 한다(Web Locks).
  */
 
 const STORAGE_KEY = 'hj.session';
+/** 탭 사이에서 토큰 갱신을 한 번에 하나씩 하려고 잡는 Web Locks 이름. */
+const REFRESH_LOCK = 'hj.session.refresh';
 
 export class ApiError extends Error {
   constructor(
@@ -23,9 +31,15 @@ interface Session {
   refreshToken: string;
 }
 
-let session: Session | null = readSession();
+/**
+ * 이 탭이 마지막으로 저장소에서 읽었거나 저장소에 쓴 값(없으면 null, 저장소를 읽을 수 없으면 undefined).
+ * 저장소 값이 이것과 다르면 다른 탭이 바꾼 것이다.
+ */
+let known: string | null | undefined = readStored();
+let session: Session | null = parseSession(known);
 let refreshing: Promise<boolean> | null = null;
-const listeners = new Set<() => void>();
+/** fromOtherTab: 다른 탭이 바꾼 세션을 이 탭이 따라 바꾼 경우 true. */
+const listeners = new Set<(fromOtherTab: boolean) => void>();
 
 /**
  * 요청 관찰 고리(시연 전용). 기능별 시연이 '서버로 간 내용'을 보여 줄 때만 설정하고, 평소에는 비어 있어
@@ -47,24 +61,65 @@ export function setApiObserver(next: ApiObserver | null) {
   observer = next;
 }
 
-function readSession(): Session | null {
+/** 저장소의 세션 값. 저장소를 읽을 수 없는 환경이면 undefined. */
+function readStored(): string | null | undefined {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseSession(raw: string | null | undefined): Session | null {
+  if (!raw) return null;
+  try {
+    const s = JSON.parse(raw) as Partial<Session> | null;
+    return s && typeof s.accessToken === 'string' && typeof s.refreshToken === 'string'
+      ? { accessToken: s.accessToken, refreshToken: s.refreshToken }
+      : null;
   } catch {
     return null;
   }
 }
 
+function notify(fromOtherTab: boolean) {
+  listeners.forEach((l) => l(fromOtherTab));
+}
+
 export function setSession(t: TokenResponse | null) {
   session = t ? { accessToken: t.accessToken, refreshToken: t.refreshToken } : null;
+  const raw = session ? JSON.stringify(session) : null;
   try {
-    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    if (raw) localStorage.setItem(STORAGE_KEY, raw);
     else localStorage.removeItem(STORAGE_KEY);
+    known = raw;
   } catch {
-    /* 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 메모리에만 둔다 */
+    // 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 메모리에만 둔다.
+    // 지금 저장소 값을 기억해 두어, 쓰지 못한 것을 '다른 탭이 로그아웃했다'로 잘못 읽지 않게 한다.
+    known = readStored();
   }
-  listeners.forEach((l) => l());
+  notify(false);
+}
+
+/**
+ * 다른 탭이 저장소의 세션을 바꿨으면(로그인·로그아웃·토큰 회전) 이 탭도 그 세션으로 바꾼다.
+ * 이 탭이 마지막으로 보거나 쓴 값 그대로이거나 저장소를 읽을 수 없으면 아무것도 하지 않는다.
+ */
+function syncFromStorage() {
+  const raw = readStored();
+  if (raw === undefined || raw === known) return;
+  known = raw;
+  const next = parseSession(raw);
+  if (next?.accessToken === session?.accessToken && next?.refreshToken === session?.refreshToken) return;
+  session = next;
+  notify(true);
+}
+
+// storage 이벤트는 값을 바꾼 탭이 아닌 같은 브라우저의 다른 탭에서만 온다. key가 null이면 저장소를 통째로 비운 것.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY || e.key === null) syncFromStorage();
+  });
 }
 
 export function hasSession() {
@@ -85,45 +140,69 @@ export async function settleRefresh(): Promise<void> {
   if (refreshing) await refreshing.catch(() => false);
 }
 
-export function onSessionChange(fn: () => void) {
+/** 세션이 바뀌면 부른다. fromOtherTab은 다른 탭의 로그인·로그아웃·토큰 회전을 따라 바뀐 경우 true. */
+export function onSessionChange(fn: (fromOtherTab: boolean) => void) {
   listeners.add(fn);
   return () => {
     listeners.delete(fn);
   };
 }
 
-async function refresh(): Promise<boolean> {
+/**
+ * 액세스 토큰 rejected가 401을 받았을 때 부른다. 다시 보낼 토큰이 생기면 true.
+ * 이 탭에서 동시에 받은 401 여러 개는 갱신 한 번을 같이 쓴다.
+ */
+async function refresh(rejected: string | undefined): Promise<boolean> {
   if (!session) return false;
   if (!refreshing) {
-    const token = session.refreshToken;
-    refreshing = (async () => {
-      const req = { method: 'POST', path: '/auth/refresh', body: { refreshToken: token } };
-      try {
-        const res = await fetch('/api/v1/auth/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: token }),
-        });
-        // 갱신하는 사이 다른 세션으로 바뀌었다면(데모의 계정 전환 등) 새 세션을 덮어쓰지 않는다.
-        const stillSame = () => session?.refreshToken === token;
-        if (!res.ok) {
-          observer?.after?.({ ...req, status: res.status, data: undefined });
-          if (stillSame()) setSession(null);
-          return false;
-        }
-        const next = (await res.json()) as TokenResponse;
-        observer?.after?.({ ...req, status: res.status, data: next });
-        if (!stillSame()) return false;
-        setSession(next);
-        return true;
-      } catch {
-        return false;
-      } finally {
-        refreshing = null;
-      }
-    })();
+    const run = withRefreshLock(() => rotate(rejected)).catch(() => false);
+    refreshing = run;
+    void run.then(() => {
+      if (refreshing === run) refreshing = null;
+    });
   }
   return refreshing;
+}
+
+/**
+ * 탭 사이에서도 갱신을 한 번에 하나씩 한다. 두 탭이 같은 리프레시 토큰을 동시에 보내면 서버는 재사용으로 보고
+ * 모든 기기를 로그아웃시키기 때문이다. Web Locks를 쓸 수 없는 곳(오래된 브라우저, https가 아닌 주소)에서는 잠그지 않는다.
+ */
+async function withRefreshLock(fn: () => Promise<boolean>): Promise<boolean> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  return locks ? await locks.request(REFRESH_LOCK, () => fn()) : await fn();
+}
+
+async function rotate(rejected: string | undefined): Promise<boolean> {
+  // 기다리는 사이(또는 storage 이벤트를 놓친 사이) 다른 탭이 회전했거나 로그아웃했으면 저장소의 세션을 따른다.
+  syncFromStorage();
+  if (!session) return false;
+  // 거절된 토큰 대신 쓸 새 토큰이 이미 있다(다른 탭이 회전함 등). 낡은 리프레시 토큰을 서버에 보내지 않는다.
+  if (session.accessToken !== rejected) return true;
+
+  const token = session.refreshToken;
+  const req = { method: 'POST', path: '/auth/refresh', body: { refreshToken: token } };
+  try {
+    const res = await fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: token }),
+    });
+    // 갱신하는 사이 다른 세션으로 바뀌었다면(데모의 계정 전환, 다른 탭의 로그아웃 등) 새 세션을 덮어쓰지 않는다.
+    const stillSame = () => session?.refreshToken === token;
+    if (!res.ok) {
+      observer?.after?.({ ...req, status: res.status, data: undefined });
+      if (stillSame()) setSession(null);
+      return false;
+    }
+    const next = (await res.json()) as TokenResponse;
+    observer?.after?.({ ...req, status: res.status, data: next });
+    if (!stillSame()) return false;
+    setSession(next);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -131,7 +210,8 @@ type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export async function api<T>(method: Method, path: string, body?: unknown, retry = true): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (session) headers.Authorization = `Bearer ${session.accessToken}`;
+  const sentWith = session?.accessToken;
+  if (sentWith) headers.Authorization = `Bearer ${sentWith}`;
 
   let res: Response;
   try {
@@ -160,7 +240,7 @@ export async function api<T>(method: Method, path: string, body?: unknown, retry
 
   // 비밀번호가 틀린 경우(INVALID_CREDENTIALS, 예: DELETE /me)도 401이지만 토큰 문제가 아니므로 갱신하지 않는다.
   if (res.status === 401 && retry && session && !path.startsWith('/auth/') && data?.code !== 'INVALID_CREDENTIALS') {
-    if (await refresh()) return api<T>(method, path, body, false);
+    if (await refresh(sentWith)) return api<T>(method, path, body, false);
   }
 
   if (!res.ok) {

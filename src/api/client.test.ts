@@ -163,6 +163,158 @@ describe('api: 토큰 갱신', () => {
   });
 });
 
+describe('api: 여러 탭', () => {
+  /*
+   * 같은 브라우저의 탭 여럿을 흉내 낸다. 탭마다 client 모듈을 새로 불러와 메모리 세션을 따로 두고,
+   * localStorage(가짜)는 함께 쓴다. storage 이벤트는 실제 브라우저처럼 값을 바꾼 탭이 아닌 탭에만 보낸다.
+   */
+  type Client = typeof import('./client');
+  interface Tab extends Client {
+    /** 다른 탭이 hj.session을 바꿨다고 이 탭에 알린다. */
+    storageEvent(key?: string | null): void;
+    /** 이 탭의 onSessionChange가 받은 fromOtherTab 값들. */
+    changes: boolean[];
+  }
+
+  let store: Map<string, string>;
+
+  async function openTab(): Promise<Tab> {
+    const win = new EventTarget();
+    vi.stubGlobal('window', win);
+    vi.resetModules();
+    const mod = await import('./client');
+    const changes: boolean[] = [];
+    mod.onSessionChange((fromOtherTab) => changes.push(fromOtherTab));
+    return {
+      ...mod,
+      changes,
+      storageEvent(key: string | null = 'hj.session') {
+        win.dispatchEvent(Object.assign(new Event('storage'), { key }));
+      },
+    };
+  }
+
+  const stored = () => JSON.parse(store.get('hj.session') ?? 'null') as { accessToken: string; refreshToken: string } | null;
+
+  beforeEach(() => {
+    store = new Map();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, String(v)),
+      removeItem: (k: string) => void store.delete(k),
+    });
+  });
+
+  it('다른 탭이 이미 회전했으면 저장소의 새 토큰을 쓰고, 낡은 리프레시 토큰을 서버에 보내지 않는다', async () => {
+    const a = await openTab();
+    a.setSession(tokens(1));
+    const b = await openTab(); // 저장소에서 refresh-1을 읽는다
+    expect(b.currentSession()?.refreshToken).toBe('refresh-1');
+
+    mockFetch((c) => {
+      if (c.url === '/api/v1/auth/refresh') return json(200, tokens(2));
+      if (c.auth === 'Bearer access-1') return json(401, {});
+      return json(200, { ok: true });
+    });
+    await expect(a.api('GET', '/children')).resolves.toEqual({ ok: true });
+    expect(stored()?.refreshToken).toBe('refresh-2');
+
+    // B는 storage 이벤트를 아직 받지 못해 낡은 토큰을 들고 있다(백그라운드 탭 등).
+    expect(b.currentSession()?.refreshToken).toBe('refresh-1');
+    await expect(b.api('GET', '/me')).resolves.toEqual({ ok: true });
+
+    // 갱신 요청은 A의 한 번뿐이고, B는 A가 받은 토큰으로 다시 보냈다.
+    expect(calls.filter((c) => c.url === '/api/v1/auth/refresh').map((c) => c.body)).toEqual([{ refreshToken: 'refresh-1' }]);
+    expect(calls.at(-1)).toMatchObject({ url: '/api/v1/me', auth: 'Bearer access-2' });
+    expect(b.currentSession()).toEqual({ accessToken: 'access-2', refreshToken: 'refresh-2' });
+    expect(b.changes).toEqual([true]);
+  });
+
+  it('다른 탭에서 로그아웃했으면 갱신하지 않고 이 탭도 로그아웃된다', async () => {
+    const a = await openTab();
+    a.setSession(tokens(1));
+    const b = await openTab();
+    a.setSession(null); // A에서 로그아웃(B는 이벤트를 아직 받지 못함)
+
+    mockFetch((c) => (c.url === '/api/v1/auth/refresh' ? json(200, tokens(2)) : json(401, {})));
+    const err = await caught(b.api('GET', '/children'));
+    expect(err.status).toBe(401);
+    expect(calls.map((c) => c.url)).toEqual(['/api/v1/children']);
+    expect(b.hasSession()).toBe(false);
+    expect(b.changes).toEqual([true]);
+    expect(store.has('hj.session')).toBe(false);
+  });
+
+  it('storage 이벤트로 다른 탭의 로그인·토큰 회전·로그아웃을 바로 따른다', async () => {
+    const a = await openTab();
+    const b = await openTab();
+    expect(b.hasSession()).toBe(false);
+
+    a.setSession(tokens(1));
+    b.storageEvent();
+    expect(b.currentSession()).toEqual({ accessToken: 'access-1', refreshToken: 'refresh-1' });
+
+    a.setSession(tokens(2));
+    b.storageEvent('theme'); // 다른 키는 상관없다
+    expect(b.currentSession()?.refreshToken).toBe('refresh-1');
+    b.storageEvent();
+    expect(b.currentSession()?.refreshToken).toBe('refresh-2');
+
+    // 바뀐 것이 없으면 다시 알리지 않는다.
+    b.storageEvent();
+
+    a.setSession(null);
+    b.storageEvent(null); // localStorage.clear()처럼 key가 없는 이벤트
+    expect(b.hasSession()).toBe(false);
+    expect(b.changes).toEqual([true, true, true]);
+    expect(a.changes).toEqual([false, false, false]);
+  });
+
+  it('두 탭이 같은 토큰으로 동시에 401을 받아도 갱신 요청은 한 번만 보낸다', async () => {
+    const a = await openTab();
+    a.setSession(tokens(1));
+    const b = await openTab();
+
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    mockFetch(async (c) => {
+      if (c.url === '/api/v1/auth/refresh') {
+        await gate;
+        return json(200, tokens(2));
+      }
+      if (c.auth === 'Bearer access-1') return json(401, {});
+      return json(200, { auth: c.auth });
+    });
+    const pa = a.api('GET', '/children');
+    const pb = b.api('GET', '/me');
+    await vi.waitFor(() => expect(calls.filter((c) => c.auth === 'Bearer access-1')).toHaveLength(2));
+    await new Promise((r) => setTimeout(r, 0));
+    release();
+    await expect(pa).resolves.toEqual({ auth: 'Bearer access-2' });
+    await expect(pb).resolves.toEqual({ auth: 'Bearer access-2' });
+    expect(calls.filter((c) => c.url === '/api/v1/auth/refresh')).toHaveLength(1);
+  });
+
+  it('저장소에 쓸 수 없으면(사생활 보호 모드 등) 메모리의 세션으로 계속 갱신한다', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('QuotaExceededError');
+      },
+      removeItem: () => undefined,
+    });
+    const a = await openTab();
+    a.setSession(tokens(1));
+    mockFetch((c) => {
+      if (c.url === '/api/v1/auth/refresh') return json(200, tokens(2));
+      if (c.auth === 'Bearer access-1') return json(401, {});
+      return json(200, { ok: true });
+    });
+    await expect(a.api('GET', '/children')).resolves.toEqual({ ok: true });
+    expect(a.currentSession()?.refreshToken).toBe('refresh-2');
+  });
+});
+
 describe('api: 오류 문장', () => {
   it('칸 오류(fieldErrors)가 있으면 그 문장을 먼저 쓴다', async () => {
     mockFetch(() =>
