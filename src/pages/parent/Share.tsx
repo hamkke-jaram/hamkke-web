@@ -46,7 +46,7 @@ function formatCode(code: string) {
   return `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
-/** 초대 코드 기한: '11월 16일 오후 3:00' */
+/** 초대 코드를 만든 때와 기한: '11월 16일 오후 3:00' */
 function formatExpiry(iso: string) {
   return new Date(iso).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
@@ -348,7 +348,11 @@ export default function Share() {
                     <strong id={codeId} className="invite-code">
                       {formatCode(c.code)}
                     </strong>
-                    <span className="meta">{formatExpiry(c.expiresAt)}까지</span>
+                    {/* SHR-04: 언제 만든 코드인지 보여야 어느 선생님께 건넨 것인지 가려 취소할 수 있다. */}
+                    <span className="meta">
+                      {c.createdAt ? `${formatExpiry(c.createdAt)} 만듦 · ` : ''}
+                      {formatExpiry(c.expiresAt)}까지
+                    </span>
                   </span>
                   <button
                     type="button"

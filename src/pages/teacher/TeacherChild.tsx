@@ -42,6 +42,8 @@ const SHARED_NAMES: [SharedItem, string][] = [
 const AI_LIST_LIMIT = 20;
 /** 관찰 메모를 한 번에 가져오는 개수(최신순). 더 있으면 '더 보기'로 이어서 가져온다. */
 const NOTE_LIMIT = 20;
+/** 가정에서 받은 코칭 카드를 한 번에 가져오는 개수(최신순). 본문까지 보여 주어 길어서 적게 받고, 더 있으면 '더 보기'. */
+const CARD_LIMIT = 5;
 
 type Tab = 'records' | 'goals' | 'notes';
 const TABS: { key: Tab; label: string }[] = [
@@ -81,10 +83,11 @@ export default function TeacherChild() {
   const goals = useLoad(() => api<Goal[]>('GET', `/children/${id}/goals`), [id]);
   const notes = usePagedList<Observation>(`/children/${id}/observations`, NOTE_LIMIT, [id]);
   const sharesCards = summary.data?.sharedItems.includes('COACHING_CARDS') ?? false;
-  const cards = useLoad(
-    () => (sharesCards ? api<Delivery[]>('GET', `/children/${id}/card-deliveries?limit=5`) : Promise.resolve([] as Delivery[])),
-    [id, sharesCards],
-  );
+  // 보호자가 카드 공유를 켠 경우에만 불러온다(path가 null이면 빈 목록).
+  const cards = usePagedList<Delivery>(sharesCards ? `/children/${id}/card-deliveries` : null, CARD_LIMIT, [
+    id,
+    sharesCards,
+  ]);
 
   // 탭을 옮겨도 쓰던 목표·메모는 남도록 상태는 화면 전체에 둔다.
   const [tab, setTab] = useState<Tab>('records');
@@ -506,13 +509,13 @@ export default function TeacherChild() {
           )}
         </Section>
 
-        {sharesCards && cards.error != null && !cards.data && (
+        {sharesCards && cards.error != null && !cards.items && (
           <Section title="가정에서 받은 코칭">{loadStateView(cards, '코칭 카드를')}</Section>
         )}
-        {sharesCards && cards.data && cards.data.length > 0 && (
+        {sharesCards && cards.items && cards.items.length > 0 && (
           <Section title="가정에서 받은 코칭">
             <div>
-              {cards.data.map((d) => (
+              {cards.items.map((d) => (
                 <div key={d.id} className="list-item coach-card" style={{ alignItems: 'flex-start' }}>
                   <div className="item-body">
                     <strong>{d.card.title}</strong>
@@ -541,6 +544,7 @@ export default function TeacherChild() {
                 </div>
               ))}
             </div>
+            <MoreButton list={cards} demo="tc-cards-more" label="지난 코칭 카드 더 보기" />
           </Section>
         )}
 
