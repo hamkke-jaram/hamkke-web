@@ -195,6 +195,8 @@ export function DangerAction({
   }, [open]);
 
   async function confirm() {
+    // 요청 중에는 버튼을 aria-disabled로만 막으므로(포커스 유지) 겹친 누름은 여기서 무시한다.
+    if (busy || confirmDisabled) return;
     setBusy(true);
     setError(null);
     try {
@@ -246,7 +248,8 @@ export function DangerAction({
           type="button"
           className="btn danger"
           data-demo={demo && `${demo}-confirm`}
-          disabled={busy || confirmDisabled}
+          disabled={confirmDisabled}
+          aria-disabled={busy || undefined}
           onClick={() => void confirm()}
         >
           {busy ? (busyLabel ?? '처리하는 중…') : confirmLabel}

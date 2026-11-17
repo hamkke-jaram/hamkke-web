@@ -11,6 +11,8 @@ import { setVisuals } from './visuals';
  */
 
 const POLL = 120;
+/** 막힌 버튼이 풀리기를 기다리는 가장 긴 시간(ms) */
+const CLICK_WAIT = 1500;
 
 class StoppedError extends Error {
   constructor() {
@@ -170,7 +172,10 @@ export function createDomDriver(opts: { navigate: (path: string) => void; reduce
 
     async click(target: Target) {
       const el = must(target);
-      if ((el as HTMLButtonElement).disabled) throw new Error('이 버튼은 지금 누를 수 없는 상태예요.');
+      // 요청 중이라 잠깐 막힌 버튼(aria-disabled)은 눌러도 화면이 무시한다. 풀릴 때까지 잠깐 기다려 보고, 그래도 막혀 있으면 알린다.
+      const blocked = () => (el as HTMLButtonElement).disabled === true || el.getAttribute('aria-disabled') === 'true';
+      for (let waited = 0; blocked() && waited < CLICK_WAIT; waited += POLL) await wait(POLL);
+      if (blocked()) throw new Error('이 버튼은 지금 누를 수 없는 상태예요.');
       await cursorTo(el);
       setVisuals({ ripple: Date.now() });
       el.click();

@@ -147,7 +147,7 @@ export default function Reconsent({ pending }: { pending: PolicyConsentType[] })
       )}
       <ErrorText error={error} />
       <div className="stack">
-        <button type="submit" className="btn block" data-demo="reconsent-submit" disabled={busy}>
+        <button type="submit" className="btn block" data-demo="reconsent-submit" aria-disabled={busy || undefined}>
           {busy ? '저장하는 중…' : '동의하고 계속하기'}
         </button>
         <button type="button" className="btn block ghost" data-demo="reconsent-logout" onClick={() => void logout()}>

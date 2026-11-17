@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AiConsentCard from '../../ai/AiConsentCard';
 import ObservationList from '../../ai/ObservationList';
+import { aiConsentState, consentCardPlace, keepsAiRecords } from '../../ai/consentState';
 import { ApiError, api } from '../../api/client';
 import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
@@ -77,9 +78,10 @@ export default function ChildHome() {
   // 하므로(서버도 허용한다) 동의 상태는 늘 확인한다.
   const aiOn = policies?.aiObservationEnabled === true;
   const aiConsent = useLoad(() => api<AiConsent>('GET', `/children/${id}/ai-consent`), [id]);
-  // 방금 켜거나 껐을 때의 결과 안내. 동의 카드는 켜짐·꺼짐에 따라 자리가 달라서(꺼짐: 위쪽, 켜짐: 아래쪽 설정 자리)
-  // 누른 카드가 그 자리에서 사라진다. 사라진 자리에 결과를 알리고 포커스를 옮긴다.
-  const [aiChange, setAiChange] = useState<'on' | 'off' | null>(null);
+  // 방금 켜거나 껐을 때의 결과 안내. 동의 카드는 상태에 따라 자리가 달라서(꺼짐·동의 문서가 바뀌어 꺼짐: 위쪽,
+  // 켜짐: 아래쪽 설정 자리) 누른 카드가 그 자리에서 사라지거나 다른 카드로 바뀐다. 누른 자리(at)에 결과를 알리고
+  // 포커스를 옮긴다.
+  const [aiChange, setAiChange] = useState<{ kind: 'on' | 'off'; at: 'top' | 'bottom' } | null>(null);
   const aiChangeRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => setAiChange(null), [id]);
   useEffect(() => {
@@ -188,9 +190,14 @@ export default function ChildHome() {
         ? `이번 주에 함께 논 모습을 ${n}번 기록했어요. 한 주에 한두 번이면 충분해요.`
         : '이번 주에 함께 논 기록은 아직 없어요. 한 주에 한두 번이면 충분해요.';
   }
-  // consented: 이 아이의 AI 동의가 켜져 있다(기록을 보고 지우고 끌 수 있다). aiAgreed: 지금 새 관찰 기록도 만들 수 있다.
-  const consented = aiConsent.data?.agreed === true;
-  const aiAgreed = aiOn && consented;
+  // 동의 상태(consentState.ts): 켜짐 / 동의 문서가 바뀌어 꺼짐 / 처음 꺼짐.
+  // aiAgreed: 지금 새 관찰 기록을 만들 수 있다(켜짐 + AI 서버 설정됨).
+  // hasAiRecords: 그동안 쌓인 기록이 남아 있을 수 있다(켜짐, 또는 동의 문서가 바뀌어 꺼짐). 이때는 AI 서버가 꺼져 있어도,
+  // 다시 동의하기 전이어도 기록을 보고 지우고 끌 수 있어야 한다(서버도 허용한다).
+  const consentState = aiConsentState(aiConsent.data);
+  const aiAgreed = aiOn && consentState === 'on';
+  const hasAiRecords = keepsAiRecords(consentState);
+  const cardPlace = aiConsent.data ? consentCardPlace(consentState, aiOn) : 'none';
   const consentCard = aiConsent.data && (
     <AiConsentCard
       childId={id}
@@ -199,7 +206,8 @@ export default function ChildHome() {
       paused={policies != null && !aiOn}
       onChange={(next) => {
         aiConsent.setData(next);
-        setAiChange(next.agreed ? 'on' : 'off');
+        // 켜면 카드가 아래쪽 설정 자리로 내려가므로 위쪽에 알린다. 끄면 누른 카드가 있던 자리에 알린다.
+        setAiChange({ kind: next.agreed ? 'on' : 'off', at: next.agreed || cardPlace === 'top' ? 'top' : 'bottom' });
         // 끄면 서버가 AI 관찰 기록으로 받은 코칭 카드도 함께 지우므로 카드 목록을 다시 불러온다.
         if (!next.agreed) cards.reload();
       }}
@@ -207,7 +215,7 @@ export default function ChildHome() {
   );
   const aiChangeNotice = aiChange && (
     <p ref={aiChangeRef} className="notice" role="status" tabIndex={-1} style={{ marginBottom: 14 }}>
-      {aiChange === 'on'
+      {aiChange.kind === 'on'
         ? `AI 관찰 기록을 켰어요. 이제 ${c.nickname}의 영상을 기록하거나 실시간 카메라로 관찰 기록을 남길 수 있어요. 끄는 곳은 이 화면 아래쪽에 있어요.`
         : `AI 관찰 기록을 껐어요. 그동안 쌓인 ${c.nickname}의 AI 관찰 기록도 모두 지웠어요. 이제 장면 사진을 한 장도 보내지 않아요.`}
     </p>
@@ -269,9 +277,10 @@ export default function ChildHome() {
         </Link>
       )}
 
-      {/* 꺼져 있을 때는 위쪽에서 켜기를 안내하고(AI 서버가 설정된 경우만), 켜져 있을 때는 아래쪽(설정 자리)에 둔다. */}
-      {aiOn && !consented && consentCard}
-      {aiChange === 'on' && aiChangeNotice}
+      {/* 꺼져 있을 때는 위쪽에서 켜기를 안내하고(AI 서버가 설정된 경우만), 켜져 있을 때는 아래쪽(설정 자리)에 둔다.
+          동의 문서가 바뀌어 꺼졌을 때는 왜 꺼졌는지 먼저 보이게 위쪽에 둔다(AI 서버가 꺼져 있어도). */}
+      {aiChange?.at === 'top' && aiChangeNotice}
+      {cardPlace === 'top' && consentCard}
       {aiOn && !aiConsent.loading && aiConsent.error != null && (
         <section className="card">
           <h2>AI 관찰 기록</h2>
@@ -355,8 +364,8 @@ export default function ChildHome() {
         )}
       </section>
 
-      {/* 동의가 켜져 있으면 AI 서버가 꺼져 있어도 그동안의 기록은 보고 지울 수 있다. */}
-      {consented && (
+      {/* 동의를 거두지 않았으면 AI 서버가 꺼져 있어도, 동의 문서가 바뀌어 다시 동의하기 전이어도 그동안의 기록은 보고 지울 수 있다. */}
+      {hasAiRecords && (
         <ObservationList
           childId={id}
           limit={AI_LIST_LIMIT}
@@ -364,7 +373,7 @@ export default function ChildHome() {
           // 지운 기록으로 받은 코칭 카드도 서버에서 함께 지워진다.
           onDeleted={() => cards.reload()}
           emptyText={
-            aiOn ? '아직 AI 관찰 기록이 없어요. 영상을 기록하거나 실시간 카메라로 남겨 보세요.' : '아직 AI 관찰 기록이 없어요.'
+            aiAgreed ? '아직 AI 관찰 기록이 없어요. 영상을 기록하거나 실시간 카메라로 남겨 보세요.' : '아직 AI 관찰 기록이 없어요.'
           }
         />
       )}
@@ -453,8 +462,8 @@ export default function ChildHome() {
         )}
       </div>
 
-      {consented && consentCard}
-      {aiChange === 'off' && aiChangeNotice}
+      {cardPlace === 'bottom' && consentCard}
+      {aiChange?.at === 'bottom' && aiChangeNotice}
 
       {/* 다른 아이 화면으로 바로 옮겨 가면 펼침과 확인 상자를 닫은 채로 시작한다. */}
       <details key={id} className="card disclosure">

@@ -258,7 +258,7 @@ export default function Account() {
             }}
           />
           <ErrorText error={nameFormError} />
-          <button type="submit" className="btn secondary block" data-demo="account-name-submit" disabled={nameBusy}>
+          <button type="submit" className="btn secondary block" data-demo="account-name-submit" aria-disabled={nameBusy || undefined}>
             {nameBusy ? '저장하는 중…' : '이름 저장'}
           </button>
         </form>
@@ -299,7 +299,7 @@ export default function Account() {
             }}
           />
           <ErrorText error={pwFormError} />
-          <button type="submit" className="btn secondary block" data-demo="account-pw-submit" disabled={pwBusy}>
+          <button type="submit" className="btn secondary block" data-demo="account-pw-submit" aria-disabled={pwBusy || undefined}>
             {pwBusy ? '바꾸는 중…' : '비밀번호 바꾸기'}
           </button>
           <p className="field-hint" style={{ margin: '8px 0 0' }}>
@@ -368,7 +368,7 @@ export default function Account() {
         className="btn secondary block"
         style={{ margin: '4px 0 28px' }}
         data-demo="account-logout"
-        disabled={loggingOut}
+        aria-disabled={loggingOut || undefined}
         onClick={() => void doLogout()}
       >
         {loggingOut ? '로그아웃하는 중…' : '로그아웃'}

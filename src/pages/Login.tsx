@@ -86,7 +86,7 @@ export default function Login() {
         }}
       />
       <ErrorText error={error} />
-      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="login-submit" disabled={busy}>
+      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="login-submit" aria-disabled={busy || undefined}>
         {busy ? '확인하는 중…' : '로그인'}
       </button>
       <p className="status-line link-row" style={{ marginTop: 14 }}>

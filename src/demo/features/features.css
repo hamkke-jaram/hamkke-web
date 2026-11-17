@@ -292,10 +292,11 @@ body.fdemo-on .app {
 
 .fdemo-controls .btn,
 .fdemo-row .btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
-.fdemo-panel [aria-disabled='true'] {
+/* 버튼(.btn)은 styles.css의 비활성 모양을 쓴다. */
+.fdemo-panel [aria-disabled='true']:not(.btn) {
   opacity: 0.55;
   cursor: default;
 }

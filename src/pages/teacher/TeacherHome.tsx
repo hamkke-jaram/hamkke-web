@@ -192,7 +192,7 @@ export default function TeacherHome() {
             onChange={onCode}
           />
           <ErrorText error={formError} />
-          <button type="submit" className="btn block" data-demo="th-link-submit" disabled={busy}>
+          <button type="submit" className="btn block" data-demo="th-link-submit" aria-disabled={busy || undefined}>
             {busy ? '연결하는 중…' : '연결하기'}
           </button>
         </form>

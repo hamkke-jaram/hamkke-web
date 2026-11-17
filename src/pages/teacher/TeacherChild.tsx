@@ -240,8 +240,7 @@ export default function TeacherChild() {
       toast(STATUS_TOAST[status]);
       goals.reload();
     } catch (err) {
-      // 누른 버튼은 요청 중에 꺼져 포커스를 잃었다. 목표는 그대로 남아 있으니 그 제목으로 돌려 놓는다.
-      focusAfter.current = goalTitleId(g);
+      // 누른 버튼은 그대로 남아 있고(요청 중에도 aria-disabled라 포커스를 잃지 않는다) 오류는 목록 위에 알린다.
       setStatusError(err);
     } finally {
       setStatusBusy(null);
@@ -249,6 +248,8 @@ export default function TeacherChild() {
   }
 
   function startEdit(g: Goal) {
+    // 상태를 바꾸는 요청 중에는 버튼을 aria-disabled로만 막으므로 여기서 한 번 더 막는다.
+    if (statusBusy !== null) return;
     setStatusError(null);
     setEdit({ id: g.id, title: g.title, description: g.description ?? '', titleError: null, error: null, busy: false });
   }
@@ -360,7 +361,7 @@ export default function TeacherChild() {
             type="button"
             className={className}
             aria-describedby={titleId}
-            disabled={statusBusy !== null}
+            aria-disabled={statusBusy !== null || undefined}
             onClick={() => void setStatus(g, to)}
           >
             {label}
@@ -422,7 +423,7 @@ export default function TeacherChild() {
                 >
                   취소
                 </button>
-                <button type="submit" className="btn" style={{ flex: 1 }} data-demo="tc-goal-edit-save" disabled={edit.busy}>
+                <button type="submit" className="btn" style={{ flex: 1 }} data-demo="tc-goal-edit-save" aria-disabled={edit.busy || undefined}>
                   {edit.busy ? '저장하는 중…' : '저장하기'}
                 </button>
               </div>
@@ -436,7 +437,7 @@ export default function TeacherChild() {
                 className="btn small ghost"
                 aria-describedby={titleId}
                 data-demo="tc-goal-edit"
-                disabled={statusBusy !== null}
+                aria-disabled={statusBusy !== null || undefined}
                 onClick={() => startEdit(g)}
               >
                 고치기
@@ -624,7 +625,7 @@ export default function TeacherChild() {
             onChange={(e) => setGoalDesc(e.target.value)}
           />
           <ErrorText error={goalFormError} />
-          <button type="submit" className="btn block" data-demo="tc-goal-submit" disabled={goalBusy}>
+          <button type="submit" className="btn block" data-demo="tc-goal-submit" aria-disabled={goalBusy || undefined}>
             {goalBusy ? '추가하는 중…' : '목표 추가'}
           </button>
         </form>
@@ -674,7 +675,7 @@ export default function TeacherChild() {
             }}
           />
           <ErrorText error={noteFormError} />
-          <button type="submit" className="btn block" data-demo="tc-note-submit" disabled={noteBusy}>
+          <button type="submit" className="btn block" data-demo="tc-note-submit" aria-disabled={noteBusy || undefined}>
             {noteBusy ? '남기는 중…' : '메모 남기기'}
           </button>
         </form>

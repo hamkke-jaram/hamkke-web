@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { aiConsentState } from '../../ai/consentState';
 import { ApiError, api, errorMessage } from '../../api/client';
 import type { AiConsent, Child, InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
@@ -71,6 +72,7 @@ export default function Share() {
     () => (aiOn ? api<AiConsent>('GET', `/children/${id}/ai-consent`).catch(() => null) : Promise.resolve(null)),
     [id, aiOn],
   );
+  const consentState = aiConsentState(aiConsent.data);
   // AI 서버가 꺼져 있어도, 이미 켜 둔 AI 공유 항목은 여기서 끌 수 있어야 한다(선생님에게는 이미 있는 기록이 계속 보인다).
   // 한 번 보인 항목은 끈 뒤에도 이 화면에 있는 동안은 그대로 둔다(누르자마자 줄이 사라지지 않게).
   const aiShared = settings.data?.aiObservations === true || settings.data?.institutionCapture === true;
@@ -262,10 +264,18 @@ export default function Share() {
           )}
           {AI_ITEMS.map(switchRow)}
           {saveErrorIn(AI_ITEMS)}
-          {aiConsent.data && !aiConsent.data.agreed && (
+          {aiConsent.data && consentState === 'off' && (
             <p className="notice" style={{ marginBottom: 0 }}>
               지금은 이 아이의 AI 관찰 기록이 꺼져 있어요. <Link to={home}>아이 홈</Link>에서 켜야 선생님이 기관에서
               촬영할 수 있어요.
+            </p>
+          )}
+          {aiConsent.data && consentState === 'outdated' && (
+            // 동의는 거두지 않았는데 동의 문서가 바뀐 경우. 기록은 서버에 그대로 있고, 선생님에게도 켜 둔 대로 보인다.
+            <p className="notice" style={{ marginBottom: 0 }}>
+              AI 관찰 기록의 동의 내용이 바뀌어서 지금은 꺼져 있어요. <Link to={home}>아이 홈</Link>에서 바뀐 내용을
+              읽고 다시 켜기 전에는 선생님이 기관에서 촬영할 수 없어요. 그동안 쌓인 기록은 그대로 있어요. 기록을 모두
+              지우려면 아이 홈에서 끌 수 있어요.
             </p>
           )}
         </Section>

@@ -296,7 +296,7 @@ export default function Signup() {
       )}
 
       <ErrorText error={error} />
-      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="signup-submit" disabled={busy}>
+      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="signup-submit" aria-disabled={busy || undefined}>
         {busy ? '가입하는 중…' : '동의하고 가입하기'}
       </button>
       <p className="status-line link-row" style={{ marginTop: 14 }}>

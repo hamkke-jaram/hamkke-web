@@ -1,6 +1,9 @@
+import { useAuth } from '../auth/AuthContext';
 import { BackLink } from '../components/feedback';
 
 export default function Privacy() {
+  // 문서 버전은 Terms처럼 서버 값(GET /policies)을 보인다. 다시 동의 화면이 알려 주는 버전과 같아야 한다.
+  const { policies } = useAuth();
   return (
     <div>
       <BackLink />
@@ -85,7 +88,7 @@ export default function Privacy() {
           알려 드리고 다시 동의를 받아요.
         </p>
       </section>
-      <p className="muted">문서 버전 2026-11-v2 (초안)</p>
+      <p className="muted">문서 버전 {policies?.privacyVersion ?? '불러오는 중'} (초안)</p>
     </div>
   );
 }

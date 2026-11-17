@@ -153,7 +153,8 @@ body.demo-on .app {
   min-height: 44px;
 }
 
-.demo-panel [aria-disabled='true'] {
+/* 버튼(.btn)은 styles.css의 비활성 모양을 쓴다. 여기서는 단계 점 같은 나머지만 흐리게 한다. */
+.demo-panel [aria-disabled='true']:not(.btn) {
   opacity: 0.55;
   cursor: default;
 }
