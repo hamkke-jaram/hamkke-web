@@ -9,7 +9,7 @@
 
 ```bash
 npm install
-npm run dev     # http://localhost:5173 (/api → http://localhost:8080, /ai/ → http://localhost:8090 프록시, 처음에 분석 모델 약 6MB 내려받음)
+npm run dev     # http://localhost:5173 (/api → http://localhost:8080, /ai/ → http://localhost:8090 프록시, 처음 분석할 때 분석 도구 약 17MB 내려받음)
 ```
 
 백엔드는 hamkke-api에서 `./gradlew bootRun`, AI 서버는 hamkke-ai의 `server/`(8090). AI 서버가 없어도 나머지 기능은 그대로 동작한다.
