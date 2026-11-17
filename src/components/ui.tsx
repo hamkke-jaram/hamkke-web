@@ -4,6 +4,7 @@ import { FOCUS_LABEL } from '../ai/labels';
 import { errorMessage } from '../api/client';
 import type { Card, Delivery, SupportResource, WeekSummary } from '../api/types';
 import { FALLBACK_DISCLAIMER, useAuth } from '../auth/AuthContext';
+import { poseFor, poseSrc, type Pose } from './coachingArt';
 
 export function Disclaimer() {
   const { policies } = useAuth();
@@ -84,13 +85,33 @@ export function CoachingCardView({
   /** '✓ 해봤어요' 표시. 누른 버튼이 이 표시로 바뀌면 여기로 포커스를 옮길 수 있다. */
   triedRef?: Ref<HTMLSpanElement>;
 }) {
+  const pose = poseFor(card);
+  // 그림을 못 불러오면 그 자리를 비운다(깨진 그림 표시를 보이지 않는다). 카드가 바뀌어 다른 그림이 되면 다시 시도한다.
+  const [failedPose, setFailedPose] = useState<Pose | null>(null);
   return (
     <article className="card coach-card" aria-label="코칭 카드">
-      <div className="row between" style={{ marginBottom: 6 }}>
-        <span className="chip brand">{FOCUS_LABEL[card.metricFocus] ?? '코칭'}</span>
-        {delivery && <span className="muted">{formatDate(delivery.deliveredAt)}</span>}
+      <div className="coach-head">
+        {failedPose !== pose && (
+          <span className="coach-art">
+            <img
+              src={poseSrc(pose)}
+              alt=""
+              width={96}
+              height={96}
+              loading="lazy"
+              decoding="async"
+              onError={() => setFailedPose(pose)}
+            />
+          </span>
+        )}
+        <div className="coach-head-text">
+          <div className="row between wrap" style={{ marginBottom: 6 }}>
+            <span className="chip brand">{FOCUS_LABEL[card.metricFocus] ?? '코칭'}</span>
+            {delivery && <span className="muted">{formatDate(delivery.deliveredAt)}</span>}
+          </div>
+          <h3 style={{ fontSize: 18 }}>{card.title}</h3>
+        </div>
       </div>
-      <h3 style={{ fontSize: 18 }}>{card.title}</h3>
       <p style={{ margin: 0 }}>{card.body}</p>
       {delivery && onTried && (
         <div style={{ marginTop: 12 }}>

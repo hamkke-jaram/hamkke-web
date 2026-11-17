@@ -592,6 +592,57 @@ textarea {
   }
 }
 
+/* 코칭 카드 머리: 왼쪽에 병아리 그림, 오른쪽에 초점·날짜와 제목. 본문은 그 아래 카드 너비 전체를 쓴다. */
+.coach-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.coach-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.coach-head-text h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 받은 날짜: 흰 카드 위의 --ink-3은 4.45:1이라 한 단계 진한 색을 쓴다. */
+.coach-head-text .muted {
+  color: var(--ink-2);
+}
+
+/* 그림 바탕(연보라)은 그림 파일에 들어 있어 테마와 상관없이 같다. 불러오는 동안에도 같은 색 타일을 보인다.
+   고대비에서는 타일 둘레에 --edge 선을 두른다(다른 테마에서는 --edge가 투명). */
+.coach-art {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f3eefb;
+  border: 1px solid var(--edge);
+}
+
+/* 그림 파일은 병아리 둘레 여백이 넓어서, 타일 안에서 조금 키워 보인다(여백만 잘린다). 키우지 않으려면 scale(1). */
+.coach-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scale(1.3);
+  transform-origin: 50% 55%;
+}
+
+@media (min-width: 420px) {
+  .coach-art {
+    width: 112px;
+    height: 112px;
+  }
+}
+
 .coach-card .evidence {
   margin-top: 14px;
   padding-top: 12px;

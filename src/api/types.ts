@@ -68,6 +68,8 @@ export interface RecordItem {
 
 export interface Card {
   id: number;
+  /** 카드 코드(예: 'JP-G-01'). 그림 고르기에만 쓴다. 예전 서버 응답에는 없다. */
+  code?: string;
   title: string;
   body: string;
   situation: string;
