@@ -19,9 +19,12 @@ import {
   type Stage,
 } from '@hamkke-jaram/analysis';
 import { runAudioInWorker } from '../../analysis/runAudioInWorker';
+import Mascot from '../../components/Mascot';
 import TriableCard from '../../components/TriableCard';
 import { BackLink, refocus } from '../../components/feedback';
 import { ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
+import { AlbumIcon, CameraIcon, InfoIcon } from './icons';
+import './parent.css';
 
 type Phase =
   | { kind: 'guide'; notice?: string }
@@ -302,7 +305,15 @@ export default function Record() {
             {phase.message}
           </p>
         )}
-        <section className="card soft" aria-labelledby="record-steps-title">
+        <section className="rec-guide" aria-labelledby="record-steps-title">
+          {/* 촬영 화면처럼 보이는 꾸밈 자리(시안 '영상 기록'). 실제 미리보기가 아니라서 화면 낭독기에는 읽히지 않는다.
+              촬영은 폰의 카메라 앱이 하고, 이 화면은 카메라를 켜지 않는다. */}
+          <div className="rec-frame" aria-hidden="true">
+            <span className="rec-frame-badge">
+              <CameraIcon size={18} />
+            </span>
+            <Mascot name="family" size={168} />
+          </div>
           <h2 id="record-steps-title">이렇게 찍어 주세요</h2>
           <ol className="steps">
             <li>폰을 선반이나 거치대에 세워 두세요.</li>
@@ -314,8 +325,11 @@ export default function Record() {
         <p className="muted" style={{ margin: '0 0 14px' }}>
           처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
         </p>
-        <div className="stack">
-          <button type="button" className="btn block" data-demo="record-camera" onClick={() => cameraRef.current?.click()}>
+        <div className="rec-actions">
+          <button type="button" className="rec-shutter" data-demo="record-camera" onClick={() => cameraRef.current?.click()}>
+            <span className="rec-shutter-dot" aria-hidden="true">
+              <CameraIcon size={30} />
+            </span>
             지금 촬영하기
           </button>
           <button
@@ -324,9 +338,18 @@ export default function Record() {
             data-demo="record-gallery"
             onClick={() => galleryRef.current?.click()}
           >
+            <AlbumIcon />
             앨범에서 영상 고르기
           </button>
         </div>
+        <p className="rec-note">
+          <InfoIcon size={18} />
+          <span>
+            {aiAgreed
+              ? '영상 원본과 소리는 기기에서 분석해요. 장면 사진만 AI 서버로 보내요.'
+              : '영상은 기기에서 분석해요.'}
+          </span>
+        </p>
       </div>
     );
   }

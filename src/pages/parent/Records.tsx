@@ -1,7 +1,8 @@
 import { useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { ChangeTrend, Child, RecordItem } from '../../api/types';
+import EmptyState from '../../components/EmptyState';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
 import { usePagedList } from '../../components/paging';
 import { MoreButton, formatDuration, loadStateView, useLoad } from '../../components/ui';
@@ -58,9 +59,19 @@ export default function Records() {
         </h2>
         {loadStateView(list, '기록을') ??
           (items.length === 0 ? (
-            <p className="muted" style={{ margin: 0 }}>
-              아직 남긴 기록이 없어요.
-            </p>
+            <EmptyState
+              mascot="dome"
+              mascotSize={128}
+              title="아직 남긴 기록이 없어요"
+              titleAs="h3"
+              action={
+                <Link to={`${home}/record`} className="btn block">
+                  영상 기록하기
+                </Link>
+              }
+            >
+              함께 논 영상을 기록하면 여기에 차례로 쌓여요.
+            </EmptyState>
           ) : (
             <div>
               {items.map((r) => {

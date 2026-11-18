@@ -1,0 +1,599 @@
+/*
+ * 부모 화면(보호자 홈·아이 등록·아이 홈·영상 기록·기록 목록·공유)의 시안 모양(pm/design/README.md, ref-coaching-record.jpg).
+ * 색은 styles.css의 변수만 쓴다(값을 직접 적지 않는다). 그래야 밝은·어두운·고대비 화면에 그대로 맞춰진다.
+ * - 노랑: --cta(바탕) / --cta-ink(그 위의 글자) / --cta-line(경계). 노랑은 글자색으로 쓰지 않는다.
+ * - 크림 면: --surface-2. 선: --line. 고대비에서만 보이는 테두리: --edge.
+ * 변수가 아직 없는 styles.css에서도 선언이 무효가 되지 않게 대체값을 둔 곳이 있다.
+ */
+
+.p-icon {
+  flex: none;
+}
+
+/* 화면 머리 아래 큰 캐릭터 자리. 그림이 없으면(못 불러오면) 자리째 사라진다. */
+.p-hero {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 16px;
+}
+
+.p-hero:empty {
+  display: none;
+}
+
+.p-hero .mascot {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── 보호자 홈(아이 선택): 작은 인사 + 큰 제목, 오른쪽에 캐릭터. 아이마다 테두리 카드 한 줄 ── */
+
+.ph-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.ph-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ph-head h1 {
+  margin: 0;
+}
+
+.ph-eyebrow {
+  margin: 0 0 2px;
+  font-size: 15px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.ph-head .mascot {
+  width: min(34vw, 132px);
+  margin: 0;
+}
+
+.kid-list {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.kid-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 15px);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.kid-row:hover {
+  background: var(--surface-2);
+}
+
+.kid-row strong {
+  display: block;
+  font-size: 18px;
+}
+
+.kid-row .meta {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.kid-row .p-icon {
+  color: var(--ink-2);
+}
+
+/* ── 아이 홈 ── */
+
+.home-head {
+  margin: 0 0 16px;
+}
+
+.home-head h1 {
+  margin: 4px 0 2px;
+  overflow-wrap: anywhere;
+}
+
+.home-sub {
+  margin: 0 0 6px;
+  color: var(--ink-2);
+}
+
+.home-meta {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* 가장 먼저 누를 버튼: 시안의 노란 '영상 기록하기'. 색은 .btn 기본(주 버튼)을 그대로 쓴다. */
+.btn.home-record {
+  min-height: 56px;
+  margin-bottom: 20px;
+  font-size: 20px;
+  gap: 10px;
+}
+
+/* 구역: 제목은 카드 밖 왼쪽, 오른쪽에 '지난 코칭 >' 같은 길 */
+.home-sec {
+  margin-bottom: 24px;
+}
+
+.home-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.home-sec-head h2 {
+  margin: 0;
+}
+
+.home-sec-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  margin: -8px -6px -8px 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.home-sec .card {
+  margin-bottom: 0;
+}
+
+/* 오늘의 코칭: 옆으로 넘겨 보는 줄. 다음 카드가 화면 끝에 살짝 걸쳐 보이게 좌우 여백만큼 밖으로 뺀다. */
+.hc-rail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 calc(-1 * var(--gutter, 16px));
+  padding: 0 var(--gutter, 16px);
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 var(--gutter, 16px);
+  scrollbar-width: none;
+}
+
+.hc-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.hc-rail > li {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.hc-rail.many > li {
+  flex-basis: calc(100% - 20px);
+}
+
+/* 크림 카드: 왼쪽에 받은 날·제목·한 줄, 오른쪽에 그림. 펼친 내용은 그 아래 카드 너비 전체를 쓴다. */
+.hc-card {
+  /* 그림 한 변. 글 칸의 오른쪽 여백과 같은 값을 써서 좁은 화면에서도 글과 그림이 겹치지 않는다. */
+  --hc-art: min(30vw, 132px);
+  position: relative;
+  padding: 18px 20px 6px;
+  border-radius: var(--radius, 20px);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+
+.hc-text {
+  min-height: 104px;
+}
+
+.hc-card.has-art .hc-text,
+.hc-card.has-art .hc-more > summary {
+  margin-right: calc(var(--hc-art) + 2px);
+}
+
+.hc-date {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.hc-title {
+  margin: 0 0 6px;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* 본문의 첫 문장. 길면 두 줄까지만 보이고, 전체는 펼치면 나온다. */
+.hc-line {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 15px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.hc-art {
+  position: absolute;
+  top: 18px;
+  right: 14px;
+  width: var(--hc-art);
+  height: var(--hc-art);
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.hc-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 화살표(→)가 펼침 표시를 맡는다. 공통 details 표시(::before)는 끈다. */
+.hc-more > summary::before {
+  content: none;
+}
+
+.hc-more > summary .p-icon {
+  transition: transform 0.15s ease;
+}
+
+.hc-more[open] > summary .p-icon {
+  transform: rotate(90deg);
+}
+
+/* 펼친 내용: 공통 코칭 카드에서 위에 이미 보인 것(그림·제목·날짜)만 가리고, 초점 이름표·본문·'오늘 해봤어요'·출처는 그대로. */
+.hc-detail {
+  padding: 4px 0 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.hc-detail .coach-card {
+  margin: 0;
+  padding: 12px 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hc-detail .coach-art,
+.hc-detail .coach-head-text h3,
+.hc-detail .coach-head-text .muted {
+  display: none;
+}
+
+/* 크림 면 위에서는 같은 계열 칩이 묻히므로 흰 바탕으로 */
+.hc-detail .chip.brand {
+  background: var(--surface);
+}
+
+.hc-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hc-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+
+.hc-dots span.on {
+  background: var(--cta, var(--brand));
+  box-shadow: inset 0 0 0 1px var(--cta-line, transparent);
+}
+
+/* 주간 기록: 이번 주 기간, 합 두 칸, 요일 막대 */
+.wk-period {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.wk-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 0 16px;
+}
+
+.wk-stats > div {
+  min-width: 0;
+}
+
+.wk-stats > div + div {
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
+
+.wk-stats dt {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.wk-stats dd {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.wk-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.wk-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wk-track {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 72px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 노란 막대는 흰 바탕과 밝기 차가 작다. 주 버튼처럼 --cta-line 선으로 경계를 준다(정보를 담은 그림은 3:1 이상). */
+.wk-bar {
+  width: min(100%, 30px);
+  border-radius: 8px 8px 0 0;
+  background: var(--cta, var(--brand));
+  background: color-mix(in srgb, var(--cta, var(--brand)) 55%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--cta-line, transparent);
+}
+
+.wk-bar.today {
+  background: var(--cta, var(--brand));
+}
+
+.wk-day {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.wk-day.today {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.wk-note {
+  margin: 14px 0 4px;
+}
+
+/* 둥근 '선생님 이야기' 버튼(시안 홈의 오른쪽 아래). 화면에 떠 있지 않고 주간 기록 아래 오른쪽에 놓인다. */
+.home-fab-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 20px;
+}
+
+.home-fab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 88px;
+  padding: 4px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.home-fab-dot {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--cta, var(--brand));
+  border: 1px solid var(--cta-line, transparent);
+}
+
+.home-fab-dot .mascot {
+  width: 86%;
+  height: 86%;
+  margin: 8% 0 0;
+  object-fit: contain;
+}
+
+/* ── 아이 등록 (Figma: 큰 캐릭터, 20px 제목, 노란 체크, 큰 노란 버튼) ── */
+
+.child-new .p-hero {
+  margin: 0 0 8px;
+}
+
+.child-new .p-hero .mascot {
+  width: min(100%, 340px);
+}
+
+.child-new h1 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.child-new .check input {
+  accent-color: var(--cta, var(--brand));
+}
+
+/* 입력칸 모서리는 공통 값(--radius-field)을 따른다. 버튼은 Figma 실측(높이 72, 모서리 20, 글자 30 Bold). */
+.btn.child-start {
+  min-height: 72px;
+  border-radius: 20px;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+/* ── 영상 기록 안내 ── */
+
+.rec-guide {
+  margin-bottom: 14px;
+  padding: 14px 18px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 20px);
+  background: var(--surface);
+}
+
+/* 촬영 화면처럼 보이는 꾸밈 자리(실제 미리보기가 아니다. 촬영은 폰 카메라 앱이 한다). */
+.rec-frame {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 132px;
+  margin: 0 -4px 14px;
+  padding: 14px 12px 0;
+  border-radius: var(--radius-btn, 16px);
+  overflow: hidden;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+
+.rec-frame .mascot {
+  display: block;
+  max-width: 62%;
+  height: auto;
+}
+
+/* 그림을 못 불러오면 빈 상자를 남기지 않는다(:has를 모르는 옛 브라우저에서는 빈 자리가 남을 뿐 깨지지 않는다). */
+.rec-frame:not(:has(.mascot)) {
+  display: none;
+}
+
+.rec-frame-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--brand);
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+
+.rec-guide h2 {
+  margin: 0 0 4px;
+}
+
+.rec-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 12px;
+}
+
+/* 큰 촬영 버튼: 노란 원 + 아래 이름. 버튼 하나라 누르는 영역은 원과 글 전체다. */
+.rec-shutter {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 132px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius, 20px);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rec-shutter-dot {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--cta, var(--brand));
+  color: var(--cta-ink, var(--brand-ink));
+  /* 흰 바탕에서 노랑만으로는 원의 경계가 흐리다. 주 버튼과 같은 테두리 색(--cta-line, 바탕 위 3:1)으로 경계를 준다. */
+  border: 1px solid var(--cta-line, transparent);
+  box-shadow:
+    0 0 0 5px var(--surface),
+    0 0 0 6px var(--line);
+}
+
+.rec-shutter:hover .rec-shutter-dot {
+  filter: brightness(0.97);
+}
+
+.rec-actions .btn {
+  gap: 8px;
+}
+
+.rec-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.rec-note .p-icon {
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-more > summary .p-icon {
+    transition: none;
+  }
+
+  .hc-rail {
+    scroll-behavior: auto;
+  }
+}

@@ -42,10 +42,3 @@
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-
-/* 계정 화면의 작은 폼 묶음 */
-.account-form + .account-form {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}

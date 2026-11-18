@@ -52,8 +52,8 @@ describe('consentCardPlace', () => {
     expect(consentCardPlace('outdated', false)).toBe('top');
   });
 
-  it('처음 꺼짐은 AI 서버가 설정된 경우에만 위쪽에서 켜기를 안내한다', () => {
-    expect(consentCardPlace('off', true)).toBe('top');
+  it('처음 꺼짐은 AI 서버가 설정된 경우에만, 가운데(주간 기록 아래)에서 켜기를 안내한다', () => {
+    expect(consentCardPlace('off', true)).toBe('middle');
     expect(consentCardPlace('off', false)).toBe('none');
   });
 });

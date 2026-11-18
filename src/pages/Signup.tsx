@@ -5,6 +5,7 @@ import { ApiError, api, onSessionChange } from '../api/client';
 import type { Role, TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { Field, PasswordField, describedBy, looksLikeEmail, refocus, useToast } from '../components/feedback';
+import Mascot from '../components/Mascot';
 import { ErrorText, Loading } from '../components/ui';
 
 /** 가입 도중 다른 화면(자세히, 도움받기 등)에 다녀왔을 때 되살릴 내용. 비밀번호는 담지 않는다. */
@@ -169,7 +170,12 @@ export default function Signup() {
 
   return (
     <form onSubmit={submit} noValidate>
-      <h1>가입하기</h1>
+      <div className="page-head">
+        <div className="page-head-text">
+          <h1>가입하기</h1>
+        </div>
+        <Mascot name="family" size={88} />
+      </div>
       <div className="tabs" role="group" aria-label="가입 유형" aria-describedby="signup-role-hint">
         <button type="button" aria-pressed={isParent} data-demo="signup-role-parent" onClick={() => setRole('PARENT')}>
           보호자

@@ -3,7 +3,9 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router
 import Observe from './ai/Observe';
 import type { Role } from './api/types';
 import { useAuth } from './auth/AuthContext';
+import BrandMark from './components/BrandMark';
 import { useRouteFocus } from './components/feedback';
+import { Icon } from './components/icons';
 import { Disclaimer, Loading } from './components/ui';
 import { DEMO_ENABLED } from './demo/DemoContext';
 import DemoStart from './demo/DemoStart';
@@ -12,6 +14,7 @@ import { FeatureMenuRoute } from './demo/features/entry';
 import Account from './pages/Account';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import NotFound, { ScreenErrorBoundary } from './pages/NotFound';
 import Privacy from './pages/Privacy';
 import Reconsent from './pages/Reconsent';
 import Signup from './pages/Signup';
@@ -55,20 +58,23 @@ function Layout() {
     <div className="app">
       <header className="topbar">
         <Link to={home} className="brand">
-          <img src="/icon.svg" alt="" width={28} height={28} />
+          <BrandMark />
           함께자람
         </Link>
         <span className="spacer" />
-        <Link to="/support" className="icon-btn" aria-current={pathname === '/support' ? 'page' : undefined}>
-          도움받기
+        {/* 아이콘만 보이는 버튼. 이름은 aria-label(낭독)과 title(마우스를 올렸을 때)로 알린다. */}
+        <Link to="/support" className="icon-btn" aria-label="도움받기" title="도움받기" aria-current={pathname === '/support' ? 'page' : undefined}>
+          <Icon name="info" className="topbar-icon" />
         </Link>
         {user && (
-          <Link to="/account" className="icon-btn" aria-current={pathname === '/account' ? 'page' : undefined}>
-            내 정보
+          <Link to="/account" className="icon-btn" aria-label="내 정보" title="내 정보" aria-current={pathname === '/account' ? 'page' : undefined}>
+            <Icon name="settings" className="topbar-icon" />
           </Link>
         )}
       </header>
-      <main>{blocked ? <Reconsent pending={pending} /> : <Outlet />}</main>
+      <main>
+        <ScreenErrorBoundary resetKey={pathname}>{blocked ? <Reconsent pending={pending} /> : <Outlet />}</ScreenErrorBoundary>
+      </main>
       <Disclaimer />
       {DEMO_ENABLED && <DemoTour />}
     </div>
@@ -118,7 +124,7 @@ export default function App() {
         <Route path="/t/children/:childId" element={<RequireRole role="TEACHER"><TeacherChild /></RequireRole>} />
         <Route path="/t/children/:childId/observe" element={<RequireRole role="TEACHER"><Observe /></RequireRole>} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );

@@ -104,13 +104,12 @@ const SCHEMES: Array<{ value: Scheme; label: string }> = [
   { value: 'dark', label: '어둡게' },
 ];
 
-/** 내 정보 화면의 '화면 설정' 카드. */
-export function ThemeSettingsCard() {
+/** 화면 설정의 내용(밝기·고대비). 제목은 쓰는 쪽에서 붙인다 — 내 정보 화면은 목록 행 제목 아래에 펼쳐 보인다. */
+export function ThemeSettings() {
   const { pref, update, deviceHighContrast } = useThemePref();
   const highOn = pref.contrast === 'more' || (pref.contrast === 'system' && deviceHighContrast);
   return (
-    <section className="card" aria-labelledby="theme-settings-h">
-      <h2 id="theme-settings-h">화면 설정</h2>
+    <>
       <p className="field-label" id="theme-scheme-label">
         밝기
       </p>
@@ -144,6 +143,6 @@ export function ThemeSettingsCard() {
           </button>
         </p>
       )}
-    </section>
+    </>
   );
 }

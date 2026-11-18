@@ -251,7 +251,7 @@ async function recoverSaved(childId: number, recordedAt: string | undefined): Pr
       const gap = latest ? Date.parse(latest.deliveredAt) - Date.parse(found.createdAt) : NaN;
       if (latest && gap > -1000 && gap < RECOVER_CARD_WINDOW_MS) coaching = { delivery: latest };
     } catch {
-      /* 카드는 아이 홈의 '이번 코칭'에서 볼 수 있다 */
+      /* 카드는 아이 홈의 '오늘의 코칭'에서 볼 수 있다 */
     }
   }
   return { observation: found, coaching };

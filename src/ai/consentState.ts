@@ -26,15 +26,16 @@ export function keepsAiRecords(state: AiConsentState): boolean {
 }
 
 /** 아이 홈에서 동의 카드를 두는 자리. */
-export type ConsentCardPlace = 'top' | 'bottom' | 'none';
+export type ConsentCardPlace = 'top' | 'middle' | 'bottom' | 'none';
 
 /**
  * - 켜져 있으면 아래쪽 설정 자리.
  * - 버전이 바뀌어 꺼졌으면 위쪽: 왜 꺼졌는지 먼저 보여야 한다. AI 서버가 꺼져 있어도 보여 준다(기록 지우기·끄기는 된다).
- * - 처음부터 꺼져 있으면 위쪽에서 켜기를 안내하되, AI 서버가 설정되지 않았으면 그리지 않는다(서버가 새 동의를 받지 않는다).
+ * - 처음부터 꺼져 있으면 가운데(주간 기록 아래)에서 켜기를 안내한다. 화면 위쪽은 영상 기록·오늘의 코칭·주간 기록이 먼저다.
+ *   AI 서버가 설정되지 않았으면 그리지 않는다(서버가 새 동의를 받지 않는다).
  */
 export function consentCardPlace(state: AiConsentState, aiOn: boolean): ConsentCardPlace {
   if (state === 'on') return 'bottom';
   if (state === 'outdated') return 'top';
-  return aiOn ? 'top' : 'none';
+  return aiOn ? 'middle' : 'none';
 }

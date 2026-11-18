@@ -4,7 +4,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import BrandMark from '../components/BrandMark';
 import { Field, PasswordField, looksLikeEmail, refocus } from '../components/feedback';
+import { Icon } from '../components/icons';
 import { ErrorText } from '../components/ui';
 
 /**
@@ -54,6 +56,10 @@ export default function Login() {
 
   return (
     <form onSubmit={submit} noValidate>
+      {/* 시안: 로고 마크만 두고 캐릭터는 넣지 않는다. */}
+      <div className="login-mark">
+        <BrandMark width={112} />
+      </div>
       <h1>로그인</h1>
       <p className="lead">다시 오셨네요, 반가워요.</p>
       <Field
@@ -86,8 +92,9 @@ export default function Login() {
         }}
       />
       <ErrorText error={error} />
-      <button type="submit" className="btn block" style={{ marginTop: 6 }} data-demo="login-submit" aria-disabled={busy || undefined}>
+      <button type="submit" className="btn block pill" style={{ marginTop: 6 }} data-demo="login-submit" aria-disabled={busy || undefined}>
         {busy ? '확인하는 중…' : '로그인'}
+        {!busy && <Icon name="arrow" className="btn-icon" />}
       </button>
       <p className="status-line link-row" style={{ marginTop: 14 }}>
         처음이신가요?{' '}

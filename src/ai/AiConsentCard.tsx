@@ -295,14 +295,16 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
   }
 
   return (
-    <section className="card soft" aria-labelledby={headingId} data-demo="ai-card">
+    // 아이 홈에서 노란 주 버튼은 '영상 기록하기' 하나, 연보라 면은 '오늘의 코칭' 하나만 두려고(시안 홈),
+    // 켜기를 권하는 이 카드는 흰 카드 + 보조 버튼으로 한 단계 낮춘다. 내용을 펼친 뒤의 '동의하고 켜기'는 주 버튼 그대로다.
+    <section className="card" aria-labelledby={headingId} data-demo="ai-card">
       <h2 id={headingId}>AI 관찰 기록</h2>
       <p style={{ marginTop: 0 }}>
         AI가 장면 사진을 보고 아이와 어른의 모습을 짧은 글로 적어 드려요. 지금은 꺼져 있어서 사진을 한 장도 보내지
         않아요.
       </p>
       {!open ? (
-        <button type="button" className="btn block" data-demo="ai-open" onClick={() => setOpen(true)}>
+        <button type="button" className="btn block secondary" data-demo="ai-open" onClick={() => setOpen(true)}>
           AI 관찰 기록 켜기
         </button>
       ) : (

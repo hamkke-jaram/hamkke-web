@@ -3,8 +3,12 @@ import { Link, Navigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { Child, WeekSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import EmptyState from '../../components/EmptyState';
+import Mascot from '../../components/Mascot';
 import { ErrorText, Loading, formatAge, useLoad } from '../../components/ui';
+import { ChevronIcon } from './icons';
 import { thisWeekStart } from './week';
+import './parent.css';
 
 /** 서버의 ChildService.MAX_CHILDREN_PER_PARENT와 같은 값. */
 const MAX_CHILDREN = 5;
@@ -62,11 +66,26 @@ export default function ParentHome() {
   if (loading) return <Loading />;
   if (data && data.length === 1) return <Navigate to={`/p/children/${data[0].id}`} replace />;
 
+  // 아이가 여럿이면 시안의 '아이 선택' 머리(작은 인사 + 큰 제목 + 오른쪽 캐릭터), 없으면 인사가 제목이다.
+  const choosing = (data?.length ?? 0) > 1;
+
   return (
     <div>
-      <h1 ref={h1Ref} tabIndex={-1}>
-        {user?.displayName}님, 안녕하세요
-      </h1>
+      {choosing ? (
+        <div className="ph-head">
+          <div className="ph-head-text">
+            <p className="ph-eyebrow">{user?.displayName}님, 안녕하세요</p>
+            <h1 ref={h1Ref} tabIndex={-1}>
+              아이 선택
+            </h1>
+          </div>
+          <Mascot name="family" size={132} />
+        </div>
+      ) : (
+        <h1 ref={h1Ref} tabIndex={-1}>
+          {user?.displayName}님, 안녕하세요
+        </h1>
+      )}
       <p className="lead">오늘도 아이 곁에 있어 주셔서 고마워요.</p>
       {error != null && (
         <div style={{ marginBottom: 14 }}>
@@ -84,39 +103,47 @@ export default function ParentHome() {
         </div>
       )}
       {data && data.length === 0 && (
-        <section className="card soft">
-          <h2>아이를 등록해 주세요</h2>
-          <p>별칭과 태어난 해·달만 있으면 시작할 수 있어요. 실명은 받지 않아요.</p>
-          <Link to="/p/children/new" className="btn block">
-            아이 등록하기
-          </Link>
-        </section>
+        <EmptyState
+          mascot="dome"
+          title="아이를 등록해 주세요"
+          action={
+            <Link to="/p/children/new" className="btn block">
+              아이 등록하기
+            </Link>
+          }
+        >
+          별칭과 태어난 해·달만 있으면 시작할 수 있어요. 실명은 받지 않아요.
+        </EmptyState>
       )}
       {data && data.length > 1 && (
-        <section className="card" aria-labelledby="parenthome-kids-h">
-          <h2 id="parenthome-kids-h">우리 아이</h2>
-          {data.map((c) => {
-            const line = lines[c.id];
-            return (
-              <Link key={c.id} to={`/p/children/${c.id}`} className="list-item">
-                <span className="avatar" aria-hidden="true">
-                  {c.nickname.slice(0, 1)}
-                </span>
-                <span className="item-body">
-                  <strong>{c.nickname}</strong>
-                  {/* 줄이 넘치면 기록 상태가 통째로 다음 줄로 가도록 두 조각으로 나눈다. */}
-                  <span className="meta">
-                    <span style={{ display: 'inline-block', marginRight: 4 }}>
-                      {formatAge(c.ageMonths)}
-                      {line ? ' ·' : ''}
+        <>
+          {/* 아이마다 테두리 카드 한 줄(시안). 얼굴 그림 대신 별칭 첫 글자를 쓴다: 캐릭터·그림은 아이를 나타내지 않는다. */}
+          <ul className="kid-list" aria-label="우리 아이">
+            {data.map((c) => {
+              const line = lines[c.id];
+              return (
+                <li key={c.id}>
+                  <Link to={`/p/children/${c.id}`} className="kid-row">
+                    <span className="avatar" aria-hidden="true">
+                      {c.nickname.slice(0, 1)}
                     </span>
-                    {line && <span style={{ display: 'inline-block' }}>{line}</span>}
-                  </span>
-                </span>
-                <span aria-hidden="true">›</span>
-              </Link>
-            );
-          })}
+                    <span className="item-body">
+                      <strong>{c.nickname}</strong>
+                      {/* 줄이 넘치면 기록 상태가 통째로 다음 줄로 가도록 두 조각으로 나눈다. */}
+                      <span className="meta">
+                        <span style={{ display: 'inline-block', marginRight: 4 }}>
+                          {formatAge(c.ageMonths)}
+                          {line ? ' ·' : ''}
+                        </span>
+                        {line && <span style={{ display: 'inline-block' }}>{line}</span>}
+                      </span>
+                    </span>
+                    <ChevronIcon size={20} />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
           {data.length < MAX_CHILDREN ? (
             <Link to="/p/children/new" className="btn ghost">
               + 아이 추가
@@ -126,7 +153,7 @@ export default function ParentHome() {
               아이는 {MAX_CHILDREN}명까지 등록할 수 있어요.
             </p>
           )}
-        </section>
+        </>
       )}
     </div>
   );

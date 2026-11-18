@@ -6,6 +6,7 @@ import { aiConsentState, consentCardPlace, keepsAiRecords } from '../../ai/conse
 import { ApiError, api } from '../../api/client';
 import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import Mascot from '../../components/Mascot';
 import TriableCard from '../../components/TriableCard';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
 import { usePagedList } from '../../components/paging';
@@ -20,8 +21,12 @@ import {
   loadStateView,
   useLoad,
 } from '../../components/ui';
-import { thisWeekStart } from './week';
+import HomeCoaching from './HomeCoaching';
+import WeekCard from './WeekCard';
+import { CameraIcon, ChevronIcon } from './icons';
+import { thisWeekStats } from './week';
 import '../extra.css';
+import './parent.css';
 
 const GOAL_STATUS: Record<string, string> = { IN_PROGRESS: '진행 중', ACHIEVED: '이뤘어요', ARCHIVED: '보관' };
 /** 서버의 ChildService.MAX_CHILDREN_PER_PARENT와 같은 값. */
@@ -32,10 +37,12 @@ const RECORD_WINDOW = 100;
 const WEEKS = 8;
 /** 아이 홈에 보여 줄 AI 관찰 기록 개수(최신순). 더 있으면 '더 보기'로 이어서 가져온다. */
 const AI_LIST_LIMIT = 5;
-/** 코칭 카드 이력을 한 번에 가져오는 개수(이번 코칭 1장 + 지난 카드). */
+/** 코칭 카드 이력을 한 번에 가져오는 개수(오늘의 코칭 1장 + 지난 카드). */
 const CARD_PAGE = 10;
 /** 선생님 관찰 메모를 한 번에 가져오는 개수. */
 const NOTE_PAGE = 5;
+/** '오늘의 코칭'에서 옆으로 넘겨 볼 카드 수(가장 최근 카드 + 바로 앞의 카드들). 그보다 오래된 카드는 '지난 코칭 카드'에 있다. */
+const RAIL_CARDS = 3;
 
 /** 서버 RecordResponse에는 저장 시각(createdAt)도 있다. 저장 순서를 알아내는 데만 쓴다. */
 type SavedRecord = RecordItem & { createdAt: string };
@@ -44,7 +51,7 @@ type SavedRecord = RecordItem & { createdAt: string };
  * 서버에 가장 나중에 저장된 기록을 고른다. 목록은 촬영 시각(recordedAt) 순이라
  * 갤러리에서 예전 영상을 골라 기록하면 방금 저장한 기록이 맨 앞에 오지 않으므로, 저장 시각과 id로 다시 고른다.
  * 한계: 서버가 촬영 시각 기준 최근 RECORD_WINDOW개만 주므로, 그보다 오래된 촬영일의 영상으로
- * 새로 기록하면 그 기록은 여기서 보이지 않는다(이때는 카드 쪽 비교로 '이번 코칭'이 유지된다).
+ * 새로 기록하면 그 기록은 여기서 보이지 않는다(이때는 카드 쪽 비교로 '오늘의 코칭'이 유지된다).
  */
 function newestSaved(records: SavedRecord[] | null): SavedRecord | undefined {
   let best: SavedRecord | undefined;
@@ -78,10 +85,10 @@ export default function ChildHome() {
   // 하므로(서버도 허용한다) 동의 상태는 늘 확인한다.
   const aiOn = policies?.aiObservationEnabled === true;
   const aiConsent = useLoad(() => api<AiConsent>('GET', `/children/${id}/ai-consent`), [id]);
-  // 방금 켜거나 껐을 때의 결과 안내. 동의 카드는 상태에 따라 자리가 달라서(꺼짐·동의 문서가 바뀌어 꺼짐: 위쪽,
-  // 켜짐: 아래쪽 설정 자리) 누른 카드가 그 자리에서 사라지거나 다른 카드로 바뀐다. 누른 자리(at)에 결과를 알리고
-  // 포커스를 옮긴다.
-  const [aiChange, setAiChange] = useState<{ kind: 'on' | 'off'; at: 'top' | 'bottom' } | null>(null);
+  // 방금 켜거나 껐을 때의 결과 안내. 동의 카드는 상태에 따라 자리가 달라서(동의 문서가 바뀌어 꺼짐: 위쪽,
+  // 처음 꺼짐: 주간 기록 아래, 켜짐: 아래쪽 설정 자리) 누른 카드가 그 자리에서 사라지거나 다른 카드로 바뀐다.
+  // 누른 자리(at)에 결과를 알리고 포커스를 옮긴다.
+  const [aiChange, setAiChange] = useState<{ kind: 'on' | 'off'; at: 'top' | 'middle' | 'bottom' } | null>(null);
   const aiChangeRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => setAiChange(null), [id]);
   useEffect(() => {
@@ -103,6 +110,8 @@ export default function ChildHome() {
   // 제목은 결과(아이 화면, 찾을 수 없음, 불러오지 못함)에 따라 다르지만 한 번에 하나만 그려지므로 같은 ref를 쓴다.
   const h1Ref = useRef<HTMLHeadingElement>(null);
   const retrying = useRef(false);
+  const pastRef = useRef<HTMLDetailsElement>(null);
+  const storyRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (!child.loading && retrying.current) {
       retrying.current = false;
@@ -162,7 +171,7 @@ export default function ChildHome() {
   }
   const c = child.data;
   const weeks = weekly.data?.weeks ?? [];
-  // 가장 나중에 저장된 기록에 카드 대신 안내가 나갔다면(NEEDS_ATTENTION) '이번 코칭' 자리에 안내를 보여 주고,
+  // 가장 나중에 저장된 기록에 카드 대신 안내가 나갔다면(NEEDS_ATTENTION) '오늘의 코칭' 자리에 안내를 보여 주고,
   // 예전 카드는 모두 지난 카드 목록으로 보낸다. 카드는 기록 저장 직후에 전달되므로, 그 안내 기록보다
   // 나중에 전달된 카드가 있으면(=그 뒤에 저장된 기록의 카드) 카드를 보여 준다.
   const newest = newestSaved(records.data);
@@ -174,22 +183,38 @@ export default function ChildHome() {
   const replaceCard = (d: Delivery) => cards.setItems((list) => list?.map((x) => (x.id === d.id ? d : x)) ?? null);
   const dropCard = (d: Delivery) => cards.setItems((list) => list?.filter((x) => x.id !== d.id) ?? null);
   const activeGoals = (goals.data ?? []).filter((g) => g.status !== 'ARCHIVED');
-  // 기록 버튼 아래 한 줄: 기록이 하나도 없으면 첫 기록 안내, 있으면 이번 주(한국 시간 월요일부터) 기록 수.
-  // 목록이 비어 있으면 기록이 정말 없는 것이고, 주간 요약은 기록이 있는 주만 준다.
-  // 주간 요약은 촬영 시각으로 주를 나누므로(앨범의 지난 영상은 그 주로 간다) 아래 주간 기록과 같게 '함께 논' 때로 말한다.
-  // 둘 다 불러온 뒤에 정해서 문장이 한 번 바뀌어 보이지 않게 한다(자리는 미리 잡아 둔다).
-  let recordLine: string | null = null;
-  if (records.loading || weekly.loading) {
-    recordLine = null;
-  } else if (records.data && records.data.length === 0) {
-    recordLine = '1~3분이면 충분해요. 첫 기록을 남겨 보세요.';
-  } else if (weekly.data) {
-    const n = weeks.find((w) => w.weekStart === thisWeekStart())?.recordCount ?? 0;
-    recordLine =
-      n > 0
-        ? `이번 주에 함께 논 모습을 ${n}번 기록했어요. 한 주에 한두 번이면 충분해요.`
-        : '이번 주에 함께 논 기록은 아직 없어요. 한 주에 한두 번이면 충분해요.';
+  // 선생님이 남긴 것이 하나도 없다(둘 다 불러온 뒤에만 말한다. 불러오는 중이나 실패와 헷갈리지 않게).
+  const noStories =
+    !goals.loading &&
+    !notes.loading &&
+    goals.error == null &&
+    notes.error == null &&
+    activeGoals.length === 0 &&
+    (notes.items?.length ?? 0) === 0;
+  // 주간 기록의 이번 주 모습: 이번 주(한국 시간 월요일부터)에 찍은 영상의 기록을 요일별로 모은다.
+  // 주간 요약처럼 촬영 시각으로 주를 나눈다(앨범의 지난 영상은 그 주로 간다).
+  const week = thisWeekStats(records.data);
+  const hasRecords = (records.data?.length ?? 0) > 0;
+  // '오늘의 코칭'에서 넘겨 볼 카드: 가장 최근 카드와 그 앞의 카드 몇 장.
+  const railCards = latest ? [latest, ...pastCards.slice(0, RAIL_CARDS - 1)] : [];
+
+  /** '지난 코칭': 아래의 지난 코칭 카드 펼침을 열고 그리로 간다. */
+  function openPast() {
+    const el = pastRef.current;
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView({ block: 'start' });
+    el.querySelector('summary')?.focus({ preventScroll: true });
   }
+
+  /** 둥근 '선생님 이야기' 버튼: 아래의 선생님 이야기(받은 목표와 메모)로 간다. */
+  function goStory() {
+    const el = storyRef.current;
+    if (!el) return;
+    el.scrollIntoView({ block: 'start' });
+    el.focus({ preventScroll: true });
+  }
+
   // 동의 상태(consentState.ts): 켜짐 / 동의 문서가 바뀌어 꺼짐 / 처음 꺼짐.
   // aiAgreed: 지금 새 관찰 기록을 만들 수 있다(켜짐 + AI 서버 설정됨).
   // hasAiRecords: 그동안 쌓인 기록이 남아 있을 수 있다(켜짐, 또는 동의 문서가 바뀌어 꺼짐). 이때는 AI 서버가 꺼져 있어도,
@@ -206,8 +231,8 @@ export default function ChildHome() {
       paused={policies != null && !aiOn}
       onChange={(next) => {
         aiConsent.setData(next);
-        // 켜면 카드가 아래쪽 설정 자리로 내려가므로 위쪽에 알린다. 끄면 누른 카드가 있던 자리에 알린다.
-        setAiChange({ kind: next.agreed ? 'on' : 'off', at: next.agreed || cardPlace === 'top' ? 'top' : 'bottom' });
+        // 켜면 카드가 아래쪽 설정 자리로 내려가고, 끄면 다른 모습으로 바뀌거나 사라진다. 누른 카드가 있던 자리에 알린다.
+        setAiChange({ kind: next.agreed ? 'on' : 'off', at: cardPlace === 'none' ? 'bottom' : cardPlace });
         // 끄면 서버가 AI 관찰 기록으로 받은 코칭 카드도 함께 지우므로 카드 목록을 다시 불러온다.
         if (!next.agreed) cards.reload();
       }}
@@ -231,40 +256,24 @@ export default function ChildHome() {
   return (
     <div>
       {backLink}
-      <div className="child-head">
-        <span className="avatar" aria-hidden="true">
-          {c.nickname.slice(0, 1)}
-        </span>
-        <div className="child-head-text">
-          <h1 ref={h1Ref} tabIndex={-1}>
-            {c.nickname}
-          </h1>
-          <div className="child-age">
-            {formatAge(c.ageMonths)} ·{' '}
-            <Link to={`/p/children/${id}/edit`} className="link-btn" data-demo="childhome-edit-link" aria-label={`${c.nickname} 정보 고치기`}>
-              정보 고치기
-            </Link>
-          </div>
-        </div>
-        <Link to={`/p/children/${id}/share`} className="btn small secondary" data-demo="childhome-share-link">
-          선생님과 공유
-        </Link>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <Link
-          to={`/p/children/${id}/record`}
-          className="btn block"
-          style={{ minHeight: 56, fontSize: 17 }}
-          data-demo="childhome-record-link"
-        >
-          오늘 함께 논 영상 기록하기
-        </Link>
-        {/* 한 줄이 늦게 끼어들어 아래 내용이 밀리지 않게 자리를 늘 남겨 둔다. */}
-        <p className="status-line" aria-hidden={recordLine ? undefined : true}>
-          {recordLine ?? '\u00a0'}
+      {/* 화면 머리: 왼쪽 정렬 큰 제목 + 한 줄 부제(시안 홈). 아이 사진·생김새를 대신하는 그림은 두지 않는다. */}
+      <div className="home-head">
+        <h1 ref={h1Ref} tabIndex={-1}>
+          {c.nickname}의 하루
+        </h1>
+        <p className="home-sub">오늘도 함께, 조금씩 자라요</p>
+        <p className="home-meta">
+          {formatAge(c.ageMonths)} ·{' '}
+          <Link to={`/p/children/${id}/edit`} className="link-btn" data-demo="childhome-edit-link" aria-label={`${c.nickname} 정보 고치기`}>
+            정보 고치기
+          </Link>
         </p>
       </div>
+
+      <Link to={`/p/children/${id}/record`} className="btn block home-record" data-demo="childhome-record-link">
+        <CameraIcon />
+        영상 기록하기
+      </Link>
 
       {aiAgreed && (
         <Link
@@ -277,22 +286,11 @@ export default function ChildHome() {
         </Link>
       )}
 
-      {/* 꺼져 있을 때는 위쪽에서 켜기를 안내하고(AI 서버가 설정된 경우만), 켜져 있을 때는 아래쪽(설정 자리)에 둔다.
-          동의 문서가 바뀌어 꺼졌을 때는 왜 꺼졌는지 먼저 보이게 위쪽에 둔다(AI 서버가 꺼져 있어도). */}
+      {/* 동의 문서가 바뀌어 꺼졌을 때만 여기(위쪽)에 둔다: 왜 꺼졌는지 먼저 보여야 한다(AI 서버가 꺼져 있어도). */}
       {aiChange?.at === 'top' && aiChangeNotice}
       {cardPlace === 'top' && consentCard}
-      {aiOn && !aiConsent.loading && aiConsent.error != null && (
-        <section className="card">
-          <h2>AI 관찰 기록</h2>
-          <p className="muted" style={{ marginTop: 0 }}>
-            AI 관찰 기록 설정을 불러오지 못했어요. 다른 기록은 그대로 쓸 수 있어요.
-          </p>
-          <button type="button" className="btn small secondary" style={{ minHeight: 44 }} onClick={aiConsent.reload}>
-            다시 불러오기
-          </button>
-        </section>
-      )}
 
+      {/* 카드 대신 안내가 나간 경우: '오늘의 코칭' 자리에 그대로 둔다. 캐릭터는 두지 않는다. */}
       {showGuidance && (
         <section className="card warm" aria-label="상담·기관 연결 안내">
           <h2>함께 이야기 나눌 곳도 있어요</h2>
@@ -307,14 +305,23 @@ export default function ChildHome() {
       )}
 
       {latest && (
-        <section aria-labelledby="childhome-coach-h">
-          <h2 id="childhome-coach-h" tabIndex={-1}>
-            이번 코칭
-          </h2>
-          <TriableCard childId={id} delivery={latest} onUpdated={replaceCard} onGone={dropCard} />
+        // 시안 홈: 제목 + 오른쪽 '지난 코칭', 크림 카드를 옆으로 넘겨 본다. 카드를 펼치면 본문 전체와 출처가 나온다.
+        <section className="home-sec" aria-labelledby="childhome-coach-h">
+          <div className="home-sec-head">
+            <h2 id="childhome-coach-h" tabIndex={-1}>
+              오늘의 코칭
+            </h2>
+            {pastCards.length > 0 && (
+              <button type="button" className="home-sec-link" data-demo="childhome-past-link" onClick={openPast}>
+                지난 코칭
+                <ChevronIcon size={16} />
+              </button>
+            )}
+          </div>
+          <HomeCoaching childId={id} deliveries={railCards} onUpdated={replaceCard} onGone={dropCard} />
         </section>
       )}
-      {/* 카드를 못 불러오면 '이번 코칭'이 조용히 사라지지 않게 알린다. */}
+      {/* 카드를 못 불러오면 '오늘의 코칭'이 조용히 사라지지 않게 알린다. */}
       {!showGuidance && cards.error != null && !cards.items && (
         <section className="card" aria-labelledby="childhome-coach-err-h">
           <h2 id="childhome-coach-err-h">코칭 카드</h2>
@@ -322,47 +329,84 @@ export default function ChildHome() {
         </section>
       )}
 
-      <section className="card" aria-labelledby="childhome-week-h">
-        <div className="section-head">
+      {/* 주간 기록(시안 홈): 제목은 카드 밖, 카드에는 이번 주 기간·합·요일 막대. 여러 주의 변화는 펼쳐서 본다. */}
+      <section className="home-sec" aria-labelledby="childhome-week-h">
+        <div className="home-sec-head">
           <h2 id="childhome-week-h">주간 기록</h2>
         </div>
-        {weekly.loading ? (
-          <Loading />
-        ) : weekly.error ? (
-          <div>
-            <p className="error" role="alert">
-              주간 기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-            </p>
-            <button type="button" className="btn small secondary" onClick={weekly.reload}>
-              다시 불러오기
-            </button>
-          </div>
-        ) : weeks.length === 0 ? (
-          // 기록 목록까지 보고 정한다: 기록이 있는데 최근 몇 주에만 없으면 첫 기록 안내가 맞지 않는다.
-          records.loading ? (
-            <Loading />
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              {records.data && records.data.length > 0
-                ? `최근 ${WEEKS}주에 함께 논 기록은 없어요. 다시 기록하면 주 단위로 변화를 모아 보여 드려요.`
-                : '첫 기록을 남기면 주 단위로 변화를 모아 보여 드려요. 매일 볼 필요는 없어요. 한 주에 한두 번이면 충분해요.'}
-            </p>
-          )
-        ) : (
-          <>
-            <WeeklyChart weeks={weeks} idPrefix="childhome-week" />
-            <details className="disclosure">
-              <DisclosureSummary>주별 숫자로 보기</DisclosureSummary>
-              <WeeklyTable weeks={weeks} />
-            </details>
-          </>
-        )}
-        {records.data && records.data.length > 0 && (
-          <Link to={`/p/children/${id}/records`} className="btn small ghost" data-demo="childhome-records-link">
-            기록 하나씩 보기·지우기
-          </Link>
-        )}
+        <div className="card">
+          {loadStateView(records, '주간 기록을') ??
+            (!hasRecords ? (
+              <p className="muted" style={{ margin: 0 }}>
+                첫 기록을 남기면 주 단위로 변화를 모아 보여 드려요. 매일 볼 필요는 없어요. 한 주에 한두 번이면 충분해요.
+              </p>
+            ) : (
+              <>
+                <WeekCard week={week} />
+                <p className="muted wk-note">
+                  {week.count > 0
+                    ? '이번 주에 찍은 영상에서 모은 기록이에요. 한 주에 한두 번이면 충분해요.'
+                    : '이번 주에 함께 논 기록은 아직 없어요. 한 주에 한두 번이면 충분해요.'}
+                </p>
+                <details className="disclosure">
+                  <DisclosureSummary>주별 변화 보기</DisclosureSummary>
+                  {weekly.loading ? (
+                    <Loading />
+                  ) : weekly.error ? (
+                    <div>
+                      <p className="error" role="alert">
+                        주별 변화를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+                      </p>
+                      <button type="button" className="btn small secondary" onClick={weekly.reload}>
+                        다시 불러오기
+                      </button>
+                    </div>
+                  ) : weeks.length === 0 ? (
+                    <p className="muted" style={{ margin: 0 }}>
+                      최근 {WEEKS}주에 함께 논 기록은 없어요. 다시 기록하면 주 단위로 변화를 모아 보여 드려요.
+                    </p>
+                  ) : (
+                    <>
+                      <WeeklyChart weeks={weeks} idPrefix="childhome-week" />
+                      <details className="disclosure">
+                        <DisclosureSummary>주별 숫자로 보기</DisclosureSummary>
+                        <WeeklyTable weeks={weeks} />
+                      </details>
+                    </>
+                  )}
+                </details>
+                <Link to={`/p/children/${id}/records`} className="btn small ghost" data-demo="childhome-records-link">
+                  기록 하나씩 보기·지우기
+                </Link>
+              </>
+            ))}
+        </div>
       </section>
+
+      {/* 시안 홈의 오른쪽 아래 둥근 버튼: 받은 선생님 이야기(아래 구역)로 간다. 얼굴 그림은 꾸밈이다. */}
+      <div className="home-fab-row">
+        <button type="button" className="home-fab" data-demo="childhome-story-jump" onClick={goStory}>
+          <span className="home-fab-dot">
+            <Mascot name="teacher" size={56} />
+          </span>
+          선생님 이야기
+        </button>
+      </div>
+
+      {/* 처음부터 꺼져 있을 때의 켜기 안내는 여기(주간 기록 아래)에 둔다. AI 서버가 설정된 경우만. */}
+      {aiChange?.at === 'middle' && aiChangeNotice}
+      {cardPlace === 'middle' && consentCard}
+      {aiOn && !aiConsent.loading && aiConsent.error != null && (
+        <section className="card">
+          <h2>AI 관찰 기록</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            AI 관찰 기록 설정을 불러오지 못했어요. 다른 기록은 그대로 쓸 수 있어요.
+          </p>
+          <button type="button" className="btn small secondary" style={{ minHeight: 44 }} onClick={aiConsent.reload}>
+            다시 불러오기
+          </button>
+        </section>
+      )}
 
       {/* 동의를 거두지 않았으면 AI 서버가 꺼져 있어도, 동의 문서가 바뀌어 다시 동의하기 전이어도 그동안의 기록은 보고 지울 수 있다. */}
       {hasAiRecords && (
@@ -378,47 +422,55 @@ export default function ChildHome() {
         />
       )}
 
-      {/* 선생님이 남긴 목표와 메모: 사람이 건네는 이야기라 card warm */}
-      {/* 연결된 선생님이 없으면 둘 다 비어 있어 숨긴다. 못 불러왔으면 비어 있는 것과 구별되게 알린다. */}
-      {(activeGoals.length > 0 || (notes.items?.length ?? 0) > 0 || goals.error != null || notes.error != null) && (
-        <section className="card warm" aria-labelledby="childhome-story-h">
-          <div className="section-head">
-            <h2 id="childhome-story-h">선생님 이야기</h2>
+      {/* 선생님 이야기: 선생님이 남긴 목표와 메모, 공유 화면으로 가는 길. 위의 둥근 버튼이 여기로 데려온다.
+          남긴 것이 없어도 늘 보여서 선생님과 잇는 길이 여기에 있다. 못 불러왔으면 비어 있는 것과 구별되게 알린다. */}
+      <section className="card" aria-labelledby="childhome-story-h">
+        <div className="section-head">
+          <h2 id="childhome-story-h" ref={storyRef} tabIndex={-1}>
+            선생님 이야기
+          </h2>
+        </div>
+        {goals.error != null && loadStateView(goals, '선생님 목표를')}
+        {notes.error != null && loadStateView(notes, '관찰 메모를')}
+        {noStories && (
+          <p className="muted" style={{ margin: '0 0 4px' }}>
+            아직 선생님이 남긴 이야기가 없어요. 선생님과 연결하면 목표와 메모가 여기에 보여요.
+          </p>
+        )}
+        {activeGoals.map((g) => (
+          <div key={g.id} className="list-item" style={{ alignItems: 'flex-start' }}>
+            <div className="item-body">
+              <div className="row wrap" style={{ gap: 6 }}>
+                <strong>{g.title}</strong>
+                <span className={g.status === 'ACHIEVED' ? 'chip brand' : 'chip'}>{GOAL_STATUS[g.status]}</span>
+              </div>
+              {g.description && (
+                <div className="meta" style={{ marginTop: 2 }}>
+                  {g.description}
+                </div>
+              )}
+              <div className="meta">{g.teacherName}</div>
+            </div>
           </div>
-          {loadStateView(goals, '선생님 목표를')}
-          {loadStateView(notes, '관찰 메모를')}
-          {activeGoals.map((g) => (
-            <div key={g.id} className="list-item" style={{ alignItems: 'flex-start' }}>
-              <div className="item-body">
-                <div className="row wrap" style={{ gap: 6 }}>
-                  <strong>{g.title}</strong>
-                  <span className={g.status === 'ACHIEVED' ? 'chip brand' : 'chip'}>{GOAL_STATUS[g.status]}</span>
-                </div>
-                {g.description && (
-                  <div className="meta" style={{ marginTop: 2 }}>
-                    {g.description}
-                  </div>
-                )}
-                <div className="meta">{g.teacherName}</div>
+        ))}
+        {notes.items?.map((n) => (
+          <div key={n.id} className="list-item" style={{ alignItems: 'flex-start' }}>
+            <div className="item-body">
+              <div style={{ whiteSpace: 'pre-wrap' }}>{n.content}</div>
+              <div className="meta">
+                {n.observedOn.slice(5).replace('-', '/')} · {n.teacherName}
               </div>
             </div>
-          ))}
-          {notes.items?.map((n) => (
-            <div key={n.id} className="list-item" style={{ alignItems: 'flex-start' }}>
-              <div className="item-body">
-                <div style={{ whiteSpace: 'pre-wrap' }}>{n.content}</div>
-                <div className="meta">
-                  {n.observedOn.slice(5).replace('-', '/')} · {n.teacherName}
-                </div>
-              </div>
-            </div>
-          ))}
-          <MoreButton list={notes} demo="childhome-notes-more" label="관찰 메모 더 보기" />
-        </section>
-      )}
+          </div>
+        ))}
+        <MoreButton list={notes} demo="childhome-notes-more" label="관찰 메모 더 보기" />
+        <Link to={`/p/children/${id}/share`} className="btn small ghost" data-demo="childhome-share-link">
+          선생님과 공유
+        </Link>
+      </section>
 
       {pastCards.length > 0 && (
-        <details className="card disclosure">
+        <details className="card disclosure" ref={pastRef}>
           <DisclosureSummary>
             지난 코칭 카드 {pastCards.length}
             {cards.hasMore ? '장+' : '장'}

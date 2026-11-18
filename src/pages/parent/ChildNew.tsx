@@ -4,9 +4,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { Child } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import Mascot from '../../components/Mascot';
 import { BackLink, Field, describedBy, refocus, useToast } from '../../components/feedback';
 import { ErrorText, Loading, useLoad } from '../../components/ui';
 import { YEAR_MONTH, ageHint, birthError, birthRange } from './childForm';
+import './parent.css';
 
 interface FieldErrors {
   nickname?: string;
@@ -82,10 +84,17 @@ export default function ChildNew() {
   }
 
   return (
-    <div>
+    <div className="child-new">
       {/* 첫 칸은 비어 있어도 자리가 유지되어, 뒤로 줄이 나중에 나타나도 제목은 다시 그려지지 않는다(포커스 유지). */}
       {!kids.loading && hasChildren && <BackLink to="/p" label="우리 아이" />}
-      <h1>아이 등록</h1>
+      {/* Figma: 화면 너비만큼 큰 캐릭터(테디를 품은 모찌)가 제목 위에 온다. 꾸밈이고 아이를 나타내지 않는다.
+          그림 자리는 크기가 정해져 있어 늦게 떠도 제목이 밀리지 않고, 못 불러오면 자리째 빠진다. */}
+      <div className="p-hero">
+        <Mascot name="teddy" size={340} />
+      </div>
+      <h1>
+        아이 이름을 알려주세요 <span aria-hidden="true">:)</span>
+      </h1>
       {kids.loading ? (
         <Loading />
       ) : (
@@ -170,8 +179,8 @@ export default function ChildNew() {
             )}
 
             <ErrorText error={error} />
-            <button type="submit" className="btn block" data-demo="child-submit" disabled={busy}>
-              {busy ? '등록하는 중…' : '등록하기'}
+            <button type="submit" className="btn block child-start" data-demo="child-submit" disabled={busy}>
+              {busy ? '등록하는 중…' : '시작하기'}
             </button>
           </form>
         </>

@@ -4,6 +4,7 @@ import { aiConsentState } from '../../ai/consentState';
 import { ApiError, api, errorMessage } from '../../api/client';
 import type { AiConsent, Child, InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import EmptyState from '../../components/EmptyState';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
 import { ErrorText, Loading, Section, formatDate, loadStateView, useLoad } from '../../components/ui';
 import '../extra.css';
@@ -92,6 +93,15 @@ export default function Share() {
   const copyRef = useRef<HTMLButtonElement>(null);
   const focusCopy = useRef(false);
   const teachersTitleRef = useRef<HTMLHeadingElement>(null);
+  const issueRef = useRef<HTMLButtonElement>(null);
+
+  /** '선생님 연결하기': 초대 코드를 만드는 자리로 올라가 그 버튼에 초점을 둔다. 코드는 보호자가 직접 눌러 만든다. */
+  function goInvite() {
+    const btn = issueRef.current;
+    if (!btn) return;
+    btn.scrollIntoView({ block: 'center' });
+    btn.focus({ preventScroll: true });
+  }
 
   // 코드를 만들면 새로 나타난 [코드 복사]로 초점을 옮긴다(코드와 기한이 함께 읽힌다).
   useEffect(() => {
@@ -327,6 +337,7 @@ export default function Share() {
         )}
         <ErrorText error={issueError} />
         <button
+          ref={issueRef}
           type="button"
           className={code ? 'btn block ghost' : 'btn block'}
           data-demo="share-issue-code"
@@ -408,9 +419,20 @@ export default function Share() {
           </>
         )}
         {teachers.data?.length === 0 && (
-          <p className="muted" style={{ margin: 0 }}>
-            아직 연결된 선생님이 없어요.
-          </p>
+          // 시안 '선생님 이야기'의 빈 모습. 버튼은 위의 '선생님 초대'로 데려간다(누른다고 코드가 만들어지지는 않는다).
+          <EmptyState
+            mascot="teacher"
+            mascotSize={144}
+            title="아직 연결된 선생님이 없어요"
+            titleAs="h3"
+            action={
+              <button type="button" className="btn block" data-demo="share-connect" onClick={goInvite}>
+                선생님 연결하기
+              </button>
+            }
+          >
+            공유할 항목을 고르고 초대 코드를 선생님께 보내 주세요.
+          </EmptyState>
         )}
         {teachers.data?.map((t) => {
           const nameId = `share-teacher-${t.teacherId}-name`;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { setSession } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import Mascot from '../components/Mascot';
 import { ErrorText } from '../components/ui';
 import { useDemo } from './DemoContext';
 import { createDemo } from './seed';
@@ -48,6 +49,7 @@ export default function DemoStart() {
       <p className="lead">
         멘토·심사 시연용이에요. 데모 보호자와 데모 선생님 계정, 예시 기록을 만들고 아래 순서대로 실제 화면을 넘겨 보여 드려요.
       </p>
+      <Mascot name="family" size={160} />
 
       <section className="card soft">
         <ol className="steps">

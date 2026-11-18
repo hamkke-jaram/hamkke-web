@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api, errorMessage } from '../../api/client';
 import type { TeacherChild } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import EmptyState from '../../components/EmptyState';
 import { Field, refocus, useToast } from '../../components/feedback';
 import { ErrorText, Loading, Section, formatAge, formatDate, useLoad } from '../../components/ui';
 
@@ -125,11 +126,7 @@ export default function TeacherHome() {
       </>
     );
   } else if (!hasChildren) {
-    listBody = (
-      <p className="muted" style={{ margin: 0 }}>
-        아직 연결된 아이가 없어요. 보호자에게 초대 코드를 받아 입력해 주세요.
-      </p>
-    );
+    listBody = null;
   } else {
     listBody = (
       <div>
@@ -152,8 +149,15 @@ export default function TeacherHome() {
     );
   }
 
+  // 연결된 아이가 없다고 확인되면 카드 대신 빈 화면 안내(선생님 캐릭터 → 제목 → 설명)를 맨 위에 두고, 바로 아래에 초대 코드 칸이 온다.
   // Section과 같은 모양. 다시 불러온 뒤 포커스를 둘 수 있게 제목에 id를 단다.
-  const listSection = (
+  const listSection = list && list.length === 0 ? (
+    <section aria-labelledby={LIST_HEADING}>
+      <EmptyState mascot="teacher" title="아직 연결된 아이가 없어요" titleId={LIST_HEADING}>
+        보호자에게 초대 코드를 받아 입력해 주세요.
+      </EmptyState>
+    </section>
+  ) : (
     <section className="card" aria-labelledby={LIST_HEADING}>
       <h2 id={LIST_HEADING} tabIndex={-1} style={{ margin: '0 0 8px' }}>
         연결된 아이
@@ -161,15 +165,13 @@ export default function TeacherHome() {
       {listBody}
     </section>
   );
-  // 연결된 아이가 없다고 확인된 때만 초대 코드 칸을 맨 위에 둔다(불러오는 중·실패는 목록 자리를 먼저).
-  const listFirst = !(list && list.length === 0);
 
   return (
     <div>
       <h1>{user?.displayName ? `${user.displayName}님, 안녕하세요` : '안녕하세요'}</h1>
       <p className="lead">보호자가 공유한 기록만 주 단위로 볼 수 있어요.</p>
 
-      {listFirst && listSection}
+      {listSection}
 
       <Section title="초대 코드로 아이 연결">
         <form onSubmit={link} noValidate>
@@ -197,8 +199,6 @@ export default function TeacherHome() {
           </button>
         </form>
       </Section>
-
-      {!listFirst && listSection}
     </div>
   );
 }

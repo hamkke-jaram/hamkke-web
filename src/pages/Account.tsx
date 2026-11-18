@@ -1,12 +1,13 @@
 import { forwardRef, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api, setSession } from '../api/client';
 import type { Child, ConsentRecord, TokenResponse, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { DangerAction, Field, PasswordField, refocus, useToast } from '../components/feedback';
+import { Icon } from '../components/icons';
 import { ErrorText, Loading, formatDate, useLoad } from '../components/ui';
-import { ThemeSettingsCard } from '../theme';
+import { ThemeSettings } from '../theme';
 import './extra.css';
 
 const CONSENT_LABEL: Record<string, string> = {
@@ -219,17 +220,19 @@ export default function Account() {
     return kid ? ` · ${kid.nickname}` : '';
   }
 
+  const nameLabel = isParent ? '앱에서 부를 이름' : '표시 이름';
+
   return (
     <div>
-      <h1>내 정보</h1>
-      <div className="card row" style={{ gap: 14 }}>
+      <h1 className="settings-title">내 정보</h1>
+      <div className="card soft row" style={{ gap: 14 }}>
         <div className="avatar" aria-hidden="true">
           {initial}
         </div>
         <div className="item-body">
           <div className="row wrap" style={{ gap: 8 }}>
             <strong>{user?.displayName}</strong>
-            <span className="chip">{isParent ? '보호자' : '기관 선생님'}</span>
+            <span className="chip brand">{isParent ? '보호자' : '기관 선생님'}</span>
           </div>
           <p className="muted" style={{ margin: 0 }}>
             {user?.email}
@@ -237,170 +240,264 @@ export default function Account() {
         </div>
       </div>
 
-      <section className="card" aria-labelledby="account-settings-h">
-        <h2 id="account-settings-h">계정 설정</h2>
-        <form className="account-form" onSubmit={saveName} noValidate>
-          <Field
-            ref={nameRef}
-            id="account-name"
-            data-demo="account-name"
-            label={isParent ? '앱에서 부를 이름' : '표시 이름'}
-            hint={isParent ? undefined : '보호자 화면에 이 이름으로 보여요.'}
-            type="text"
-            autoComplete="nickname"
-            maxLength={30}
-            value={name}
-            error={nameError}
-            onChange={(e) => {
-              setName(e.target.value);
-              setNameError(null);
-              setNameFormError(null);
-            }}
-          />
-          <ErrorText error={nameFormError} />
-          <button type="submit" className="btn secondary block" data-demo="account-name-submit" aria-disabled={nameBusy || undefined}>
-            {nameBusy ? '저장하는 중…' : '이름 저장'}
-          </button>
-        </form>
-
-        <form className="account-form" onSubmit={changePassword} noValidate aria-labelledby="account-pw-h">
-          <h3 id="account-pw-h" style={{ marginTop: 0 }}>
-            비밀번호 바꾸기
-          </h3>
-          <PasswordField
-            ref={curPwRef}
-            id="account-pw-current"
-            data-demo="account-pw-current"
-            label="지금 비밀번호"
-            autoComplete="current-password"
-            maxLength={64}
-            value={curPw}
-            error={curPwError}
-            onChange={(e) => {
-              setCurPw(e.target.value);
-              setCurPwError(null);
-              setPwFormError(null);
-            }}
-          />
-          <PasswordField
-            ref={newPwRef}
-            id="account-pw-new"
-            data-demo="account-pw-new"
-            label="새 비밀번호"
-            hint="영문과 숫자를 섞어 8자 이상"
-            autoComplete="new-password"
-            maxLength={64}
-            value={newPw}
-            error={newPwError}
-            onChange={(e) => {
-              setNewPw(e.target.value);
-              setNewPwError(null);
-              setPwFormError(null);
-            }}
-          />
-          <ErrorText error={pwFormError} />
-          <button type="submit" className="btn secondary block" data-demo="account-pw-submit" aria-disabled={pwBusy || undefined}>
-            {pwBusy ? '바꾸는 중…' : '비밀번호 바꾸기'}
-          </button>
-          <p className="field-hint" style={{ margin: '8px 0 0' }}>
-            바꾸면 이 기기만 로그인한 채로 두고, 다른 기기에서는 다시 로그인해야 해요.
-          </p>
-        </form>
-      </section>
-
-      <ThemeSettingsCard />
-
-      <section className="card" aria-labelledby="account-consents-h">
-        <h2 id="account-consents-h">동의 기록</h2>
-        {consents.loading && !consents.data ? (
-          <Loading />
-        ) : consents.error && !consents.data ? (
-          <>
-            <ErrorText error={consents.error} />
-            <button type="button" className="btn small secondary" onClick={consents.reload}>
-              다시 시도
+      {/* 시안 '설정' 화면 모양: 아이콘 · 글 · '›' 행을 누르면 그 자리에서 펼쳐진다. 닫혀 있어도 내용은 화면에 있어 시연이 찾아서 연다. */}
+      <h2 className="menu-title" id="account-settings-h">
+        로그인/회원정보
+      </h2>
+      <div className="menu-list">
+        <details className="menu-details">
+          <summary className="menu-row" data-demo="account-row-name">
+            <Icon name="edit" />
+            <h3 className="menu-text" id="account-name-h">
+              {nameLabel}
+            </h3>
+            <span className="menu-chev" aria-hidden="true">
+              ›
+            </span>
+          </summary>
+          <form className="menu-body" onSubmit={saveName} noValidate aria-labelledby="account-name-h">
+            <Field
+              ref={nameRef}
+              id="account-name"
+              data-demo="account-name"
+              label={nameLabel}
+              hint={isParent ? undefined : '보호자 화면에 이 이름으로 보여요.'}
+              type="text"
+              autoComplete="nickname"
+              maxLength={30}
+              value={name}
+              error={nameError}
+              onChange={(e) => {
+                setName(e.target.value);
+                setNameError(null);
+                setNameFormError(null);
+              }}
+            />
+            <ErrorText error={nameFormError} />
+            <button type="submit" className="btn secondary block" data-demo="account-name-submit" aria-disabled={nameBusy || undefined}>
+              {nameBusy ? '저장하는 중…' : '이름 저장'}
             </button>
-          </>
-        ) : consents.data && consents.data.length > 0 ? (
-          consents.data.map((c) => (
-            <div key={`${c.type}-${c.childId ?? 'none'}-${c.agreedAt}`} className="list-item">
-              <div className="item-body">
-                <div>
-                  {CONSENT_LABEL[c.type] ?? '그 밖의 동의'}
-                  {childPart(c)}
-                </div>
-                <span className="meta">
-                  {formatDate(c.agreedAt)} 동의 · 버전 {c.version}
-                  {c.revokedAt && ` · ${formatDate(c.revokedAt)} 철회`}
-                </span>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="muted" style={{ margin: 0 }}>
-            아직 동의 기록이 없어요.
-          </p>
-        )}
-      </section>
+          </form>
+        </details>
 
-      <section className="card" aria-labelledby="account-export-h">
-        <h2 id="account-export-h">내 데이터 내려받기</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          {isParent
-            ? '계정 정보, 동의 기록, 아이별 기록·코칭 카드·공유 설정·연결된 선생님 이름·목표·메모·AI 관찰 기록을 한 파일(JSON)로 내려받아요.'
-            : '계정 정보, 동의 기록, 연결된 아이와 내가 남긴 목표·메모를 한 파일(JSON)로 내려받아요.'}{' '}
-          파일은 이 기기에만 저장돼요. 아이 기록이 담겨 있으니 안전한 곳에 보관해 주세요.
-        </p>
-        <ErrorText error={exportError} />
+        <details className="menu-details">
+          <summary className="menu-row" data-demo="account-row-pw">
+            <Icon name="lock" />
+            <h3 className="menu-text" id="account-pw-h">
+              비밀번호 바꾸기
+            </h3>
+            <span className="menu-chev" aria-hidden="true">
+              ›
+            </span>
+          </summary>
+          <form className="menu-body" onSubmit={changePassword} noValidate aria-labelledby="account-pw-h">
+            <PasswordField
+              ref={curPwRef}
+              id="account-pw-current"
+              data-demo="account-pw-current"
+              label="지금 비밀번호"
+              autoComplete="current-password"
+              maxLength={64}
+              value={curPw}
+              error={curPwError}
+              onChange={(e) => {
+                setCurPw(e.target.value);
+                setCurPwError(null);
+                setPwFormError(null);
+              }}
+            />
+            <PasswordField
+              ref={newPwRef}
+              id="account-pw-new"
+              data-demo="account-pw-new"
+              label="새 비밀번호"
+              hint="영문과 숫자를 섞어 8자 이상"
+              autoComplete="new-password"
+              maxLength={64}
+              value={newPw}
+              error={newPwError}
+              onChange={(e) => {
+                setNewPw(e.target.value);
+                setNewPwError(null);
+                setPwFormError(null);
+              }}
+            />
+            <ErrorText error={pwFormError} />
+            <button type="submit" className="btn secondary block" data-demo="account-pw-submit" aria-disabled={pwBusy || undefined}>
+              {pwBusy ? '바꾸는 중…' : '비밀번호 바꾸기'}
+            </button>
+            <p className="field-hint" style={{ margin: '8px 0 0' }}>
+              바꾸면 이 기기만 로그인한 채로 두고, 다른 기기에서는 다시 로그인해야 해요.
+            </p>
+          </form>
+        </details>
+
+      </div>
+
+      {isParent && (
+        <>
+          <h2 className="menu-title" id="account-children-h">
+            아이 정보
+          </h2>
+          <nav className="menu-list" aria-labelledby="account-children-h">
+            <Link to="/p/children/new" className="menu-row" data-demo="account-child-new">
+              <Icon name="plus" />
+              <span className="menu-text">아이 추가</span>
+              <span className="menu-chev" aria-hidden="true">
+                ›
+              </span>
+            </Link>
+            <Link to="/p" className="menu-row" data-demo="account-child-list">
+              <Icon name="user" />
+              <span className="menu-text">아이 기록 보기</span>
+              <span className="menu-chev" aria-hidden="true">
+                ›
+              </span>
+            </Link>
+          </nav>
+        </>
+      )}
+
+      <div className="menu-list" style={{ marginTop: 24 }}>
+        <details className="menu-details">
+          <summary className="menu-row" data-demo="account-row-theme">
+            <Icon name="screen" />
+            <h2 className="menu-text" id="theme-settings-h">
+              화면 설정
+            </h2>
+            <span className="menu-chev" aria-hidden="true">
+              ›
+            </span>
+          </summary>
+          <div className="menu-body" role="group" aria-labelledby="theme-settings-h">
+            <ThemeSettings />
+          </div>
+        </details>
+
+        <details className="menu-details">
+          <summary className="menu-row" data-demo="account-row-consents">
+            <Icon name="consent" />
+            <h2 className="menu-text" id="account-consents-h">
+              동의 기록
+            </h2>
+            <span className="menu-chev" aria-hidden="true">
+              ›
+            </span>
+          </summary>
+          <div className="menu-body" role="group" aria-labelledby="account-consents-h">
+            {consents.loading && !consents.data ? (
+              <Loading />
+            ) : consents.error && !consents.data ? (
+              <>
+                <ErrorText error={consents.error} />
+                <button type="button" className="btn small secondary" onClick={consents.reload}>
+                  다시 시도
+                </button>
+              </>
+            ) : consents.data && consents.data.length > 0 ? (
+              consents.data.map((c) => (
+                <div key={`${c.type}-${c.childId ?? 'none'}-${c.agreedAt}`} className="list-item">
+                  <div className="item-body">
+                    <div>
+                      {CONSENT_LABEL[c.type] ?? '그 밖의 동의'}
+                      {childPart(c)}
+                    </div>
+                    <span className="meta">
+                      {formatDate(c.agreedAt)} 동의 · 버전 {c.version}
+                      {c.revokedAt && ` · ${formatDate(c.revokedAt)} 철회`}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="muted" style={{ margin: 0 }}>
+                아직 동의 기록이 없어요.
+              </p>
+            )}
+          </div>
+        </details>
+
+        <details className="menu-details">
+          <summary className="menu-row" data-demo="account-row-export">
+            <Icon name="download" />
+            <h2 className="menu-text" id="account-export-h">
+              내 데이터 내려받기
+            </h2>
+            <span className="menu-chev" aria-hidden="true">
+              ›
+            </span>
+          </summary>
+          <div className="menu-body" role="group" aria-labelledby="account-export-h">
+            <p className="muted">
+              {isParent
+                ? '계정 정보, 동의 기록, 아이별 기록·코칭 카드·공유 설정·연결된 선생님 이름·목표·메모·AI 관찰 기록을 한 파일(JSON)로 내려받아요.'
+                : '계정 정보, 동의 기록, 연결된 아이와 내가 남긴 목표·메모를 한 파일(JSON)로 내려받아요.'}{' '}
+              파일은 이 기기에만 저장돼요. 아이 기록이 담겨 있으니 안전한 곳에 보관해 주세요.
+            </p>
+            <ErrorText error={exportError} />
+            <button
+              type="button"
+              className="btn secondary block"
+              data-demo="account-export"
+              aria-disabled={exporting || undefined}
+              onClick={() => void exportData()}
+            >
+              {exporting ? '파일을 만드는 중…' : '내 데이터 내려받기'}
+            </button>
+          </div>
+        </details>
+      </div>
+
+      <div className="menu-list" style={{ marginTop: 20 }}>
         <button
           type="button"
-          className="btn secondary block"
-          data-demo="account-export"
-          aria-disabled={exporting || undefined}
-          onClick={() => void exportData()}
+          className="menu-row"
+          data-demo="account-logout"
+          aria-disabled={loggingOut || undefined}
+          onClick={() => void doLogout()}
         >
-          {exporting ? '파일을 만드는 중…' : '내 데이터 내려받기'}
+          <Icon name="logout" />
+          <span className="menu-text">{loggingOut ? '로그아웃하는 중…' : '로그아웃'}</span>
         </button>
-      </section>
 
-      <button
-        type="button"
-        className="btn secondary block"
-        style={{ margin: '4px 0 28px' }}
-        data-demo="account-logout"
-        aria-disabled={loggingOut || undefined}
-        onClick={() => void doLogout()}
-      >
-        {loggingOut ? '로그아웃하는 중…' : '로그아웃'}
-      </button>
-
-      <section className="card" aria-labelledby="account-delete-h">
-        <h2 id="account-delete-h">회원 탈퇴</h2>
-        <DangerAction
-          label="탈퇴하기"
-          question="정말 탈퇴할까요?"
-          detail={
-            isParent
-              ? '계정과 아이 정보, 모든 기록, 공유 연결이 즉시 지워지고 되돌릴 수 없어요.'
-              : '계정, 남긴 목표·메모, 아이 연결이 즉시 지워지고 되돌릴 수 없어요. 직접 만든 AI 관찰 기록은 아이 기록에 남아요.'
-          }
-          confirmLabel="탈퇴하기"
-          busyLabel="지우는 중…"
-          demo="account-delete"
-          onConfirm={deleteAccount}
-        >
-          <DeletePassword
-            ref={pwRef}
-            value={password}
-            error={pwError}
-            onChange={(v) => {
-              setPassword(v);
-              setPwError(null);
-            }}
-            onClose={resetPassword}
-          />
-        </DangerAction>
-      </section>
+        <details className="menu-details">
+          <summary className="menu-row" data-demo="account-row-delete">
+            <Icon name="leave" />
+            <h2 className="menu-text" id="account-delete-h">
+              회원 탈퇴
+            </h2>
+            <span className="menu-chev" aria-hidden="true">
+              ›
+            </span>
+          </summary>
+          <div className="menu-body" role="group" aria-labelledby="account-delete-h">
+            <DangerAction
+              label="탈퇴하기"
+              question="정말 탈퇴할까요?"
+              detail={
+                isParent
+                  ? '계정과 아이 정보, 모든 기록, 공유 연결이 즉시 지워지고 되돌릴 수 없어요.'
+                  : '계정, 남긴 목표·메모, 아이 연결이 즉시 지워지고 되돌릴 수 없어요. 직접 만든 AI 관찰 기록은 아이 기록에 남아요.'
+              }
+              confirmLabel="탈퇴하기"
+              busyLabel="지우는 중…"
+              demo="account-delete"
+              onConfirm={deleteAccount}
+            >
+              <DeletePassword
+                ref={pwRef}
+                value={password}
+                error={pwError}
+                onChange={(v) => {
+                  setPassword(v);
+                  setPwError(null);
+                }}
+                onClose={resetPassword}
+              />
+            </DangerAction>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }

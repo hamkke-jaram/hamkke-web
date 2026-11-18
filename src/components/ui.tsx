@@ -150,15 +150,16 @@ export function SupportList({ resources }: { resources: SupportResource[] }) {
   return (
     <div>
       {resources.map((r) => (
-        <div key={r.id} className="list-item" style={{ alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
+        // 좁은 화면에서 긴 전화 버튼이 카드 밖으로 밀려나지 않게, 자리가 모자라면 버튼이 글 아래 줄로 내려간다.
+        <div key={r.id} className="list-item" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 150px', minWidth: 0 }}>
             <strong>{r.name}</strong>
             <div className="muted">{r.description}</div>
             {r.hours && <div className="muted">운영: {r.hours}</div>}
           </div>
           <div className="stack" style={{ flex: 'none' }}>
             {r.phone && (
-              <a className="btn small" href={`tel:${r.phone.replace(/[^0-9]/g, '')}`}>
+              <a className="btn small tonal" href={`tel:${r.phone.replace(/[^0-9]/g, '')}`}>
                 {r.phone} 전화
               </a>
             )}
@@ -232,7 +233,7 @@ export function WeeklyBars({
         const label = `${w.weekStart.slice(5).replace('-', '/')}`;
         return (
           <g key={w.weekStart}>
-            <path className="bar" d={d}>
+            <path className={i === last ? 'bar now' : 'bar'} d={d}>
               <title>{`${label} 주: ${info.label} ${info.format(value)} · 기록 ${w.recordCount}개`}</title>
             </path>
             <text x={x + bw / 2} y={H - 6} textAnchor="middle">

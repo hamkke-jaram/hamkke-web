@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import Mascot from '../components/Mascot';
 import { Loading } from '../components/ui';
 import { DEMO_ENABLED } from '../demo/DemoContext';
 
@@ -11,13 +12,13 @@ export default function Landing() {
   return (
     <div>
       <div className="hero">
-        <img src="/icon.svg" alt="" />
         <h1>검사 이후, 집에서의 시간을<br />혼자 두지 않아요</h1>
         <p className="lead">
           아이와 노는 영상을 폰 안에서 분석해 상호작용을 기록하고,
           <br />
           작은 변화에 맞춘 양육 코칭을 전해 드려요.
         </p>
+        <Mascot name="family" size={220} />
       </div>
 
       <section className="card soft">
