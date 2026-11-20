@@ -49,9 +49,30 @@ export function saveMotionPref(p: MotionPref) {
   listeners.forEach((l) => l());
 }
 
+/**
+ * 펼침(details.disclosure)을 열 때마다 '열리는 중' 표시를 새로 붙여 내려오는 애니메이션을 다시 시작한다.
+ * 최신 Chrome은 접힌 내용의 스타일 계산을 건너뛰어서, CSS만으로는 두 번째 펼침부터 애니메이션이 나오지 않는다.
+ * toggle은 거품이 일지 않는 이벤트라 문서에서 capture로 받는다.
+ */
+function watchDisclosureOpen() {
+  document.addEventListener(
+    'toggle',
+    (e) => {
+      const d = e.target;
+      if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('disclosure')) return;
+      d.classList.remove('is-opening');
+      if (!d.open) return;
+      void d.offsetWidth; // 지운 표시를 한 번 반영해야 다시 붙일 때 애니메이션이 처음부터 시작한다
+      d.classList.add('is-opening');
+    },
+    true,
+  );
+}
+
 /** 앱을 그리기 전에 한 번 부른다. 기기의 동작 줄이기 설정이 바뀌면 다시 적용한다. */
 export function initMotion() {
   applyMotion();
+  watchDisclosureOpen();
   if (typeof window.matchMedia !== 'function') return;
   window.matchMedia(REDUCE).addEventListener?.('change', () => {
     applyMotion();

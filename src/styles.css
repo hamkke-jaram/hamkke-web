@@ -638,6 +638,46 @@ textarea {
   box-shadow: inset 0 0 0 1.5px var(--brand);
 }
 
+/*
+ * 고른 바탕이 버튼 사이를 미끄러져 옮겨 가는 탭(주간 그래프 항목 고르기).
+ * 바탕(.tabs-thumb)을 잰 뒤에만(.has-thumb) 버튼 자신의 고른 모양을 지운다. 재기 전에는 위의 기본 모양 그대로다.
+ */
+.tabs-slide {
+  position: relative;
+}
+
+.tabs-slide button {
+  position: relative;
+  z-index: 1;
+}
+
+.tabs-slide.has-thumb button[aria-pressed='true'] {
+  background: transparent;
+  box-shadow: none;
+}
+
+.tabs-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: 19px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--brand);
+  pointer-events: none;
+}
+
+:root[data-motion='on'] .tabs-thumb.ready {
+  transition:
+    transform 380ms var(--ease-spring),
+    width 380ms var(--ease-spring);
+}
+
+/* 그래프를 옆으로 밀어 항목을 바꾼다. 세로 스크롤은 브라우저에 맡긴다. */
+.chart-swipe {
+  touch-action: pan-y;
+}
+
 .list-item {
   display: flex;
   align-items: center;
@@ -1498,6 +1538,26 @@ button.list-item:hover {
 }
 .disclosure[open] > summary .chev {
   transform: rotate(90deg);
+}
+
+/* 펼친 내용이 제목 아래에서 살짝 내려오며 나타난다. 움직임을 끈 화면에서는 바로 보인다.
+   .is-opening은 펼칠 때마다 motion.tsx가 새로 붙인다(그래야 매번 다시 시작한다). */
+:root[data-motion='on'] .disclosure.is-opening[open] > :not(summary) {
+  /* backwards: 끝난 뒤에는 clip-path가 남지 않아 초점 테두리 등이 잘리지 않는다. */
+  animation: disclosure-down 340ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes disclosure-down {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 -20px 0);
+  }
 }
 
 /* 입력칸 아래 도움말·오류·글자 수 (label.field 바로 다음 형제) */

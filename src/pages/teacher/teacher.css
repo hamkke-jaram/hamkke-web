@@ -541,3 +541,41 @@ div.story-attach-main {
   display: block;
   margin: 0 auto;
 }
+
+/*
+ * 선생님 홈의 캐릭터(코칭·전문가 도움 칸)는 5초마다 저절로 폴짝 뛴다.
+ * 공용 규칙은 마우스를 올릴 때만 뛰어서(@media (hover: hover)) 휴대폰에서는 움직임을 볼 수 없었다.
+ * 뛰고 남은 시간에는 공용 규칙처럼 숨 쉬듯 말랑거린다. 움직임을 끈 화면(data-motion="off")에서는 그대로 멈춰 있다.
+ */
+:root[data-motion='on'] .th-home .mascot {
+  animation: th-mascot-hop 5s ease-in-out infinite;
+}
+
+@keyframes th-mascot-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  3% {
+    transform: translateY(0) scale(1.1, 0.88);
+  }
+  8% {
+    transform: translateY(-14%) scale(0.94, 1.08);
+  }
+  14% {
+    transform: translateY(0) scale(1.08, 0.92);
+  }
+  17% {
+    transform: translateY(0) scale(0.98, 1.02);
+  }
+  20% {
+    transform: translateY(0) scale(1, 1);
+  }
+  40%,
+  80% {
+    transform: scale(1.025, 0.972);
+  }
+  60% {
+    transform: scale(1, 1);
+  }
+}

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { FOCUS_LABEL } from '../ai/labels';
 import { errorMessage } from '../api/client';
 import type { Card, Delivery, SupportResource, WeekSummary } from '../api/types';
 import { FALLBACK_DISCLAIMER, useAuth } from '../auth/AuthContext';
+import { useMotionOn } from '../motion';
 import { artMotionFor, poseFor, poseSrc, type Pose } from './coachingArt';
 
 export function Disclaimer() {
@@ -201,6 +202,114 @@ export function availableMetrics(weeks: WeekSummary[]): WeekMetric[] {
   return WEEK_METRICS.filter((m) => weeks.some((w) => w[m.key] != null)).map((m) => m.key);
 }
 
+const BAR_TWEEN_MS = 520;
+
+/**
+ * 막대 높이(0~1)를 지난 값에서 새 값으로 부드럽게 옮긴다. 항목을 바꿀 때 그림이 갈아 끼워지지 않고
+ * 수치만큼 늘고 줄어드는 것이 보이게 하려는 것이다. 새로 생긴 막대는 0에서 자란다.
+ * 처음 그릴 때는 바로 최종 높이로 그린다(서버 렌더·움직임 끔에서도 같은 그림).
+ */
+function useTweenedRatios(targets: Record<string, number>, motionOn: boolean): Record<string, number> {
+  const [shown, setShown] = useState(targets);
+  const shownRef = useRef(targets);
+  const key = JSON.stringify(targets);
+  useEffect(() => {
+    const to = JSON.parse(key) as Record<string, number>;
+    const from = shownRef.current;
+    const same =
+      Object.keys(to).length === Object.keys(from).length && Object.keys(to).every((k) => from[k] === to[k]);
+    if (same) return;
+    if (!motionOn || typeof requestAnimationFrame !== 'function') {
+      shownRef.current = to;
+      setShown(to);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / BAR_TWEEN_MS);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const next: Record<string, number> = {};
+      for (const k of Object.keys(to)) {
+        const a = from[k] ?? 0;
+        next[k] = a + (to[k] - a) * ease;
+      }
+      shownRef.current = next;
+      setShown(next);
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    // 옮기는 중에 다시 바꾸면 그 순간의 높이에서 새 값으로 이어 간다(shownRef가 중간값을 들고 있다).
+    return () => cancelAnimationFrame(raf);
+  }, [key, motionOn]);
+  return shown;
+}
+
+/**
+ * 막대를 지금 보여 줄지. false인 동안 막대는 0에 있고, true가 되는 순간 각자의 높이까지 자란다.
+ * - 접히는 <details> 안: 펼쳐 있는 동안만 true. 접으면 false로 돌아가서, 펼칠 때마다 다시 자란다.
+ * - 그 밖(선생님 화면 등): 처음 화면에 들어온 순간 true가 되고 그 뒤로는 바뀌지 않는다(스크롤할 때마다 자라지 않게).
+ * 움직임을 끈 화면과 IntersectionObserver가 없는 환경에서는 늘 true다(막대를 0에 두지 않는다).
+ */
+function useBarsShown(ref: RefObject<Element | null>, motionOn: boolean, ready: boolean): boolean {
+  const [shown, setShown] = useState(() => !motionOn || typeof IntersectionObserver !== 'function');
+  useEffect(() => {
+    if (!motionOn) {
+      setShown(true);
+      return;
+    }
+    const el = ref.current;
+    if (!ready || !el) return;
+    const details = el.closest('details');
+    if (details) {
+      const sync = () => setShown(details.open);
+      sync();
+      details.addEventListener('toggle', sync);
+      return () => details.removeEventListener('toggle', sync);
+    }
+    if (typeof IntersectionObserver !== 'function') {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setShown(true);
+        io.disconnect();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ref, motionOn, ready]);
+  return shown;
+}
+
+/**
+ * 고른 버튼 밑에 깔리는 바탕(thumb)의 자리. 버튼마다 너비가 달라 화면에서 재고, 화면 너비가 바뀌면 다시 잰다.
+ * ready는 첫 자리를 잡은 뒤에만 켠다(처음부터 왼쪽 끝에서 미끄러져 오지 않게).
+ */
+function useTabThumb(ref: RefObject<HTMLDivElement | null>, selected: string) {
+  const [thumb, setThumb] = useState<{ left: number; width: number; ready: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const measure = () => {
+      const btn = box.querySelector<HTMLElement>('button[aria-pressed="true"]');
+      if (!btn) return;
+      // 접힌 <details> 안이면 너비가 0으로 재어진다. 그때는 바탕을 치워 두어, 펼칠 때 0에서 늘어나는 움직임이 없게 한다.
+      if (btn.offsetWidth === 0) {
+        setThumb(null);
+        return;
+      }
+      setThumb((cur) => ({ left: btn.offsetLeft, width: btn.offsetWidth, ready: cur !== null }));
+    };
+    measure();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    ro?.observe(box);
+    return () => ro?.disconnect();
+  }, [ref, selected]);
+  return thumb;
+}
+
 /**
  * 주간 막대(단일 계열). 기본은 함께한 시간 비율이고, metric으로 다른 항목을 고를 수 있다.
  * 막대마다 마우스/터치 툴팁(<title>)과 아래 표(접기)로 같은 값을 제공한다.
@@ -216,9 +325,17 @@ export function WeeklyBars({
 }) {
   const info = metricInfo(metric);
   const data = weeks.filter((w) => w[metric] != null);
-  if (data.length === 0) return <p className="muted">{emptyText}</p>;
   // 비율은 0~1 그대로, 나머지는 이 기간의 가장 큰 값을 꼭대기로 둔다(다른 집과 견주는 기준선은 없다).
   const top = metric === 'jointPlayRatio' ? 1 : Math.max(...data.map((w) => w[metric] ?? 0), 0) || 1;
+  const motionOn = useMotionOn();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const visible = useBarsShown(svgRef, motionOn, data.length > 0);
+  const targets: Record<string, number> = {};
+  // 보이지 않는 동안에는 모든 막대를 0에 두었다가, 보이는 순간 각자의 높이까지 자라게 한다.
+  for (const w of data) targets[w.weekStart] = visible ? Math.max(0, Math.min(1, (w[metric] ?? 0) / top)) : 0;
+  // 접을 때(보이지 않게 될 때)는 옮기지 않고 바로 0으로 돌려 둔다. 다시 펼치면 늘 0에서 시작한다.
+  const shown = useTweenedRatios(targets, motionOn && visible);
+  if (data.length === 0) return <p className="muted">{emptyText}</p>;
   const W = 320;
   const H = 150;
   const padTop = 22;
@@ -228,11 +345,12 @@ export function WeeklyBars({
   const bw = Math.min(28, slot * 0.55);
   const last = data.length - 1;
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={info.chartLabel}>
+    <svg ref={svgRef} className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={info.chartLabel}>
       <line className="axis" x1={0} x2={W} y1={padTop + plotH} y2={padTop + plotH} />
       {data.map((w, i) => {
         const value = w[metric] ?? 0;
-        const ratio = Math.max(0, Math.min(1, value / top));
+        // 항목을 바꾸는 동안은 지난 높이에서 새 높이로 옮겨 가는 중간값을 그린다.
+        const ratio = shown[w.weekStart] ?? 0;
         const h = Math.max(2, ratio * plotH);
         const x = i * slot + (slot - bw) / 2;
         const y = padTop + plotH - h;
@@ -269,6 +387,23 @@ export function WeeklyChart({ weeks, idPrefix }: { weeks: WeekSummary[]; idPrefi
   const metric = metrics.includes(picked) ? picked : (metrics[0] ?? 'jointPlayRatio');
   const info = metricInfo(metric);
   const labelId = `${idPrefix}-metric-label`;
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const thumb = useTabThumb(tabsRef, metric);
+  const swipeFrom = useRef<{ x: number; y: number } | null>(null);
+
+  // 그래프 위를 옆으로 밀면 옆 항목으로 넘어간다(휴대폰에서 버튼까지 손을 옮기지 않아도 되게).
+  // 세로 스크롤은 그대로 두려고 가로로 충분히(48px 이상, 세로보다 크게) 민 경우만 넘긴다.
+  function swipeEnd(x: number, y: number) {
+    const from = swipeFrom.current;
+    swipeFrom.current = null;
+    if (!from || metrics.length < 2) return;
+    const dx = x - from.x;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(y - from.y) * 1.5) return;
+    const i = metrics.indexOf(metric);
+    const next = metrics[i + (dx < 0 ? 1 : -1)];
+    if (next) setPicked(next);
+  }
+
   return (
     <>
       {metrics.length > 1 && (
@@ -276,7 +411,20 @@ export function WeeklyChart({ weeks, idPrefix }: { weeks: WeekSummary[]; idPrefi
           <span className="sr-only" id={labelId}>
             막대로 볼 항목
           </span>
-          <div className="tabs" role="group" aria-labelledby={labelId} style={{ marginBottom: 8 }}>
+          <div
+            ref={tabsRef}
+            className={`tabs tabs-slide${thumb ? ' has-thumb' : ''}`}
+            role="group"
+            aria-labelledby={labelId}
+            style={{ marginBottom: 8 }}
+          >
+            {thumb && (
+              <span
+                className={`tabs-thumb${thumb.ready ? ' ready' : ''}`}
+                aria-hidden="true"
+                style={{ width: thumb.width, transform: `translateX(${thumb.left}px)` }}
+              />
+            )}
             {WEEK_METRICS.filter((m) => metrics.includes(m.key)).map((m) => (
               <button
                 key={m.key}
@@ -294,7 +442,22 @@ export function WeeklyChart({ weeks, idPrefix }: { weeks: WeekSummary[]; idPrefi
       <p className="muted" style={{ margin: '0 0 4px' }} aria-live="polite">
         {info.chartLabel}
       </p>
-      <WeeklyBars weeks={weeks} metric={metric} />
+      <div
+        className="chart-swipe"
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          swipeFrom.current = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+        }}
+        onTouchEnd={(e) => {
+          const t = e.changedTouches[0];
+          if (t) swipeEnd(t.clientX, t.clientY);
+        }}
+        onTouchCancel={() => {
+          swipeFrom.current = null;
+        }}
+      >
+        <WeeklyBars weeks={weeks} metric={metric} />
+      </div>
     </>
   );
 }
