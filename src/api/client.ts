@@ -1,4 +1,4 @@
-import { STORY_TITLE_LIMIT, STORY_BODY_LIMIT, type DaycareRecommendation, type GuidancePreview, type TeacherStoryDraft, type TokenResponse } from './types';
+import { STORY_TITLE_LIMIT, STORY_BODY_LIMIT, type GuidancePreview, type TeacherStoryDraft, type TokenResponse } from './types';
 
 /**
  * API 호출 도우미. JSON만 주고받는다(영상·파일 업로드 기능 없음).
@@ -215,12 +215,6 @@ type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export function api<T>(method: Method, path: string, body?: unknown, retry = true): Promise<T> {
   return sendJson<T>('/api/v1', method, path, body, retry);
-}
-
-export function requestDaycareCoaching(childId: number, month: string, signal: AbortSignal) {
-  return sendJson<{ recommendation: DaycareRecommendation | null }>(
-    '/ai/v1', 'POST', '/daycare-coaching', { childId, month }, true, signal,
-  );
 }
 
 export function requestObservationGuidance(childId: number, observationId: number, summary: string | undefined, signal: AbortSignal) {

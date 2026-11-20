@@ -385,8 +385,12 @@ button.ai-moment[aria-pressed="true"] {
 .review-scenes li { display: flex; gap: 8px; align-items: baseline; }
 .observation-review textarea { min-height: 88px; width: 100%; margin-bottom: 10px; }
 .review-choice { margin: 12px 0; }
-.review-choice label { min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: .9rem; }
-.review-choice input { width: 18px; height: 18px; flex: none; }
+.review-include { min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.review-include input { width: 18px; height: 18px; flex: none; }
+.review-action-fields { margin-top: 8px; }
+.review-action-fields textarea { min-height: 68px; margin-bottom: 0; }
+.review-own, .review-original { border-top: 1px solid var(--line); padding-top: 8px; margin: 12px 0; }
+.review-own summary, .review-original summary { padding-block: 10px; cursor: pointer; font-weight: 600; }
 .evidence-item + .evidence-item { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
 .evidence-action { font-weight: 700; }
 .recommendation-evidence {

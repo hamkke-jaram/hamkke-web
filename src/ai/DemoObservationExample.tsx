@@ -11,6 +11,8 @@ import { ReviewedResult } from './ReviewResult';
 export function ReviewedExample({ review }: { review: ExampleReview }) {
   return <ReviewedResult summaryLabel="선생님 관찰 메모" recommendationsLabel="블록 놀이 장면에서 해 볼 일"
     guidance={{ summary: review.summary, recommendations: review.includeAction ? [blockPlayEvidence] : [],
+      teacherEdits: review.includeAction && review.teacherEdit ? [{ sourceId: blockPlayEvidence.sourceId, ...review.teacherEdit }] : undefined,
+      teacherRecommendation: review.teacherRecommendation,
       reviewedAt: review.reviewedAt, corpusVersion: 'example-NURI-OBSERVE-PLAY' }} />;
 }
 

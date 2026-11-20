@@ -129,13 +129,13 @@ function StoryHome({ child, others, onPick }: { child: TeacherChild; others: Tea
       </section>
 
       <Link to={`/t/children/${id}/coaching`} className="th-coach" data-demo="th-coaching">
-        <span className="th-coach-note">* 보호자가 코칭 카드 공유를 켜면 가정에서 받은 코칭을 볼 수 있어요</span>
+        <span className="th-coach-note">* 보호자가 공유를 켜면 가정의 관찰 기록과 코칭을 볼 수 있어요</span>
         <span className="th-coach-body">
           <Mascot name="teddy" size={112} />
           <span className="th-coach-text">
             <span className="th-coach-ai">AI</span>
             <strong>코칭 확인하기</strong>
-            <span className="th-coach-sub">가정에서 공유된 코칭</span>
+            <span className="th-coach-sub">공유된 가정 행동 기록과 코칭</span>
           </span>
           <ChevronIcon size={20} />
         </span>

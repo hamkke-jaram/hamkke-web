@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError, api, requestObservationGuidance } from '../api/client';
-import type { AiObservation, GuidancePreview, SharedSummary, TeacherObservationReview } from '../api/types';
+import type {
+  AiObservation, EvidenceRecommendation, GuidancePreview, SharedSummary,
+  TeacherObservationReview, TeacherRecommendation, TeacherRecommendationEdit,
+} from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import SubHead from '../components/SubHead';
 import { usePagedList } from '../components/paging';
@@ -14,25 +17,29 @@ import './ai.css';
 
 export function TeacherReviewInbox() {
   const id = Number(useParams().childId);
-  const { user } = useAuth();
-  const summary = useSharedDetail<SharedSummary>(`/teacher/children/${id}/shared-summary?weeks=1`, user?.id);
   return <div className="observation-review">
-    <SubHead title="가정 영상 검토" fallback="/t" />
-    {loadStateView(summary, '공유 설정을') ?? (summary.data?.sharedItems.includes('AI_OBSERVATIONS')
-      ? <ReviewQueue key={`${user?.id}-${id}`} childId={id} />
-      : <p>보호자가 ‘가정의 AI 관찰 기록’ 공유를 켜면 이곳에서 검토할 수 있어요.</p>)}
+    <SubHead title="가정 영상 검토" fallback={`/t/children/${id}/coaching`} />
+    <TeacherReviewQueue childId={id} />
   </div>;
 }
 
-function ReviewQueue({ childId }: { childId: number }) {
+export function TeacherReviewQueue({ childId, embedded = false }: { childId: number; embedded?: boolean }) {
+  const { user } = useAuth();
+  const summary = useSharedDetail<SharedSummary>(`/teacher/children/${childId}/shared-summary?weeks=1`, user?.id);
+  return loadStateView(summary, '공유 설정을') ?? (summary.data?.sharedItems.includes('AI_OBSERVATIONS')
+    ? <ReviewQueue key={`${user?.id}-${childId}`} childId={childId} heading={embedded ? 'h3' : 'h2'} />
+    : <p>보호자가 ‘가정의 AI 관찰 기록’ 공유를 켜면 이곳에서 검토할 수 있어요.</p>);
+}
+
+function ReviewQueue({ childId, heading: Heading }: { childId: number; heading: 'h2' | 'h3' }) {
   const list = usePagedList<AiObservation>(`/children/${childId}/ai-observations`, 20, [childId]);
   const rows = (list.items ?? []).filter(observationNeedsReview);
   return loadStateView(list, '검토할 기록을') ?? <>
-    <p className="muted">보호자가 공유한 영상의 장면별 관찰 메모를 확인하고, 근거 자료에 맞는 대응을 골라 주세요.</p>
+    <p className="muted">공유된 행동 기록을 열어 AI 조치 제안과 근거를 확인하고, 선생님이 검토한 조치를 보호자에게 전해 주세요.</p>
     {['PENDING', 'PUBLISHED'].map(status => {
       const group = rows.filter(row => row.reviewStatus === status);
       return group.length > 0 && <section key={status}>
-        <h2>{status === 'PENDING' ? '검토 대기' : '보호자에게 전달한 기록'}</h2>
+        <Heading>{status === 'PENDING' ? '검토 대기' : '보호자에게 전달한 기록'}</Heading>
         <ul className="review-queue">{group.map(row => <li key={row.id}>
           <Link to={`/t/children/${childId}/ai-reviews/${row.id}`} data-demo="review-open">
             <span>{formatDate(row.recordedAt || row.createdAt)}</span>
@@ -58,54 +65,120 @@ export function TeacherReviewDetail() {
   const params = useParams();
   const childId = Number(params.childId), observationId = Number(params.observationId);
   const { user } = useAuth();
+  return <ReviewScreen key={`${user?.id}-${childId}-${observationId}`}
+    childId={childId} observationId={observationId} viewerId={user?.id} />;
+}
+
+function ReviewScreen({ childId, observationId, viewerId }: {
+  childId: number; observationId: number; viewerId?: number;
+}) {
   const path = `/children/${childId}/ai-observations/${observationId}/review`;
-  const detail = useSharedDetail<TeacherObservationReview>(path, user?.id);
+  const detail = useSharedDetail<TeacherObservationReview>(path, viewerId);
   const review = detail.data;
+  // When a teacher opens a source, the visibility guard hides the review. Keep the
+  // input in memory so it can be restored after the server confirms access again.
+  const cache = useRef<ReviewDraft | null>(null);
+  useEffect(() => {
+    if (review?.status === 'PUBLISHED' || accessChanged(detail.error)) cache.current = null;
+  }, [review, detail.error]);
   return <div className="observation-review">
-    <SubHead title="가정 영상 검토" fallback={`/t/children/${childId}/ai-reviews`} />
+    <SubHead title="가정 영상 검토" fallback={`/t/children/${childId}/coaching`} />
     {detail.error ? <div>
       <p role="alert">검토 기록을 열 수 없어요. 선생님 연결과 보호자의 AI 기록 공유 상태를 확인해 주세요.</p>
       <button type="button" className="btn secondary" onClick={detail.reload}>다시 확인하기</button>
     </div> : !review ? <Loading />
       : review.status === 'PUBLISHED' ? (review.observation.publishedGuidance
         ? <ReviewedResult guidance={review.observation.publishedGuidance} /> : <p>보호자에게 전달한 기록이에요.</p>)
-      : <ReviewEditor key={`${user?.id}-${childId}-${observationId}`} childId={childId}
-        observation={review.observation} path={path} reload={detail.reload} />}
+      : <ReviewEditor childId={childId} observation={review.observation} path={path} reload={detail.reload} cache={cache} />}
   </div>;
 }
 
-function ReviewEditor({ childId, observation, path, reload }: {
+const REVIEW_TEXT_LIMIT = 500;
+type ActionDraft = { action: string; rationale: string };
+type ReviewOption = ActionDraft & { suggestion: EvidenceRecommendation; included: boolean };
+type ReviewDraft = {
+  summary: string;
+  edited: boolean;
+  receipt: string | null;
+  options: ReviewOption[];
+  own: ActionDraft;
+};
+
+function accessChanged(error: unknown) {
+  return error instanceof ApiError && [401, 403, 404, 409].includes(error.status);
+}
+
+function matchingSuggestion(a: EvidenceRecommendation, b: EvidenceRecommendation) {
+  return a.sourceId === b.sourceId && a.action === b.action && a.observation === b.observation
+    && a.reason === b.reason && a.sourceUrl === b.sourceUrl && a.sourceSection === b.sourceSection;
+}
+
+function RecommendationFields({ value, disabled, own = false, onChange }: {
+  value: ActionDraft; disabled: boolean; own?: boolean; onChange: (value: ActionDraft) => void;
+}) {
+  return <div className="review-action-fields">
+    <label className="field">
+      <span>{own ? '선생님이 제안하는 조치' : '보호자에게 전할 조치'}</span>
+      <textarea data-demo={own ? 'review-own-action' : 'review-action'} rows={2} maxLength={REVIEW_TEXT_LIMIT}
+        value={value.action} disabled={disabled} onChange={e => onChange({ ...value, action: e.target.value })} />
+    </label>
+    <label className="field">
+      <span>선생님 판단 근거 (선택)</span>
+      <textarea data-demo={own ? 'review-own-rationale' : 'review-rationale'} rows={2} maxLength={REVIEW_TEXT_LIMIT}
+        value={value.rationale} disabled={disabled}
+        placeholder="아이의 평소 모습이나 선생님이 직접 확인한 점을 적어 주세요."
+        onChange={e => onChange({ ...value, rationale: e.target.value })} />
+    </label>
+  </div>;
+}
+
+function ReviewEditor({ childId, observation, path, reload, cache }: {
   childId: number; observation: AiObservation; path: string; reload: () => void;
+  cache: { current: ReviewDraft | null };
 }) {
   const original = observation.summary?.trim() || '';
-  const [summary, setSummary] = useState(original);
-  const [edited, setEdited] = useState(false);
-  const [preview, setPreview] = useState<GuidancePreview | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [draft, setDraft] = useState<ReviewDraft>(() => cache.current ?? {
+    summary: original, edited: false, receipt: null, options: [], own: { action: '', rationale: '' },
+  });
   const [working, setWorking] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState('');
   const active = useRef<AbortController | null>(null);
   const submitting = useRef(false);
-  const hasEvidence = !!original || !!observation.moments?.length;
+  const hasObservation = !!original || !!observation.moments?.length;
+  const autoGenerate = useRef(hasObservation && !draft.edited && !draft.receipt && !draft.options.length);
+
+  const updateDraft = useCallback((update: (current: ReviewDraft) => ReviewDraft) => {
+    const current = cache.current ?? {
+      summary: original, edited: false, receipt: null, options: [], own: { action: '', rationale: '' },
+    };
+    const next = update(current);
+    cache.current = next;
+    setDraft(next);
+  }, [cache, original]);
 
   const generate = useCallback(async (text?: string) => {
     active.current?.abort();
     const request = new AbortController();
     active.current = request;
     const timer = window.setTimeout(() => request.abort(), 60_000);
-    setError(''); setPreview(null); setWorking(true);
+    setError('');
+    setWorking(true);
     try {
       const data = await requestObservationGuidance(childId, observation.id, text, request.signal);
       if (active.current !== request) return;
       if (!validGuidance(data)) throw new Error('invalid guidance');
-      setPreview(data);
-      setSelected(data.recommendations.map(item => item.sourceId));
-      setSummary(data.summary);
+      updateDraft(current => ({
+        ...current, receipt: data.receipt, summary: data.summary,
+        options: data.recommendations.map(suggestion => current.options.find(option =>
+          matchingSuggestion(option.suggestion, suggestion)) ?? {
+          suggestion, included: false, action: suggestion.action, rationale: '',
+        }),
+      }));
     } catch (err) {
       if (active.current !== request) return;
-      if (err instanceof ApiError && [401, 403, 404, 409].includes(err.status)) setBlocked(true);
+      if (accessChanged(err)) { cache.current = null; setBlocked(true); }
       else setError(err instanceof ApiError && err.status === 429
         ? 'AI가 다른 기록을 살펴보고 있어요. 잠시 뒤 다시 눌러 주세요.'
         : '근거 자료를 확인하지 못했어요. 관찰 문장을 확인하고 다시 찾아 주세요.');
@@ -113,25 +186,41 @@ function ReviewEditor({ childId, observation, path, reload }: {
       window.clearTimeout(timer);
       if (active.current === request) { active.current = null; setWorking(false); }
     }
-  }, [childId, observation.id]);
+  }, [cache, childId, observation.id, updateDraft]);
 
   useEffect(() => {
-    if (hasEvidence) void generate();
+    if (autoGenerate.current) void generate();
     return () => { active.current?.abort(); active.current = null; };
-  }, [hasEvidence, generate]);
+  }, [generate]);
+
+  const selected = draft.options.filter(option => option.included);
+  const ownAction = draft.own.action.trim();
+  const invalidAction = selected.some(option => !option.action.trim()) || (!ownAction && !!draft.own.rationale.trim());
 
   async function publish() {
-    if (!preview || submitting.current) return;
+    if (!draft.receipt || invalidAction || submitting.current) return;
+    const teacherEdits: TeacherRecommendationEdit[] = selected
+      .filter(option => option.action.trim() !== option.suggestion.action || !!option.rationale.trim())
+      .map(({ suggestion, action, rationale }) => ({ sourceId: suggestion.sourceId, action: action.trim(), rationale: rationale.trim() || undefined }));
+    const teacherRecommendation: TeacherRecommendation | undefined = ownAction
+      ? { action: ownAction, rationale: draft.own.rationale.trim() || undefined } : undefined;
     submitting.current = true;
     setPublishing(true); setError('');
     try {
-      await api<AiObservation>('POST', path + '/publish', { receipt: preview.receipt, selectedSourceIds: selected });
+      await api<AiObservation>('POST', path + '/publish', {
+        receipt: draft.receipt, selectedSourceIds: selected.map(option => option.suggestion.sourceId),
+        ...(teacherEdits.length > 0 && { teacherEdits }),
+        ...(teacherRecommendation && { teacherRecommendation }),
+      });
+      cache.current = null;
       reload();
     } catch (err) {
-      if (err instanceof ApiError && [401, 403, 404, 409].includes(err.status)) setBlocked(true);
-      else {
-        if (err instanceof ApiError && [400, 422].includes(err.status)) setPreview(null);
-        setError('전달 여부를 확인하지 못했어요. 기록을 다시 확인하거나 근거를 다시 찾아 주세요.');
+      if (accessChanged(err)) { cache.current = null; setBlocked(true); }
+      else if (err instanceof ApiError && err.code === 'AI_RECEIPT_INVALID') {
+        updateDraft(current => ({ ...current, receipt: null }));
+        setError('확인한 근거의 유효 시간이 지났어요. 근거를 다시 찾아 주세요.');
+      } else {
+        setError('전달하지 못했어요. 작성한 내용을 확인한 뒤 다시 시도해 주세요.');
       }
     } finally { submitting.current = false; setPublishing(false); }
   }
@@ -148,31 +237,46 @@ function ReviewEditor({ childId, observation, path, reload }: {
         : <p>{original || '장면에서 구체적인 행동을 확인하기 어려웠어요.'}</p>}
     </section>
     <section aria-labelledby="review-heading"><h2 id="review-heading"><label htmlFor="review-summary">보호자에게 전할 관찰 내용</label></h2>
-      <textarea id="review-summary" data-demo="review-summary" rows={3} maxLength={500}
-        value={summary} disabled={publishing} placeholder="장면에서 확인한 행동을 적어 주세요."
+      <textarea id="review-summary" data-demo="review-summary" rows={3} maxLength={REVIEW_TEXT_LIMIT}
+        value={draft.summary} disabled={publishing} placeholder="장면에서 확인한 행동을 적어 주세요."
         onChange={e => {
           active.current?.abort(); active.current = null;
-          setWorking(false); setEdited(true); setSummary(e.target.value);
-          setError(''); setPreview(null);
+          setWorking(false); setError('');
+          const summary = e.target.value;
+          updateDraft(current => ({ ...current, summary, edited: true, receipt: null, options: [] }));
         }} />
-      {!preview && <button type="button" className="btn secondary block" data-demo="review-generate"
-        disabled={working || (!summary.trim() && (edited || !hasEvidence))}
-        onClick={() => void generate(edited ? summary.trim() : undefined)}>
+      {!draft.receipt && <button type="button" className="btn secondary block" data-demo="review-generate"
+        disabled={working || (!draft.summary.trim() && (draft.edited || !hasObservation))}
+        onClick={() => void generate(draft.summary.trim() || undefined)}>
         {working ? '공개 자료에서 근거를 찾는 중…' : '이 관찰 내용으로 근거 찾기'}
       </button>}
     </section>
-    {preview && <section aria-labelledby="review-options" data-demo="review-preview">
-      <h2 id="review-options">상황별 대응과 추천 근거</h2>
-      {preview.recommendations.length ? <>
-        <p className="muted">관찰 내용과 원문을 확인하고 보호자에게 전할 대응을 선택해 주세요.</p>
-        {preview.recommendations.map((item, index) => <div className="review-choice" key={item.sourceId}>
-          <EvidenceItem item={item} />
-          <label><input type="checkbox" checked={selected.includes(item.sourceId)} disabled={publishing}
-            onChange={e => setSelected(ids => e.target.checked ? [...ids, item.sourceId] : ids.filter(id => id !== item.sourceId))} />
-            {index + 1}번째 대응을 보호자에게 전달</label>
-        </div>)}</> : <p>이 관찰에 연결할 만한 근거를 찾지 못했어요. 검토한 관찰 내용만 전달할 수 있어요.</p>}
-      <button className="btn block" type="button" data-demo="review-publish" disabled={publishing} onClick={() => void publish()}>
-        {publishing ? '전달하는 중…' : selected.length ? '검토 완료 · 보호자에게 전달' : '검토한 관찰 내용만 전달'}
+    {draft.receipt && <section aria-labelledby="review-options" data-demo="review-preview">
+      <h2 id="review-options">AI 조치 제안 검토</h2>
+      {draft.options.length ? <>
+        <p className="muted">근거 자료를 확인하고, 선생님의 경험과 아이의 평소 모습을 바탕으로 보호자에게 전할 조치를 골라 수정할 수 있어요.</p>
+        {draft.options.map((option, index) => {
+          const updateOption = (update: Partial<ReviewOption>) => updateDraft(current => ({
+            ...current, options: current.options.map(candidate => candidate.suggestion.sourceId === option.suggestion.sourceId
+              ? { ...candidate, ...update } : candidate),
+          }));
+          return <div className="review-choice" key={option.suggestion.sourceId}>
+            <EvidenceItem item={option.suggestion} />
+            <label className="review-include"><input data-demo="review-include" type="checkbox" checked={option.included}
+              disabled={publishing} onChange={e => updateOption({ included: e.target.checked })} />
+              {index + 1}번째 제안을 검토해 전달하기</label>
+            {option.included && <RecommendationFields value={option} disabled={publishing} onChange={updateOption} />}
+          </div>;
+        })}</> : <p>이 관찰에 연결할 만한 근거를 찾지 못했어요. 선생님이 직접 조치를 적어 전달할 수 있어요.</p>}
+      <details className="review-own">
+        <summary>선생님이 직접 제안하는 조치 추가</summary>
+        <RecommendationFields own value={draft.own} disabled={publishing}
+          onChange={own => updateDraft(current => ({ ...current, own }))} />
+      </details>
+      {invalidAction && <p className="muted" role="status">전달할 조치의 내용을 적어 주세요.</p>}
+      <button className="btn block" type="button" data-demo="review-publish" disabled={publishing || invalidAction}
+        onClick={() => void publish()}>
+        {publishing ? '전달하는 중…' : selected.length || ownAction ? '검토 완료 · 보호자에게 전달' : '검토한 관찰 내용만 전달'}
       </button>
     </section>}
     {working && <p className="sr-only" role="status">공개 자료에서 이 장면에 맞는 대응 근거를 찾고 있어요.</p>}

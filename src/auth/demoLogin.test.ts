@@ -71,8 +71,11 @@ describe('실제 로그인용 예시 기록', () => {
     expect(publishDemoReview(parent, p.childId, memo, true)).toBeNull();
     expect(publishDemoReview(teacher, p.childId + 1, memo, true)).toBeNull();
     expect(publishedDemoReview(parent, p.childId)).toBeNull();
-    const review = publishDemoReview(teacher, p.childId, memo, false);
-    expect(review).toMatchObject({ status: 'published', summary: memo, includeAction: false });
+    const teacherEdit = { action: '블록을 한 개 내어 주세요.' };
+    const teacherRecommendation = { action: '아이에게 고를 시간을 주세요.', rationale: '아이의 선택을 기다려요.' };
+    const review = publishDemoReview(teacher, p.childId, memo, false, { teacherEdit, teacherRecommendation });
+    expect(review).toMatchObject({ status: 'published', summary: memo, includeAction: false, teacherRecommendation });
+    expect(review?.teacherEdit).toBeUndefined();
     expect(publishedDemoReview(parent, p.childId)).toEqual(review);
     expect(publishedDemoReview(parent, p.childId + 1)).toBeNull();
     expect(publishedDemoReview({ ...parent, email: 'another@example.com' }, p.childId)).toBeNull();

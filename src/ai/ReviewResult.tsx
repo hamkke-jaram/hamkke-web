@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { AiObservation, EvidenceRecommendation, LinkedTeacher, PublishedGuidance, ShareSettings } from '../api/types';
+import type {
+  AiObservation, EvidenceRecommendation, LinkedTeacher, PublishedGuidance, ShareSettings, TeacherRecommendation,
+} from '../api/types';
 import { formatDate } from '../components/ui';
 import { watchSharedDetail } from '../pages/teacher/useSharedDetail';
 import { EvidenceDetails } from './EvidenceDetails';
@@ -33,6 +35,24 @@ export function EvidenceItem({ item }: { item: EvidenceRecommendation }) {
   );
 }
 
+function TeacherAction({ recommendation, label, aiSuggestion }: {
+  recommendation: TeacherRecommendation;
+  label: string;
+  aiSuggestion?: EvidenceRecommendation;
+}) {
+  return <div className="evidence-item">
+    <p className="evidence-scene">{label}</p>
+    <p className="evidence-action" data-demo="review-teacher-action">{recommendation.action}</p>
+    {recommendation.rationale && <p data-demo="review-teacher-rationale">
+      <strong>선생님 판단 근거</strong><br />{recommendation.rationale}
+    </p>}
+    {aiSuggestion && <details className="review-original">
+      <summary>AI 조치 제안과 참고 자료</summary>
+      <EvidenceItem item={aiSuggestion} />
+    </details>}
+  </div>;
+}
+
 export function ReviewedResult({ guidance, summaryLabel = '관찰한 행동', recommendationsLabel = '상황에 맞는 대응' }: {
   guidance: PublishedGuidance;
   summaryLabel?: string;
@@ -44,9 +64,17 @@ export function ReviewedResult({ guidance, summaryLabel = '관찰한 행동', re
       <h3>{summaryLabel}</h3>
       <p className="review-summary">{guidance.summary}</p>
       <h3>{recommendationsLabel}</h3>
-      {guidance.recommendations.length
-        ? guidance.recommendations.map(item => <EvidenceItem key={item.sourceId} item={item} />)
-        : <p>이번 검토에서 전달된 대응 방법은 없어요.</p>}
+      {guidance.recommendations.map(item => {
+        const edit = guidance.teacherEdits?.find(entry => entry.sourceId === item.sourceId);
+        return edit
+          ? <TeacherAction key={item.sourceId} recommendation={edit} label="선생님이 검토한 조치" aiSuggestion={item} />
+          : <EvidenceItem key={item.sourceId} item={item} />;
+      })}
+      {guidance.teacherRecommendation && <div data-demo="review-teacher-recommendation">
+        <TeacherAction recommendation={guidance.teacherRecommendation} label="선생님이 추가한 조치" />
+      </div>}
+      {!guidance.recommendations.length && !guidance.teacherRecommendation
+        && <p>이번 검토에서 전달된 대응 방법은 없어요.</p>}
     </section>
   );
 }

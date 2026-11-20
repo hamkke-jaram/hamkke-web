@@ -1,11 +1,13 @@
 import { currentSession } from '../api/client';
-import type { Policies, Role, TokenResponse, User } from '../api/types';
+import type { Policies, Role, TeacherRecommendation, TokenResponse, User } from '../api/types';
 import { createDemo, demoRequest, newDemoPair, SeedError, type DemoPair } from '../demo/seed';
 
 type Identity = Pick<User, 'id' | 'email' | 'role'>;
 type Versions = Pick<Policies, 'termsVersion' | 'privacyVersion' | 'guardianVersion'>;
 export type ExampleReview = {
   status: 'published'; summary: string; includeAction: boolean; reviewedAt: string;
+  teacherEdit?: TeacherRecommendation;
+  teacherRecommendation?: TeacherRecommendation;
 };
 type Workspace = {
   pair: DemoPair;
@@ -85,12 +87,16 @@ export function publishedDemoReview(user: Identity | null | undefined, childId: 
     && typeof review.includeAction === 'boolean' && Number.isFinite(Date.parse(review.reviewedAt)) ? review : null;
 }
 
-export function publishDemoReview(user: Identity, childId: number, summary: string, includeAction: boolean) {
+export function publishDemoReview(user: Identity, childId: number, summary: string, includeAction: boolean,
+  advice?: Pick<ExampleReview, 'teacherEdit' | 'teacherRecommendation'>) {
   const workspace = read();
   const text = summary.trim();
   if (!workspace?.ids || workspace.ids.child !== childId || workspace.deleting
     || user.role !== 'TEACHER' || !matches(user, workspace) || !text || text.length > 500) return null;
-  const review: ExampleReview = { status: 'published', summary: text, includeAction, reviewedAt: new Date().toISOString() };
+  const review: ExampleReview = {
+    status: 'published', summary: text, includeAction, reviewedAt: new Date().toISOString(),
+    teacherEdit: includeAction ? advice?.teacherEdit : undefined, teacherRecommendation: advice?.teacherRecommendation,
+  };
   save({ ...workspace, exampleReview: review });
   return review;
 }

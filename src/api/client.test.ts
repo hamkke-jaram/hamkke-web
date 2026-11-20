@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ApiError, api, currentSession, errorMessage, hasSession, requestDaycareCoaching, requestTeacherStoryDraft, setApiObserver, setSession,
+  ApiError, api, currentSession, errorMessage, hasSession, requestTeacherStoryDraft, setApiObserver, setSession,
 } from './client';
 import type { TokenResponse } from './types';
 
@@ -90,22 +90,6 @@ describe('선생님 이야기 초안', () => {
 });
 
 describe('api: 토큰 갱신', () => {
-  it('어린이집 추천은 아이 번호와 달만 보내고 만료된 세션을 갱신한 뒤 같은 AI 경로로 다시 보낸다', async () => {
-    mockFetch(c => {
-      if (c.url === '/api/v1/auth/refresh') return json(200, tokens(2));
-      return c.auth === 'Bearer access-2' ? json(200, { recommendation: null }) : json(401, {});
-    });
-    const body = { childId: 7, month: '2026-11' };
-    const url = '/ai/v1/daycare-coaching';
-    await expect(requestDaycareCoaching(7, body.month, new AbortController().signal))
-      .resolves.toEqual({ recommendation: null });
-    expect(calls).toEqual([
-      { url, method: 'POST', auth: 'Bearer access-1', body },
-      { url: '/api/v1/auth/refresh', method: 'POST', auth: null, body: { refreshToken: 'refresh-1' } },
-      { url, method: 'POST', auth: 'Bearer access-2', body },
-    ]);
-  });
-
   it('401이면 리프레시 토큰으로 한 번 갱신하고 새 토큰으로 다시 보낸다', async () => {
     mockFetch((c) => {
       if (c.url === '/api/v1/auth/refresh') return json(200, tokens(2));

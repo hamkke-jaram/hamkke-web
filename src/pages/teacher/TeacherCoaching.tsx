@@ -1,26 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSharedDetail, watchSharedVisibility } from './useSharedDetail';
 import { ApiError } from '../../api/client';
 import type { Delivery } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import { isDemoWorkspaceChild } from '../../auth/demoLogin';
 import SubHead from '../../components/SubHead';
 import { poseFor, poseSrc } from '../../components/coachingArt';
 import { usePagedList, type PagedList } from '../../components/paging';
 import { Loading, MoreButton, loadStateView } from '../../components/ui';
 import { firstSentence, monthLabel, splitSteps } from '../parent/coachText';
 import { kstDateKey } from '../parent/week';
-import { DaycareCoaching } from './DaycareCoaching';
-import { CoachingReviewLinks, CoachingRows, sharedDayLabel, type CoachPick } from './CoachingRows';
+import { CoachingRows, sharedDayLabel, type CoachPick } from './CoachingRows';
 import { ChevronIcon } from '../parent/icons';
 import { artClass } from '../parent/parentMotion';
 import { sourceUrl } from '../../ai/EvidenceDetails';
+import { TeacherReviewQueue } from '../../ai/TeacherReview';
 import '../parent/parent.css';
 import './teacher.css';
 
 /*
- * 선생님이 보는 '가정에서 공유된 코칭'(Figma '홈_전체보기').
- * - /t/children/:id/coaching        달별 목록. 줄을 누르면 자세히.
+ * 선생님이 보는 'AI 코칭 검토'.
+ * - /t/children/:id/coaching        가정 행동 기록 검토와 공유된 코칭 달별 목록.
  * - /t/children/:id/coaching/:did   자세히(그림·제목·단계·출처) + '이 코칭으로 이야기 쓰기'.
  * - 이야기 쓰기의 '코칭 첨부하기'는 같은 목록을 고르기 모드(CoachPicker)로 쓴다. 고른 줄은 연보라로 칠한다.
  * 보호자가 코칭 카드 공유를 꺼 두면 서버가 404로 답한다 → 공유를 켜면 보인다고 알린다.
@@ -54,13 +55,11 @@ function CoachMonths({
   picked,
   setPicked,
   pick,
-  onAccessChanged,
 }: {
   childId: number;
   picked: string | null;
   setPicked: (month: string) => void;
   pick?: CoachPick;
-  onAccessChanged?: (reason: ApiError) => void;
 }) {
   const list = useDeliveries(childId);
   const months = useMemo(() => {
@@ -75,11 +74,12 @@ function CoachMonths({
   if (list.loading && !list.items) return <Loading />;
   const notice = list.error && !list.items && notShared(list.error) ? <NotSharedNote />
     : loadStateView(list, '코칭을') ?? (months.length === 0 ? <p className="muted th-empty">아직 가정에서 받은 코칭이 없어요.</p> : null);
-  if (notice) return <>{notice}{!pick && <CoachingReviewLinks childId={childId} />}</>;
+  if (notice) return notice;
 
   const month = picked && months.includes(picked) ? picked : months[0];
   const at = months.indexOf(month);
   const rows = (list.items ?? []).filter((d) => monthKey(d.deliveredAt) === month);
+  const MonthHeading = pick ? 'h2' : 'h3';
 
   return (
     <>
@@ -87,16 +87,14 @@ function CoachMonths({
         <button type="button" className="month-btn" aria-label="이전 달" disabled={at >= months.length - 1} onClick={() => setPicked(months[at + 1])}>
           <ChevronIcon size={22} />
         </button>
-        <h2 className="month-title" aria-live="polite">
+        <MonthHeading className="month-title" aria-live="polite">
           {monthLabel(month)}
-        </h2>
+        </MonthHeading>
         <button type="button" className="month-btn next" aria-label="다음 달" disabled={at <= 0} onClick={() => setPicked(months[at - 1])}>
           <ChevronIcon size={22} />
         </button>
       </div>
-      {onAccessChanged ? (
-        <DaycareCoaching key={month} childId={childId} month={month} rows={rows} onAccessChanged={onAccessChanged} />
-      ) : <CoachingRows childId={childId} rows={rows} pick={pick} />}
+      <CoachingRows childId={childId} rows={rows} pick={pick} />
       <MoreButton list={list} label="이전 코칭 더 불러오기" />
     </>
   );
@@ -106,31 +104,31 @@ function CoachMonths({
 export function TeacherCoachingList() {
   const id = Number(useParams().childId);
   const { user } = useAuth();
-  return <SharedCoachingPage key={`${user?.id}-${id}`} childId={id} />;
+  const demo = user?.role === 'TEACHER' && isDemoWorkspaceChild(user, id);
+  return <SharedCoachingPage key={`${user?.id}-${id}`} childId={id} demo={demo} />;
 }
 
-function SharedCoachingPage({ childId }: { childId: number }) {
+function SharedCoachingPage({ childId, demo }: { childId: number; demo: boolean }) {
   const [visible, setVisible] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
-  const [accessError, setAccessError] = useState<ApiError | null>(null);
-  useEffect(() => watchSharedVisibility(
-    () => { setAccessError(null); setVisible(true); },
-    () => setVisible(false),
-  ), []);
+  useEffect(() => watchSharedVisibility(() => setVisible(true), () => setVisible(false)), []);
 
   return (
     <div className="coach-list-page">
-      <SubHead title="가정에서 공유된 코칭" icon="close" fallback="/t" />
-      {!visible ? <Loading /> : accessError ? (
-        <div>
-          {accessError.status === 409 ? <p>공유된 코칭이 바뀌었어요.</p> : accessError.status === 401
-            ? <p>로그인 상태를 확인해 주세요.</p> : <NotSharedNote />}
-          <button type="button" className="btn secondary small" onClick={() => setAccessError(null)}>다시 불러오기</button>
-          {accessError.status !== 401 && <CoachingReviewLinks childId={childId} />}
-        </div>
-      ) : (
-        <CoachMonths childId={childId} picked={picked} setPicked={setPicked} onAccessChanged={setAccessError} />
-      )}
+      <SubHead title="AI 코칭 검토" icon="close" fallback="/t" />
+      {visible ? <>
+        <section className="coaching-review observation-review" aria-labelledby="coaching-review-title">
+          <h2 id="coaching-review-title">공유된 가정 행동 기록</h2>
+          <TeacherReviewQueue childId={childId} embedded />
+          {demo && <Link className="btn secondary block" data-demo="th-coach-review-example" to={`/t/children/${childId}/coaching/example`}>
+            예시 영상으로 검토 연습하기
+          </Link>}
+        </section>
+        <section aria-labelledby="shared-coaching-title">
+          <h2 id="shared-coaching-title">가정에서 공유된 코칭</h2>
+          <CoachMonths childId={childId} picked={picked} setPicked={setPicked} />
+        </section>
+      </> : <Loading />}
     </div>
   );
 }

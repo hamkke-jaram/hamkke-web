@@ -1,8 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { DaycareRecommendation, Delivery } from '../../api/types';
-import { EvidenceDetails } from '../../ai/EvidenceDetails';
-import { useAuth } from '../../auth/AuthContext';
-import { isDemoWorkspaceChild } from '../../auth/demoLogin';
+import type { Delivery } from '../../api/types';
 import { poseFor, poseSrc, type Pose } from '../../components/coachingArt';
 import { firstSentence } from '../parent/coachText';
 import { ChevronIcon } from '../parent/icons';
@@ -10,17 +7,6 @@ import { artClass } from '../parent/parentMotion';
 import { kstDateKey } from '../parent/week';
 
 export type CoachPick = { selectedId: number | null; onPick: (delivery: Delivery) => void };
-
-export function CoachingReviewLinks({ childId }: { childId: number }) {
-  const { user } = useAuth();
-  const showExample = user?.role === 'TEACHER' && isDemoWorkspaceChild(user, childId);
-  return <div className="coaching-review-links">
-    <Link data-demo="th-coach-review-inbox" to={`/t/children/${childId}/ai-reviews`}>가정 영상 검토함 열기</Link>
-    {showExample && <Link data-demo="th-coach-review-example" to={`/t/children/${childId}/coaching/example`}>
-      예시 영상으로 검토 과정 체험하기
-    </Link>}
-  </div>;
-}
 
 export function sharedDayLabel(iso: string, now = Date.now()) {
   const date = kstDateKey(Date.parse(iso));
@@ -52,40 +38,14 @@ function RowContent({ pose, label, title, line, selected }: {
   </>;
 }
 
-export function CoachingRows({ childId, rows, recommendation, pick }: {
+export function CoachingRows({ childId, rows, pick }: {
   childId: number;
   rows: Delivery[];
-  recommendation?: DaycareRecommendation | null;
   pick?: CoachPick;
 }) {
-  // 최신순 목록에서 근거 카드의 가장 최근 전달 한 건만 추천 줄로 옮긴다.
-  const source = recommendation && rows.find(d => d.card.code === recommendation.sourceCode);
-  const sourcePath = (id: number) => `/t/children/${childId}/coaching/${id}`;
   return (
     <ul className="coach-rows">
-      {recommendation && (
-        <li className="daycare-coaching" data-demo="th-daycare-coaching" data-delivery-id={source?.id}>
-          <details>
-            <summary className="coach-row">
-              <RowContent pose={poseFor(source?.card ?? { code: recommendation.sourceCode })} label="AI 추천 · 어린이집"
-                title={recommendation.title} line={firstSentence(recommendation.action)} />
-            </summary>
-            <div className="daycare-details">
-              <p>{recommendation.action}</p>
-              <EvidenceDetails evidence={recommendation.evidence} />
-              <p className="daycare-source">
-                바탕이 된 가정 코칭{' '}
-                {source ? <Link to={sourcePath(source.id)}>{source.card.title}</Link> : recommendation.sourceTitle}
-              </p>
-              <div className="daycare-review">
-                <p>보호자가 영상을 기록하고 관찰 기록을 공유하면 선생님이 AI의 관찰 내용과 추천 근거를 확인해요. 관찰 문장을 수정하고 전달할 대응을 골라 보호자에게 보낼 수 있어요.</p>
-                <CoachingReviewLinks childId={childId} />
-              </div>
-            </div>
-          </details>
-        </li>
-      )}
-      {rows.filter(d => d.id !== source?.id).map(d => {
+      {rows.map(d => {
         const selected = d.id === pick?.selectedId;
         const content = <RowContent pose={poseFor(d.card)} label={sharedDayLabel(d.deliveredAt)}
           title={d.card.title} line={firstSentence(d.card.body)} selected={selected} />;
@@ -94,7 +54,7 @@ export function CoachingRows({ childId, rows, recommendation, pick }: {
             {pick ? (
               <button type="button" className={`coach-row th-pick${selected ? ' picked' : ''}`}
                 aria-pressed={selected} onClick={() => pick.onPick(d)}>{content}</button>
-            ) : <Link to={sourcePath(d.id)} className="coach-row">{content}</Link>}
+            ) : <Link to={`/t/children/${childId}/coaching/${d.id}`} className="coach-row">{content}</Link>}
           </li>
         );
       })}

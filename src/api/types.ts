@@ -91,14 +91,6 @@ export interface Delivery {
   card: Card;
 }
 
-export interface DaycareRecommendation {
-  title: string;
-  action: string;
-  sourceCode: string;
-  sourceTitle: string;
-  evidence?: RecommendationEvidence | null;
-}
-
 export interface SupportResource {
   id: number;
   name: string;
@@ -298,8 +290,19 @@ export interface GuidancePreview extends ObservationGuidance {
   receipt: string;
 }
 
+export interface TeacherRecommendation {
+  action: string;
+  rationale?: string | null;
+}
+
+export interface TeacherRecommendationEdit extends TeacherRecommendation {
+  sourceId: string;
+}
+
 export interface PublishedGuidance extends ObservationGuidance {
   reviewedAt: string;
+  teacherEdits?: TeacherRecommendationEdit[] | null;
+  teacherRecommendation?: TeacherRecommendation | null;
 }
 
 export interface TeacherObservationReview {

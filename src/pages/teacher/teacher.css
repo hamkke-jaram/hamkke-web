@@ -3,57 +3,10 @@
  * 색은 styles.css의 토큰만 쓴다(크림 --surface-2, 연보라 --lavender, 노란 버튼 --cta). 다크 모드는 토큰이 맡는다.
  */
 
-.coach-rows .daycare-coaching {
-  border-radius: var(--radius);
-  background: var(--lavender);
-  color: var(--lavender-ink);
-}
-
-.daycare-coaching summary.coach-row {
-  background: var(--lavender);
-  border-color: var(--edge);
-  color: var(--lavender-ink);
-  cursor: pointer;
-  list-style: none;
-}
-
-.daycare-coaching summary::-webkit-details-marker { display: none; }
-.daycare-coaching summary::before { content: none; }
-.daycare-coaching details[open] .coach-row-line { display: none; }
-.daycare-coaching .coach-row-date,
-.daycare-coaching .coach-row-line,
-.daycare-coaching summary > .p-icon { color: inherit; }
-.daycare-coaching .coach-row-date { font-weight: 700; }
-.daycare-coaching details[open] summary > .p-icon { transform: rotate(90deg); }
-
-.daycare-details {
-  margin: 0 14px;
-  padding: 12px 0 14px;
-  border-top: 1px solid currentColor;
-  border-top-color: color-mix(in srgb, currentColor 20%, transparent);
-  overflow-wrap: anywhere;
-}
-
-.daycare-details p { margin: 0; line-height: 1.55; }
-.daycare-details .evidence-missing { margin-top: 8px; }
-.daycare-details .daycare-source { margin-top: 8px; font-size: .875rem; }
-.daycare-source a { display: inline-block; min-height: 24px; color: inherit; text-underline-offset: 3px; }
-.daycare-status { margin: 0 0 8px; font-size: .875rem; }
-.daycare-review {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--edge);
-  font-size: .875rem;
-}
-.coaching-review-links { display: grid; justify-items: start; margin-top: 8px; }
-.coaching-review-links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.coaching-review {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
 }
 
 /* ── 보호자 초대코드 ── */
