@@ -9,7 +9,7 @@
 
 ```bash
 npm install
-npm run dev     # http://localhost:5173 (/api → http://localhost:8080, /ai/ → http://localhost:8090 프록시, 처음에 분석 모델 약 6MB 내려받음)
+npm run dev     # http://localhost:5173 (/api → http://localhost:8080, /ai/ → http://localhost:8090 프록시, 처음 분석할 때 분석 도구 약 17MB 내려받음)
 ```
 
 휴대폰으로 열기: `npm run dev:lan`으로 띄우면 같은 와이파이의 휴대폰이 들어올 주소와 QR 코드가 터미널에 나오고, 앱의 `/qr` 화면에도 같은 QR이 보인다. 배포한 주소가 있으면 `VITE_PUBLIC_URL`을 넣어 빌드하면 `/qr`이 그 주소로 QR을 만든다. http 주소(와이파이 개발 서버)에서는 휴대폰의 실시간 카메라가 열리지 않고, 영상 파일을 골라 기록하는 것은 된다.
