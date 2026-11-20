@@ -24,6 +24,9 @@ export interface User {
    * 로그인 응답(TokenResponse.user)에는 없을 수 있어서, 로그인 뒤 /me를 다시 불러 확인한다.
    */
   pendingConsents?: PolicyConsentType[];
+  /** 선생님의 기관·반 이름(PUT /me/teacher-profile). 보호자·예전 서버 응답에는 없다. */
+  institution?: string | null;
+  className?: string | null;
 }
 
 export interface TokenResponse {
@@ -167,9 +170,22 @@ export interface Goal {
   updatedAt: string;
 }
 
+/** 선생님 이야기에 첨부한 코칭 카드(이 아이가 받은 카드). */
+export interface AttachedCard {
+  deliveryId: number;
+  cardId: number;
+  code?: string;
+  title: string;
+  body: string;
+}
+
 export interface Observation {
   id: number;
+  /** 선생님 이야기 제목(없으면 null, 예전 서버 응답에는 없다). */
+  title?: string | null;
   content: string;
+  /** 첨부한 코칭 카드(없으면 null). */
+  card?: AttachedCard | null;
   observedOn: string;
   teacherId: number;
   teacherName: string;

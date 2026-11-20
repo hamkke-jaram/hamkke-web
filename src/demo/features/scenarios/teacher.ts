@@ -103,7 +103,7 @@ export const invite: Scenario = {
       },
     },
     { kind: 'as', account: 'teacher', say: n('이제 선생님 폰이라고 생각해 주세요', '시연 선생님 계정으로 바꿔요.') },
-    { kind: 'goto', path: '/t', target: '@th-code' },
+    { kind: 'goto', path: '/t/link', target: '@th-code' },
     {
       kind: 'type',
       target: '@th-code',
@@ -116,7 +116,7 @@ export const invite: Scenario = {
       expect: { method: 'POST', path: /\/teacher\/links$/, status: [200, 201] },
       after: n('연결했어요', '보낸 것은 코드 하나예요. 연결되면 보호자가 켜 둔 항목만 보여요. 기관 CCTV와는 연결하지 않아요.', 'server'),
     },
-    { kind: 'wait', route: /^\/t\/children\/\d+$/ },
+    { kind: 'wait', route: /^\/t$/ },
     {
       kind: 'do',
       say: n('같은 코드를 한 번 더', '같은 코드로 다시 연결해 볼게요(화면 밖 확인).', 'server'),

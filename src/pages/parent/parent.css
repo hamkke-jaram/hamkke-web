@@ -1121,3 +1121,12 @@
   font-size: 22px;
   line-height: 1;
 }
+
+/* 선생님 이야기에 첨부된 코칭(아이 홈 '선생님 이야기') */
+.story-card-chip {
+  display: inline-flex;
+  margin: 6px 0 2px;
+  background: var(--lavender, var(--surface-2));
+  color: var(--lavender-ink, var(--ink));
+  text-decoration: none;
+}
