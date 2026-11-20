@@ -288,6 +288,7 @@ export interface ObservationGuidance {
 
 export interface GuidancePreview extends ObservationGuidance {
   receipt: string;
+  display?: TeacherReviewDisplay;
 }
 
 export interface TeacherRecommendation {
@@ -309,6 +310,30 @@ export interface TeacherObservationReview {
   reviewerId: number;
   status: 'PENDING' | 'PUBLISHED';
   observation: AiObservation;
+  display?: TeacherReviewDisplay;
+}
+
+export interface TeacherReviewDisplay {
+  observationId: number;
+  recordedAt: string;
+  source: ObservationSource;
+  peopleCount: number;
+  summary: string | null;
+  scenes: ObservationMoment[];
+  child: { notes: ObservationMoment[]; tags: string[] };
+  caregiver: { role: 'ADULT' | 'CAREGIVER'; notes: ObservationMoment[]; tags: string[] };
+  responseOptions: {
+    status: 'PENDING' | 'PUBLISHED' | 'PREVIEW';
+    corpusVersion: string | null;
+    items: {
+      observation: string;
+      action: string;
+      reason: string;
+      source: { id: string; title: string; publisher: string; url: string; section: string };
+    }[];
+  };
+  relatedCoaching: { deliveryId: number; title: string; href: string } | null;
+  actions: { type: 'WRITE_PARENT_FEEDBACK' | 'REQUEST_CONSULTATION'; label: string; href: string }[];
 }
 
 /** POST /children/{id}/ai-observations 응답. 기관 기록이면 coaching은 null. */

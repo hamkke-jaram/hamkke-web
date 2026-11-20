@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Child, Observation, TeacherChild } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
@@ -21,6 +21,7 @@ import './talk.css';
  */
 
 const MAX = 500;
+const CONSULTATION_DRAFT = '안녕하세요. 가정에서 공유해 주신 관찰을 함께 살펴보고 싶어요. 편하신 상담 시간이 있을까요?';
 
 const QUICK: Record<'PARENT' | 'TEACHER', string[]> = {
   PARENT: ['고마워요! 집에서도 해 볼게요', '오늘 집에서 있었던 일을 알려 드려요', '궁금한 게 있어요'],
@@ -47,6 +48,7 @@ function snippet(text: string, n = 40) {
 
 export default function TalkPage() {
   const { childId } = useParams();
+  const [searchParams] = useSearchParams();
   const id = Number(childId);
   const { user } = useAuth();
   const toast = useToast();
@@ -75,6 +77,10 @@ export default function TalkPage() {
   usePolling(() => void loadNotes(), 8000);
 
   const [text, setText] = useState('');
+  const consultationRequested = user?.role === 'TEACHER' && searchParams.get('draft') === 'consultation';
+  useEffect(() => {
+    if (consultationRequested) setText(current => current || CONSULTATION_DRAFT);
+  }, [consultationRequested]);
   const [replyTo, setReplyTo] = useState<Observation | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<unknown>(null);

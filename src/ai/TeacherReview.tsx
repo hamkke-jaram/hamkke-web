@@ -3,16 +3,16 @@ import { Link, useParams } from 'react-router-dom';
 import { ApiError, api, requestObservationGuidance } from '../api/client';
 import type {
   AiObservation, EvidenceRecommendation, GuidancePreview, SharedSummary,
-  TeacherObservationReview, TeacherRecommendation, TeacherRecommendationEdit,
+  TeacherObservationReview, TeacherRecommendation, TeacherRecommendationEdit, TeacherReviewDisplay,
 } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import SubHead from '../components/SubHead';
 import { usePagedList } from '../components/paging';
 import { formatDate, Loading, loadStateView, MoreButton } from '../components/ui';
 import { useSharedDetail } from '../pages/teacher/useSharedDetail';
-import { formatClock } from './labels';
 import { EvidenceItem, observationNeedsReview, ReviewedResult } from './ReviewResult';
 import { sourceUrl } from './EvidenceDetails';
+import { ReviewFollowUp, ReviewScene } from './TeacherReviewDisplay';
 import './ai.css';
 
 export function TeacherReviewInbox() {
@@ -75,6 +75,7 @@ function ReviewScreen({ childId, observationId, viewerId }: {
   const path = `/children/${childId}/ai-observations/${observationId}/review`;
   const detail = useSharedDetail<TeacherObservationReview>(path, viewerId);
   const review = detail.data;
+  const display = review?.display?.observationId === observationId ? review.display : undefined;
   // When a teacher opens a source, the visibility guard hides the review. Keep the
   // input in memory so it can be restored after the server confirms access again.
   const cache = useRef<ReviewDraft | null>(null);
@@ -87,9 +88,13 @@ function ReviewScreen({ childId, observationId, viewerId }: {
       <p role="alert">검토 기록을 열 수 없어요. 선생님 연결과 보호자의 AI 기록 공유 상태를 확인해 주세요.</p>
       <button type="button" className="btn secondary" onClick={detail.reload}>다시 확인하기</button>
     </div> : !review ? <Loading />
-      : review.status === 'PUBLISHED' ? (review.observation.publishedGuidance
-        ? <ReviewedResult guidance={review.observation.publishedGuidance} /> : <p>보호자에게 전달한 기록이에요.</p>)
-      : <ReviewEditor childId={childId} observation={review.observation} path={path} reload={detail.reload} cache={cache} />}
+      : review.status === 'PUBLISHED' ? <>
+        {display && <ReviewScene observation={review.observation} display={display} />}
+        {review.observation.publishedGuidance
+          ? <ReviewedResult guidance={review.observation.publishedGuidance} /> : <p>보호자에게 전달한 기록이에요.</p>}
+        <ReviewFollowUp childId={childId} display={display} />
+      </>
+      : <ReviewEditor childId={childId} observation={review.observation} display={display} path={path} reload={detail.reload} cache={cache} />}
   </div>;
 }
 
@@ -132,8 +137,8 @@ function RecommendationFields({ value, disabled, own = false, onChange }: {
   </div>;
 }
 
-function ReviewEditor({ childId, observation, path, reload, cache }: {
-  childId: number; observation: AiObservation; path: string; reload: () => void;
+function ReviewEditor({ childId, observation, display, path, reload, cache }: {
+  childId: number; observation: AiObservation; display?: TeacherReviewDisplay; path: string; reload: () => void;
   cache: { current: ReviewDraft | null };
 }) {
   const original = observation.summary?.trim() || '';
@@ -229,13 +234,7 @@ function ReviewEditor({ childId, observation, path, reload, cache }: {
     <button type="button" className="btn secondary" onClick={reload}>검토 기록 다시 열기</button></div>;
 
   return <>
-    <p className="review-date">{formatDate(observation.recordedAt || observation.createdAt)} · 가정에서 기록</p>
-    <section aria-labelledby="review-scenes"><h2 id="review-scenes">AI가 장면에서 관찰한 행동</h2>
-      <p className="muted">AI가 영상에서 추린 장면 사진을 보고 작성한 메모예요. 원본 영상과 소리는 보호자의 기기에 있어요.</p>
-      {observation.moments?.length ? <ul className="review-scenes">{observation.moments.map((moment, i) =>
-        <li key={i}><span className="ai-time">{formatClock(moment.t)}</span> {moment.note}</li>)}</ul>
-        : <p>{original || '장면에서 구체적인 행동을 확인하기 어려웠어요.'}</p>}
-    </section>
+    <ReviewScene observation={observation} display={display} />
     <section aria-labelledby="review-heading"><h2 id="review-heading"><label htmlFor="review-summary">보호자에게 전할 관찰 내용</label></h2>
       <textarea id="review-summary" data-demo="review-summary" rows={3} maxLength={REVIEW_TEXT_LIMIT}
         value={draft.summary} disabled={publishing} placeholder="장면에서 확인한 행동을 적어 주세요."
@@ -252,9 +251,9 @@ function ReviewEditor({ childId, observation, path, reload, cache }: {
       </button>}
     </section>
     {draft.receipt && <section aria-labelledby="review-options" data-demo="review-preview">
-      <h2 id="review-options">AI 조치 제안 검토</h2>
+      <h2 id="review-options">참고할 대처</h2>
       {draft.options.length ? <>
-        <p className="muted">근거 자료를 확인하고, 선생님의 경험과 아이의 평소 모습을 바탕으로 보호자에게 전할 조치를 골라 수정할 수 있어요.</p>
+        <p className="muted">AI가 자료에서 고른 대처예요. 근거와 아이의 평소 모습을 살펴보고 보호자에게 전할 내용을 골라 수정해 주세요.</p>
         {draft.options.map((option, index) => {
           const updateOption = (update: Partial<ReviewOption>) => updateDraft(current => ({
             ...current, options: current.options.map(candidate => candidate.suggestion.sourceId === option.suggestion.sourceId
@@ -279,6 +278,7 @@ function ReviewEditor({ childId, observation, path, reload, cache }: {
         {publishing ? '전달하는 중…' : selected.length || ownAction ? '검토 완료 · 보호자에게 전달' : '검토한 관찰 내용만 전달'}
       </button>
     </section>}
+    <ReviewFollowUp childId={childId} display={display} />
     {working && <p className="sr-only" role="status">공개 자료에서 이 장면에 맞는 대응 근거를 찾고 있어요.</p>}
     {error && <p className="error" role="alert">{error}</p>}
   </>;

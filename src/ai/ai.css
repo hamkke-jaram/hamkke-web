@@ -383,6 +383,7 @@ button.ai-moment[aria-pressed="true"] {
 .review-queue a { display: grid; gap: 4px; color: inherit; }
 .review-queue span, .evidence-scene { font-size: .875rem; }
 .review-scenes li { display: flex; gap: 8px; align-items: baseline; }
+.review-follow-up { display: flex; flex-wrap: wrap; gap: 8px; }
 .observation-review textarea { min-height: 88px; width: 100%; margin-bottom: 10px; }
 .review-choice { margin: 12px 0; }
 .review-include { min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: .9rem; }
