@@ -39,7 +39,7 @@ npm run dev:lan                                  # 웹(5173)
 open ios/HamkkeJaram.xcodeproj                   # Xcode에서 HamkkeJaram 스킴을 시뮬레이터로 실행
 ```
 
-- 시뮬레이터는 기본 주소 `http://localhost:5173/`(빌드 설정 `HJ_WEB_URL`)로 이 Mac의 개발 서버를 연다. 실기기는 앱의 ⋯ → '서버 주소 바꾸기'에 Mac의 와이파이 주소를 넣는다.
+- 시뮬레이터는 기본 주소 `http://localhost:5173/try`(빌드 설정 `HJ_WEB_URL`, 웹의 QR 데모 입구)로 이 Mac의 개발 서버를 열어 로그인 없이 예시 데이터 화면을 바로 보여 준다(이미 로그인되어 있으면 그 계정의 홈). 실기기는 앱의 ⋯ → '서버 주소 바꾸기'에 Mac의 와이파이 주소만 넣으면 데모(`/try`)가 열리고, 가입·로그인 화면은 주소 끝에 `/login`을 붙인다.
 - 웹과 앱의 다리는 `src/native.tsx`: 앱 안에서는 `<html class="ios-app">`로 웹 상단바를 숨기고, 화면 주소·제목(`route`)과 진동(`haptic`)만 앱에 알린다. 앱은 `window.hjNavigate(path)`·`window.hjBack()`으로 화면을 바꾼다.
 - **QR 데모(`/try`)**: QR로 들어오면 로그인 없이 데모 보호자 계정 + 예시 아이(콩이) + 지난 4주 예시 기록을 만들어 아이 홈을 연다(`src/pages/TryDemo.tsx`, `seedSampleChild`). 같은 기기로 다시 들어오면 그 데모 계정으로 이어서 연다. 예시 아이의 법정대리인 동의는 시험 데이터라 자동으로 보낸다. 개발 서버, 시연 빌드(`VITE_DEMO_MODE=true`), `VITE_TRY_ENABLED=true` 빌드에만 있다.
 

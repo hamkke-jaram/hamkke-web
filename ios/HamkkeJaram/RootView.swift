@@ -362,8 +362,8 @@ struct ServerSheet: View {
                     Text("웹앱 주소")
                 } footer: {
                     Text(invalid
-                         ? "주소 모양이 맞지 않아요. 예: http://192.168.0.10:5173/"
-                         : "시뮬레이터는 http://localhost:5173/ 그대로 두면 돼요. 휴대폰에서는 Mac의 와이파이 주소(npm run dev:lan이 터미널에 보여 줘요)를 넣어 주세요.")
+                         ? "주소 모양이 맞지 않아요. 예: http://192.168.0.10:5173"
+                         : "시뮬레이터는 http://localhost:5173/try 그대로 두면 돼요(데모). 휴대폰에서는 Mac의 와이파이 주소(npm run dev:lan이 터미널에 보여 줘요)만 넣으면 데모가 열려요. 가입·로그인 화면은 주소 끝에 /login을 붙여요.")
                 }
                 if AppConfig.isOverridden {
                     Section {
