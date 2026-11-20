@@ -11,6 +11,7 @@ import { recordIdForFile } from '../../api/uuid';
 import { FALLBACK_DISCLAIMER, useAuth } from '../../auth/AuthContext';
 import {
   AnalysisError,
+  AudioUnavailableError,
   MODEL_VERSION,
   SPEC_VERSION,
   analyzeVideo,
@@ -34,6 +35,7 @@ type Phase =
   | { kind: 'analyzing'; stage: Stage; ratio: number }
   | { kind: 'sending'; metrics: DeviceMetrics; clientRecordId: string; error?: unknown }
   | { kind: 'result'; data: SaveRecordResponse }
+  | { kind: 'audio-unavailable'; message: string; recordedAt: string }
   | { kind: 'failed'; message: string };
 
 const STAGE_LABEL: Record<Stage, string> = {
@@ -244,6 +246,12 @@ function ChildRecord({ id }: { id: number }) {
       await send(metrics, recordIdForFile(id, file));
     } catch (err) {
       if (stopped()) return;
+      if (err instanceof AudioUnavailableError) {
+        const now = Date.now();
+        const recordedAt = new Date(file.lastModified && file.lastModified <= now ? file.lastModified : now).toISOString();
+        setPhase({ kind: 'audio-unavailable', message: err.message, recordedAt });
+        return;
+      }
       const message =
         err instanceof AnalysisError
           ? err.message
@@ -275,6 +283,49 @@ function ChildRecord({ id }: { id: number }) {
       <input ref={galleryRef} type="file" accept="video/*" hidden data-demo="record-gallery-input" onChange={onFile} />
     </>
   );
+
+  if (phase.kind === 'audio-unavailable') {
+    const checking = aiHealth.kind === 'checking';
+    const working = ai.state.kind === 'working';
+    const retry = () => {
+      if (aiAgreed && !checking) void tryObservation(phase.recordedAt);
+    };
+    return (
+      <div className="rec-page stack">
+        <SubHead title="영상 기록하기" titleRef={headingRef} fallback={`/p/children/${id}`} />
+        {fileInputs}
+        <section className="card" aria-labelledby="record-audio-title">
+          <h2 id="record-audio-title" ref={messageRef} tabIndex={-1}>{phase.message}</h2>
+          <p>소리가 필요한 수치 기록은 저장되지 않았어요.</p>
+          {aiAgreed && <p>장면 사진으로 AI 관찰 기록을 만들 수 있어요. 영상 원본과 소리는 전송하지 않아요.</p>}
+          {aiSkipped && <p role="status">{settledAiNotice ?? 'AI 서버를 확인하지 못했어요.'}</p>}
+          {aiAgreed && ai.state.kind === 'idle' && (
+            <button type="button" className="btn block" aria-disabled={checking || undefined} onClick={retry}>
+              {checking ? '확인하는 중…' : '장면만 관찰하기'}
+            </button>
+          )}
+        </section>
+        {ai.state.kind === 'done' ? (
+          <section aria-label="AI 관찰 기록">
+            <h2>AI 관찰 기록</h2>
+            <ObservationCard observation={ai.state.data.observation} childId={id} reviewAccess={reviewAccess} />
+          </section>
+        ) : (
+          <ObservationRunStatus
+            state={ai.state}
+            workingTitle="장면 사진으로 AI 관찰 기록을 만드는 중이에요"
+            onStop={ai.stop}
+            onRetry={aiAgreed && fileRef.current ? retry : undefined}
+          />
+        )}
+        {!working && (
+          <button type="button" className="btn secondary block" onClick={() => galleryRef.current?.click()}>
+            다른 영상 고르기
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (phase.kind === 'guide' || phase.kind === 'failed') {
     return (
