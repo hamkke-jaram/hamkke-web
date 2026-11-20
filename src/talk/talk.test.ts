@@ -55,3 +55,12 @@ describe('보호자·선생님 이야기(talk)', () => {
     expect(h.get('to')).toBe('/t/children/3/talk');
   });
 });
+
+describe('QR 데모 입구', () => {
+  it('QR은 실제 서비스 입구(/)가 아니라 데모 입구(/try)를 가리킨다', async () => {
+    const { entryUrlFrom } = await import('../pages/QrEntry');
+    expect(entryUrlFrom('http://10.0.0.5:5173/')).toBe('http://10.0.0.5:5173/try');
+    expect(entryUrlFrom('https://example.test', 'https://sinabro.example/')).toBe('https://sinabro.example/try');
+    expect(entryUrlFrom('https://example.test')).toBe('https://example.test/try');
+  });
+});

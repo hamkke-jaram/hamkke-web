@@ -4,11 +4,12 @@ import { newUuid } from '../api/uuid';
 import { SAMPLE_RECORDS } from '../demo/seed';
 
 /*
- * 로그인 없이 바로 시작하기(MVP). QR로 들어온 사람이 이메일·비밀번호를 만들지 않고 바로 쓰게 한다.
+ * QR 데모(/try)용 '이 기기 계정'. QR로 들어온 사람이 이메일·비밀번호를 만들지 않고 예시 데이터 화면을 바로 보게 한다.
+ * (실제 서비스는 '/'에서 가입·로그인한다.)
  * - 처음: 이 기기에서만 쓰는 계정을 공개 API(/auth/signup)로 만든다. 이메일·비밀번호는 무작위로 만들고
- *   이 기기(localStorage)에만 둔다. 약관·개인정보 처리 방침 동의는 시작 화면의 안내를 보고 '시작하기'를 누른 것으로 보낸다.
- * - 다음에: 세션이 끝났어도(로그아웃·토큰 만료) 저장해 둔 값으로 다시 로그인해 같은 기록을 이어 본다.
- * - 이 기기의 브라우저 저장소를 지우면 그 계정에는 다시 들어갈 수 없다(시작 화면에 알린다).
+ *   이 기기(localStorage)에만 둔다. 약관·개인정보 처리 방침 동의는 데모 계정에 한해 자동으로 보낸다.
+ * - 다음에: 세션이 끝났어도 저장해 둔 값으로 다시 로그인해 같은 데모를 이어 본다.
+ * - 이 기기의 브라우저 저장소를 지우면 그 데모 계정에는 다시 들어갈 수 없다(새로 만든다).
  * 백엔드에 따로 기능을 두지 않는다(데모 계정 만들기 demo/seed.ts와 같은 방식).
  */
 
@@ -125,12 +126,14 @@ export async function startAsGuest(role: Role, policies: Policies): Promise<Gues
   return { tokens, created: true };
 }
 
-/* ───── 바로 테스트(MVP 시연·내부 시험) ─────
- * 시작 화면을 누르지 않아도 보호자 계정 + 예시 아이(콩이) + 지난 4주 예시 기록을 만들어 아이 홈을 바로 연다.
- * 개발 서버이거나 VITE_INSTANT_TEST=true로 빌드했을 때만 켜진다. 운영 빌드의 기본값은 꺼짐(시작 버튼을 보여 준다).
+/* ───── QR 데모(/try, pages/TryDemo.tsx) ─────
+ * QR로 들어오면 로그인 없이 데모 보호자 계정 + 예시 아이(콩이) + 지난 4주 예시 기록을 만들어 아이 홈을 바로 연다.
+ * 개발 서버, 시연 빌드(VITE_DEMO_MODE=true), 또는 VITE_TRY_ENABLED=true로 빌드했을 때만 켜진다.
+ * 실제 서비스의 입구는 '/'(가입·로그인)이다.
  * 법정대리인 동의는 예시 아이(시험 데이터)에 한해 자동으로 보낸다. 예시 기록은 modelVersion 'demo-sample-data'로 표시한다.
  */
-export const INSTANT_TEST = import.meta.env.DEV || import.meta.env.VITE_INSTANT_TEST === 'true';
+export const TRY_ENABLED =
+  import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true' || import.meta.env.VITE_TRY_ENABLED === 'true';
 
 export const SAMPLE_CHILD_NICKNAME = '콩이';
 

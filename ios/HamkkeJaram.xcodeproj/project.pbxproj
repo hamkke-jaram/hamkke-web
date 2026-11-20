@@ -177,7 +177,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				HJ_WEB_URL = "http://localhost:5173/";
+				HJ_WEB_URL = "http://localhost:5173/try";
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "시나브로";
 				INFOPLIST_KEY_NSCameraUsageDescription = "아이와 노는 모습을 실시간으로 관찰 기록할 때 카메라를 써요. 영상은 저장하거나 기기 밖으로 보내지 않아요.";
@@ -210,7 +210,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				HJ_WEB_URL = "http://localhost:5173/";
+				HJ_WEB_URL = "http://localhost:5173/try";
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "시나브로";
 				INFOPLIST_KEY_NSCameraUsageDescription = "아이와 노는 모습을 실시간으로 관찰 기록할 때 카메라를 써요. 영상은 저장하거나 기기 밖으로 보내지 않아요.";
