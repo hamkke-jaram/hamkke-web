@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import type { Role } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { readGuest, resumeGuest, startAsGuest } from '../auth/guest';
+import { INSTANT_TEST, readGuest, resumeGuest, seedSampleChild, startAsGuest } from '../auth/guest';
 import Mascot from '../components/Mascot';
 import { useToast } from '../components/feedback';
 import { ErrorText, Loading } from '../components/ui';
@@ -12,6 +12,7 @@ import { DEMO_ENABLED } from '../demo/DemoContext';
  * 첫 화면 = 시작 화면. 로그인·가입 없이 '시작하기' 한 번으로 바로 들어간다(auth/guest.ts).
  * 이 기기에서 전에 시작했으면 누르지 않아도 그 계정으로 바로 이어서 연다(QR로 다시 들어온 경우 등).
  * 다만 '나가기'로 막 나온 경우에는 다시 들어가지 않고 이 화면을 보여 준다.
+ * 바로 테스트(INSTANT_TEST, 개발 서버·시험 빌드): 처음 온 기기도 누르지 않고 보호자 계정 + 예시 아이·기록을 만들어 아이 홈을 연다.
  */
 export default function Landing() {
   const { user, loading, policies, policiesError, reloadPolicies, login } = useAuth();
@@ -25,6 +26,26 @@ export default function Landing() {
   // 이 기기 계정으로 자동으로 이어 열기. 한 번만 시도한다.
   const [resuming, setResuming] = useState(() => !state?.left && readGuest() !== null);
   const tried = useRef(false);
+  // 바로 테스트: 이 기기에 계정이 없을 때 자동으로 만들고 예시 데이터를 채운다. 한 번만.
+  const [preparing, setPreparing] = useState(() => INSTANT_TEST && !state?.left && readGuest() === null);
+  const [prepRatio, setPrepRatio] = useState(0);
+  const prepared = useRef(false);
+
+  useEffect(() => {
+    // 서버가 아직 안 떴으면(약관 안내를 못 불러옴) 기다린다. 다시 닿으면(AuthContext가 조용히 다시 시도) 이어서 한다.
+    if (!preparing || loading || user || prepared.current || !policies) return;
+    prepared.current = true;
+    (async () => {
+      const { tokens } = await startAsGuest('PARENT', policies);
+      login(tokens);
+      setPrepRatio(0.15);
+      const childId = await seedSampleChild(policies, (r) => setPrepRatio(0.15 + r * 0.85));
+      toast('테스트용 예시 아이와 기록을 준비했어요.');
+      nav(from ?? `/p/children/${childId}`, { replace: true });
+    })()
+      .catch((e: unknown) => setError(e))
+      .finally(() => setPreparing(false));
+  }, [preparing, loading, user, policies, policiesError, login, nav, from, toast]);
 
   useEffect(() => {
     if (loading || user || !resuming || tried.current) return;
@@ -39,6 +60,27 @@ export default function Landing() {
       .finally(() => setResuming(false));
   }, [loading, user, resuming, from, login, nav]);
 
+  if (preparing && !error) {
+    return (
+      <div className="instant-prep" aria-live="polite">
+        <Mascot name="dome" size={140} />
+        <h1>테스트를 준비하고 있어요</h1>
+        {policiesError != null && !policies ? (
+          <>
+            <p className="muted">서버에 연결하는 중이에요. 서버가 켜지면 바로 이어서 준비해요.</p>
+            <button type="button" className="btn small secondary" onClick={reloadPolicies}>
+              지금 다시 연결하기
+            </button>
+          </>
+        ) : (
+          <p className="muted">예시 아이와 지난 4주 기록을 넣는 중이에요.</p>
+        )}
+        <div className="progress" aria-hidden="true">
+          <div className="progress-bar" style={{ width: `${Math.round(prepRatio * 100)}%` }} />
+        </div>
+      </div>
+    );
+  }
   if (loading || resuming) return <Loading />;
   if (user) return <Navigate to={from ?? (user.role === 'PARENT' ? '/p' : '/t')} replace />;
 

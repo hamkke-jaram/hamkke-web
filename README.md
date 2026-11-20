@@ -17,6 +17,20 @@ npm run dev     # http://localhost:5173 (/api → http://localhost:8080, /ai/ �
 백엔드는 hamkke-api에서 `./gradlew bootRun`, AI 서버는 hamkke-ai의 `server/`(8090). AI 서버가 없어도 나머지 기능은 그대로 동작한다.
 실시간 카메라(`getUserMedia`)는 HTTPS 또는 localhost에서만 동작한다. 영상 파일을 골라 기록하는 화면은 http에서도 되도록, 보안 연결에서만 있는 `crypto.randomUUID()` 대신 `src/api/uuid.ts`의 `newUuid()`를 쓴다.
 
+## iOS 앱 (`ios/`)
+
+SwiftUI 앱이 이 웹앱을 WKWebView로 띄운다(화면·기능은 웹과 같고, 웹을 고치면 앱도 바뀐다). 앱이 더하는 것: 모찌가 통통 뛰는 시작 화면, 앱 머리줄(화면 제목·뒤로), 아래 탭(홈·가운데 노란 '기록하기'·도움받기·내 정보), 당겨서 새로고침, 누를 때 진동, 화면 왼쪽 끝에서 밀어 뒤로, 서버에 닿지 못했을 때의 안내와 '서버 주소 바꾸기', 내려받은 파일 공유 시트, 실시간 카메라 권한.
+
+```bash
+npm run dev:lan                                  # 웹(5173)
+(cd ../hamkke-api && sh ./gradlew bootRun)       # API(8080, Java 21)
+open ios/HamkkeJaram.xcodeproj                   # Xcode에서 HamkkeJaram 스킴을 시뮬레이터로 실행
+```
+
+- 시뮬레이터는 기본 주소 `http://localhost:5173/`(빌드 설정 `HJ_WEB_URL`)로 이 Mac의 개발 서버를 연다. 실기기는 앱의 ⋯ → '서버 주소 바꾸기'에 Mac의 와이파이 주소를 넣는다.
+- 웹과 앱의 다리는 `src/native.tsx`: 앱 안에서는 `<html class="ios-app">`로 웹 상단바를 숨기고, 화면 주소·제목(`route`)과 진동(`haptic`)만 앱에 알린다. 앱은 `window.hjNavigate(path)`·`window.hjBack()`으로 화면을 바꾼다.
+- **바로 테스트**: 개발 서버(또는 `VITE_INSTANT_TEST=true` 빌드)에서는 처음 연 기기도 누르지 않고 보호자 계정 + 예시 아이(콩이) + 지난 4주 예시 기록을 만들어 아이 홈을 연다(`seedSampleChild`). 예시 아이의 법정대리인 동의는 시험 데이터라 자동으로 보낸다. 운영 빌드의 기본값은 꺼짐.
+
 ## 검사
 
 ```bash

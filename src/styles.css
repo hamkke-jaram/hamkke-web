@@ -1641,3 +1641,47 @@ select[aria-invalid='true'] {
   font-size: 15px;
   overflow-x: auto;
 }
+
+/* 바로 테스트 준비 화면(Landing). */
+.instant-prep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 0 24px;
+}
+
+.instant-prep h1 {
+  font-size: 22px;
+  margin: 16px 0 4px;
+}
+
+.instant-prep .progress {
+  width: min(280px, 100%);
+  margin-top: 16px;
+}
+
+/*
+ * iOS 앱 안(native.tsx가 <html class="ios-app">를 단다). 앱의 머리줄·아래 탭이 대신하므로 웹 상단바를 숨기고,
+ * 누를 때 회색 덮개·길게 눌러 고르기 메뉴가 뜨지 않게 해 앱처럼 느끼게 한다(글 입력칸은 그대로).
+ */
+html.ios-app .topbar {
+  display: none;
+}
+
+html.ios-app body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.ios-app a,
+html.ios-app button,
+html.ios-app summary,
+html.ios-app img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html.ios-app main {
+  padding-top: 16px;
+}
