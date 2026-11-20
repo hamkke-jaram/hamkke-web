@@ -128,6 +128,20 @@ function StoryHome({ child, others, onPick }: { child: TeacherChild; others: Tea
         <MoreButton list={notes} label="이야기 더 보기" />
       </section>
 
+      {/* 가정 영상에서 AI가 본 아이 행동과 보호자 대응(줄인 형태). 코칭과 섞이지 않게 따로 둔다. */}
+      <Link to={`/t/children/${id}/home-scenes`} className="th-coach th-scenes-link" data-demo="th-scenes">
+        <span className="th-coach-note">* 보호자가 AI 관찰 기록 공유를 켜면 가정에서 본 장면을 볼 수 있어요</span>
+        <span className="th-coach-body">
+          <Mascot name="friend" size={112} />
+          <span className="th-coach-text">
+            <span className="th-coach-ai">가정 영상</span>
+            <strong>가정에서 본 장면</strong>
+            <span className="th-coach-sub">아이의 행동과 보호자의 대응</span>
+          </span>
+          <ChevronIcon size={20} />
+        </span>
+      </Link>
+
       <Link to={`/t/children/${id}/coaching`} className="th-coach" data-demo="th-coaching">
         <span className="th-coach-note">* 보호자가 공유를 켜면 가정의 관찰 기록과 코칭을 볼 수 있어요</span>
         <span className="th-coach-body">

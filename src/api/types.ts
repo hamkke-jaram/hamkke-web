@@ -268,6 +268,25 @@ export interface AiObservation extends ObservationContent {
   modelVersion: string;
   reviewStatus?: 'PENDING' | 'PUBLISHED' | null;
   publishedGuidance?: PublishedGuidance | null;
+  /** 보호자가 이 가정 기록을 선생님에게 보내지 않기로 했는지(보호자에게만 의미가 있다) */
+  hiddenFromTeacher?: boolean;
+}
+
+/**
+ * GET /children/{id}/home-scenes 한 건: 선생님에게 넘어가는 줄인 가정 장면.
+ * 날짜·태그·아이 한 줄·어른 한 줄만 있다(원본 요약, 시각별 메모, 사람 수는 오지 않는다).
+ * 한 줄은 없을 수 있다(null): 예전 기록이거나 문장 검사에 걸리면 태그만 온다.
+ */
+export interface HomeScene {
+  id: number;
+  observedOn: string;
+  childStates: string[];
+  adultResponses: string[];
+  childLine: string | null;
+  parentLine: string | null;
+  reviewStatus?: 'PENDING' | 'PUBLISHED' | null;
+  /** 보호자가 선생님에게 보내지 않기로 했는지(보호자 미리보기에서만 true가 될 수 있다) */
+  hiddenFromTeacher: boolean;
 }
 
 export interface RecommendationEvidence {

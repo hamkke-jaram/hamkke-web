@@ -532,3 +532,12 @@ div.story-attach-main {
     transform: scale(1, 1);
   }
 }
+
+/* '가정에서 본 장면' 칸 바로 아래의 코칭 칸은 위 여백을 줄여 두 칸이 한 묶음으로 보이게 한다. */
+.th-scenes-link {
+  margin-bottom: 12px;
+}
+
+.th-scenes-link + .th-coach {
+  margin-top: 0;
+}
