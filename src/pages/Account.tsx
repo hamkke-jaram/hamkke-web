@@ -289,6 +289,9 @@ export default function Account() {
           </form>
         </details>
 
+        {/* 선생님 홈 이름 아래 '꿈나무 유치원 | 고우반'. */}
+        {!isParent && <TeacherProfileRow />}
+
         {/* 이 기기 계정은 비밀번호를 쓰지 않으므로 바꾸기를 보이지 않는다. */}
         {!guest && (
         <details className="menu-details">
@@ -580,6 +583,71 @@ const DeletePassword = forwardRef<
 });
 
 /** 앱 설정의 '다크 모드' 한 줄(Figma). 화면 설정의 밝기와 같은 값을 바꾼다(켜면 어둡게, 끄면 밝게). */
+/** 선생님 기관·반 이름(PUT /me/teacher-profile). 비우고 저장하면 지운다. */
+function TeacherProfileRow() {
+  const { user, setUser } = useAuth();
+  const toast = useToast();
+  const [institution, setInstitution] = useState(user?.institution ?? '');
+  const [className, setClassName] = useState(user?.className ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const me = await api<User>('PUT', '/me/teacher-profile', { institution: institution.trim(), className: className.trim() });
+      setUser({ ...me, pendingConsents: me.pendingConsents ?? user?.pendingConsents });
+      toast('기관·반 이름을 저장했어요.');
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <details className="menu-details">
+      <summary className="menu-row" data-demo="account-row-class">
+        <Icon name="user" />
+        <h3 className="menu-text" id="account-class-h">
+          기관·반 이름
+        </h3>
+        <span className="menu-chev" aria-hidden="true">
+          ›
+        </span>
+      </summary>
+      <form className="menu-body" onSubmit={save} noValidate aria-labelledby="account-class-h">
+        <Field
+          id="account-institution"
+          label="기관 이름"
+          placeholder="예: 꿈나무 유치원"
+          type="text"
+          maxLength={40}
+          value={institution}
+          onChange={(e) => setInstitution(e.target.value)}
+        />
+        <Field
+          id="account-class"
+          label="반 이름"
+          hint="선생님 홈 이름 아래에 보여요. 비우면 지워요."
+          placeholder="예: 고우반"
+          type="text"
+          maxLength={30}
+          value={className}
+          onChange={(e) => setClassName(e.target.value)}
+        />
+        <ErrorText error={error} />
+        <button type="submit" className="btn secondary block" aria-disabled={busy || undefined}>
+          {busy ? '저장하는 중…' : '저장'}
+        </button>
+      </form>
+    </details>
+  );
+}
+
 function DarkModeRow() {
   const { pref, update, deviceDark } = useThemePref();
   const on = pref.scheme === 'dark' || (pref.scheme === 'system' && deviceDark);

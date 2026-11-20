@@ -38,7 +38,10 @@ import ParentHome from './pages/parent/ParentHome';
 import Record from './pages/parent/Record';
 import Share from './pages/parent/Share';
 import TeacherChild from './pages/teacher/TeacherChild';
+import InviteCode from './pages/teacher/InviteCode';
+import { TeacherCoachingDetail, TeacherCoachingList } from './pages/teacher/TeacherCoaching';
 import TeacherHome from './pages/teacher/TeacherHome';
+import { StoryCompose, StoryView } from './pages/teacher/TeacherStory';
 import TalkPage from './talk/TalkPage';
 import DuoDemo, { DuoEnter } from './demo/DuoDemo';
 
@@ -184,6 +187,11 @@ export default function App() {
         <Route path="/p/children/:childId/talk" element={<RequireRole role="PARENT"><TalkPage /></RequireRole>} />
 
         <Route path="/t" element={<RequireRole role="TEACHER"><TeacherHome /></RequireRole>} />
+        <Route path="/t/link" element={<RequireRole role="TEACHER"><InviteCode closable /></RequireRole>} />
+        <Route path="/t/children/:childId/story/new" element={<RequireRole role="TEACHER"><StoryCompose /></RequireRole>} />
+        <Route path="/t/children/:childId/story/:noteId" element={<RequireRole role="TEACHER"><StoryView /></RequireRole>} />
+        <Route path="/t/children/:childId/coaching" element={<RequireRole role="TEACHER"><TeacherCoachingList /></RequireRole>} />
+        <Route path="/t/children/:childId/coaching/:deliveryId" element={<RequireRole role="TEACHER"><TeacherCoachingDetail /></RequireRole>} />
         <Route path="/t/children/:childId" element={<RequireRole role="TEACHER"><TeacherChild /></RequireRole>} />
         <Route path="/t/children/:childId/observe" element={<RequireRole role="TEACHER"><Observe /></RequireRole>} />
         <Route path="/t/children/:childId/talk" element={<RequireRole role="TEACHER"><TalkPage /></RequireRole>} />

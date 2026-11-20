@@ -454,7 +454,14 @@ export default function ChildHome() {
         {notes.items?.map((n) => (
           <div key={n.id} className="list-item" style={{ alignItems: 'flex-start' }}>
             <div className="item-body">
+              {n.title && <strong>{n.title}</strong>}
               <div style={{ whiteSpace: 'pre-wrap' }}>{n.content}</div>
+              {/* 선생님이 첨부한 코칭(이 아이가 받은 카드) */}
+              {n.card && (
+                <Link to={`/p/children/${id}/coaching/${n.card.deliveryId}`} className="chip story-card-chip">
+                  첨부한 코칭 · {n.card.title}
+                </Link>
+              )}
               <div className="meta">
                 {n.observedOn.slice(5).replace('-', '/')} · {n.teacherName}
               </div>
