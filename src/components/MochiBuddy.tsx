@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { haptic } from '../native';
 import { BuddyFace, paintFace } from './BuddyFace';
 import { MASCOT_RATIO, mascotSrc, type MascotName } from './Mascot';
 import {
@@ -160,6 +161,7 @@ export default function MochiBuddy({ name = 'dome', hopKey }: MochiBuddyProps) {
       layerRef.current?.classList.toggle('dizzy', p.stars);
       // 한 번씩 생기는 효과: 착지 먼지, 놀라 깸, 조는 동안 z.
       if (s.impact > DUST_IMPACT) dust(s.x, s.impact);
+      if (s.impact > 1100) haptic('medium'); // iOS 앱에서 세게 떨어지면 쿵
       s.impact = 0;
       if (s.woke) {
         s.woke = false;
@@ -339,6 +341,7 @@ export default function MochiBuddy({ name = 'dome', hopKey }: MochiBuddyProps) {
     } else if (!cancelled && performance.now() - h.t0 < TAP_MS) {
       const wasAsleep = s.mode === 'sleep';
       tapBuddy(s);
+      haptic('light');
       if (!wasAsleep) heart(); // 자다 깨면 하트 대신 '!'(그리는 쪽이 띄운다)
     }
   };

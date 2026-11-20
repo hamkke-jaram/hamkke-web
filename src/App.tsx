@@ -23,6 +23,7 @@ import Signup from './pages/Signup';
 import Support from './pages/Support';
 import Terms from './pages/Terms';
 import { useMotionOn } from './motion';
+import { NativeBridge } from './native';
 import ChildEdit from './pages/parent/ChildEdit';
 import ChildHome from './pages/parent/ChildHome';
 import ChildNew from './pages/parent/ChildNew';
@@ -84,6 +85,7 @@ function Layout() {
       </main>
       <Disclaimer />
       {DEMO_ENABLED && <DemoTour />}
+      <NativeBridge />
       {/* 화면 설정 '움직이는 캐릭터'. 약관 다시 동의 중에는 두지 않는다. 선생님에게는 선생님 모찌가 다닌다. */}
       {motionOn && !blocked && !NO_BUDDY.test(pathname) && (
         <MochiBuddy name={user?.role === 'TEACHER' ? 'teacher' : 'dome'} hopKey={pathname} />

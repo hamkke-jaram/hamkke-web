@@ -1,5 +1,7 @@
 import { api, ApiError } from '../api/client';
 import type { Policies, Role, TokenResponse, User } from '../api/types';
+import { newUuid } from '../api/uuid';
+import { SAMPLE_RECORDS } from '../demo/seed';
 
 /*
  * 로그인 없이 바로 시작하기(MVP). QR로 들어온 사람이 이메일·비밀번호를 만들지 않고 바로 쓰게 한다.
@@ -121,4 +123,53 @@ export async function startAsGuest(role: Role, policies: Policies): Promise<Gues
   });
   saveGuest(fresh);
   return { tokens, created: true };
+}
+
+/* ───── 바로 테스트(MVP 시연·내부 시험) ─────
+ * 시작 화면을 누르지 않아도 보호자 계정 + 예시 아이(콩이) + 지난 4주 예시 기록을 만들어 아이 홈을 바로 연다.
+ * 개발 서버이거나 VITE_INSTANT_TEST=true로 빌드했을 때만 켜진다. 운영 빌드의 기본값은 꺼짐(시작 버튼을 보여 준다).
+ * 법정대리인 동의는 예시 아이(시험 데이터)에 한해 자동으로 보낸다. 예시 기록은 modelVersion 'demo-sample-data'로 표시한다.
+ */
+export const INSTANT_TEST = import.meta.env.DEV || import.meta.env.VITE_INSTANT_TEST === 'true';
+
+export const SAMPLE_CHILD_NICKNAME = '콩이';
+
+function birthMonth(monthsAgo: number) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - monthsAgo);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * 로그인한 보호자에게 예시 아이와 기록을 넣는다. 이미 아이가 있으면 그 첫 아이를 돌려준다(두 번 넣지 않는다).
+ * onProgress: 0~1.
+ */
+export async function seedSampleChild(policies: Policies, onProgress?: (ratio: number) => void): Promise<number> {
+  const existing = await api<Array<{ id: number }>>('GET', '/children');
+  if (existing.length > 0) return existing[0].id;
+  const child = await api<{ id: number }>('POST', '/children', {
+    nickname: SAMPLE_CHILD_NICKNAME,
+    birthYearMonth: birthMonth(38),
+    guardianConsent: { agreed: true, version: policies.guardianVersion },
+  });
+  const now = Date.now();
+  const total = SAMPLE_RECORDS.length;
+  for (let i = 0; i < total; i++) {
+    const r = SAMPLE_RECORDS[i];
+    await api('POST', `/children/${child.id}/interaction-records`, {
+      clientRecordId: newUuid(),
+      recordedAt: new Date(now - r.daysAgo * 86_400_000).toISOString(),
+      analyzedSeconds: r.analyzed,
+      jointPlaySeconds: r.joint,
+      responseLatencySec: r.latency,
+      childBidCount: r.bids,
+      respondedBidCount: r.responded,
+      distressEpisodeCount: r.distress,
+      modelVersion: 'demo-sample-data',
+      specVersion: 'metrics-v1',
+    });
+    onProgress?.((i + 1) / total);
+  }
+  return child.id;
 }

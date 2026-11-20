@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 앱이 띄울 웹앱 주소. 빌드 설정 HJ_WEB_URL. 앱 안 '서버 주소 바꾸기'로 이 기기에서만 바꿀 수 있다. -->
+	<key>HJWebURL</key>
+	<string>$(HJ_WEB_URL)</string>
+	<!-- 개발 서버(http://localhost, 같은 와이파이의 http 주소)를 웹 화면 안에서만 연다. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
