@@ -108,6 +108,9 @@ final class WebStore: NSObject, ObservableObject {
                 path = p
                 if let r = p.range(of: #"^/p/children/(\d+)"#, options: .regularExpression) {
                     lastChildId = String(p[r].split(separator: "/").last ?? "")
+                } else if p == "/" || p.hasPrefix("/t") {
+                    // 시작 화면으로 나갔거나 선생님으로 들어오면 보호자 쪽에서 본 아이는 잊는다(역할이 바뀔 수 있다).
+                    lastChildId = nil
                 }
             }
             if let t = msg["title"] as? String, !t.isEmpty { title = t }

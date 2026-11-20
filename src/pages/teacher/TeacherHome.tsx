@@ -171,7 +171,8 @@ export default function TeacherHome() {
   const empty = list && list.length === 0;
   return (
     <div className="teacher-home">
-      <h1>{user?.displayName ? `${user.displayName}님, 안녕하세요` : '안녕하세요'}</h1>
+      {/* 로그인 없이 시작한 선생님의 기본 이름은 '선생님'이라 '님'을 한 번 더 붙이지 않는다. */}
+      <h1>{user?.displayName ? `${user.displayName.endsWith('님') ? user.displayName : `${user.displayName}님`}, 안녕하세요` : '안녕하세요'}</h1>
       <p className="lead">보호자가 공유한 기록만 주 단위로 볼 수 있어요.</p>
 
       {empty && listSection}
