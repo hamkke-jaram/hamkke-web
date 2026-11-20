@@ -1801,3 +1801,23 @@ html.ios-app .sub-head {
 html.ios-app .fab {
   bottom: 24px;
 }
+
+/* iOS 앱 안에서는 앱 머리줄의 '‹'가 뒤로를 맡으므로 웹의 '‹ 뒤로' 줄(BackLink)은 감춘다. */
+html.ios-app .back-link {
+  display: none;
+}
+
+/* 날짜 칸: iOS Safari·WKWebView의 날짜 입력은 고유 최소 너비가 있어 좁은 카드 밖으로 넘친다. 칸 너비에 맞춘다. */
+input[type='date'] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
+}
+
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}

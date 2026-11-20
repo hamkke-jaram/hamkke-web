@@ -23,7 +23,8 @@ struct RootView: View {
                 )
                 WebContainer(store: web)
                 if Tab.showsBar(for: web.path) {
-                    TabBar(selected: Tab.of(web.path), hasChild: web.lastChildId != nil) { tab in
+                    // 기록하기는 보호자 기능이라 선생님 화면(/t)에서는 두지 않는다.
+                    TabBar(selected: Tab.of(web.path), hasChild: web.lastChildId != nil && !web.path.hasPrefix("/t")) { tab in
                         Haptics.play("soft")
                         web.navigate(tab.path(for: web.path, childId: web.lastChildId))
                     }

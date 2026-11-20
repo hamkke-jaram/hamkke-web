@@ -151,8 +151,8 @@ export default function Landing() {
         <div className="stack">
           <p className="muted start-note" id="start-note">
             이메일·비밀번호 없이 이 기기에서 바로 시작해요. 시작하면 <Link to="/terms">이용약관</Link>과{' '}
-            <Link to="/privacy">개인정보 처리 방침</Link>에 동의하게 돼요. 이 브라우저의 방문 기록·저장 데이터를 지우면 기록을 다시 볼
-            수 없어요.
+            <Link to="/privacy">개인정보 처리 방침</Link>에 동의하게 돼요. 이 기기에서 앱을 지우거나 브라우저의 저장 데이터를 지우면 기록을
+            다시 볼 수 없어요.
           </p>
           <button
             type="button"

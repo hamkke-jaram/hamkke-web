@@ -301,7 +301,11 @@ export function WeeklyTable({ weeks }: { weeks: WeekSummary[] }) {
           {has('recordCount') && <th>기록</th>}
           {has('jointPlayRatio') && <th>함께한 시간</th>}
           {has('responseLatencySec') && <th>반응까지</th>}
-          {has('distressPerTenMinutes') && <th>크게 운 횟수(10분당)</th>}
+          {has('distressPerTenMinutes') && (
+            <th>
+              크게 운 횟수 <span style={{ whiteSpace: 'nowrap' }}>(10분당)</span>
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
