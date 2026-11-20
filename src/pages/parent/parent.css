@@ -598,9 +598,9 @@
 
 .rec-lens {
   position: absolute;
-  top: -6px;
-  right: -26px;
-  width: 110px !important;
+  top: 0;
+  right: -12px;
+  width: 80px !important;
 }
 
 .rec-hero-title {

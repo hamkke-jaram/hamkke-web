@@ -368,9 +368,25 @@
   }
 }
 
-/* 분석 중 그림의 돋보기가 천천히 오간다. */
+/* 분석 중 그림의 돋보기가 두 모찌 위를 훑듯이 오간다. 살펴보는 중이라는 것이 한눈에 보이게 크게 움직인다. */
 :root[data-motion='on'] .rec-lens {
-  animation: p-float 2.4s ease-in-out infinite;
+  animation: p-lens-search 3.2s ease-in-out infinite;
+}
+
+@keyframes p-lens-search {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-34px, 14px) rotate(-8deg);
+  }
+  50% {
+    transform: translate(-58px, 34px) rotate(4deg);
+  }
+  75% {
+    transform: translate(-22px, 30px) rotate(-4deg);
+  }
 }
 
 /* ── 공유: 스위치를 켜면 손잡이가 한 번 말랑하게 눌렸다 펴진다(같은 자리에서 모양만). ── */

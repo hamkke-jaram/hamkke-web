@@ -367,7 +367,7 @@ function ChildRecord({ id }: { id: number }) {
         <div className="rec-hero">
           <span className="rec-hero-art">
             <img src={`${import.meta.env.BASE_URL}art/mochi-hug.webp`} alt="" width={180} height={177} decoding="async" />
-            <img className="rec-lens" src={`${import.meta.env.BASE_URL}art/magnifier.webp`} alt="" width={110} height={117} decoding="async" />
+            <img className="rec-lens" src={`${import.meta.env.BASE_URL}art/magnifier.webp`} alt="" width={80} height={85} decoding="async" />
           </span>
           <h1 ref={headingRef} tabIndex={-1} className="rec-hero-title">
             함께한 순간을 살펴보고 있어요
