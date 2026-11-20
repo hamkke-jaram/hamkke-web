@@ -1,5 +1,6 @@
 import { currentSession } from '../api/client';
 import type { Policies, Role, TeacherRecommendation, TokenResponse, User } from '../api/types';
+import type { ObservationExampleId } from '../demo/observationExamples';
 import { createDemo, demoRequest, newDemoPair, SeedError, type DemoPair } from '../demo/seed';
 
 type Identity = Pick<User, 'id' | 'email' | 'role'>;
@@ -15,6 +16,7 @@ type Workspace = {
   ids?: { PARENT: number; TEACHER: number; child: number };
   deleting?: boolean;
   exampleReview?: ExampleReview;
+  exampleReviews?: Partial<Record<ObservationExampleId, ExampleReview>>;
 };
 const KEY = 'hj.demo.login.v1';
 const roles: Role[] = ['PARENT', 'TEACHER'];
@@ -78,17 +80,17 @@ export function isDemoWorkspaceChild(user: Identity | null | undefined, childId:
   return matches(user, workspace) && workspace?.ids?.child === childId;
 }
 
-export function publishedDemoReview(user: Identity | null | undefined, childId: number) {
+export function publishedDemoReview(user: Identity | null | undefined, childId: number, exampleId: ObservationExampleId = 'block-play') {
   const workspace = read();
   if (workspace?.ids?.child !== childId || workspace.deleting || !matches(user, workspace)) return null;
-  const review = workspace.exampleReview;
+  const review = workspace.exampleReviews?.[exampleId] ?? (exampleId === 'block-play' ? workspace.exampleReview : undefined);
   return review?.status === 'published'
     && typeof review.summary === 'string' && !!review.summary.trim() && review.summary.length <= 500
     && typeof review.includeAction === 'boolean' && Number.isFinite(Date.parse(review.reviewedAt)) ? review : null;
 }
 
 export function publishDemoReview(user: Identity, childId: number, summary: string, includeAction: boolean,
-  advice?: Pick<ExampleReview, 'teacherEdit' | 'teacherRecommendation'>) {
+  advice?: Pick<ExampleReview, 'teacherEdit' | 'teacherRecommendation'>, exampleId: ObservationExampleId = 'block-play') {
   const workspace = read();
   const text = summary.trim();
   if (!workspace?.ids || workspace.ids.child !== childId || workspace.deleting
@@ -97,7 +99,7 @@ export function publishDemoReview(user: Identity, childId: number, summary: stri
     status: 'published', summary: text, includeAction, reviewedAt: new Date().toISOString(),
     teacherEdit: includeAction ? advice?.teacherEdit : undefined, teacherRecommendation: advice?.teacherRecommendation,
   };
-  save({ ...workspace, exampleReview: review });
+  save({ ...workspace, exampleReviews: { ...workspace.exampleReviews, [exampleId]: review } });
   return review;
 }
 

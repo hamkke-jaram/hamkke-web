@@ -13,3 +13,14 @@
 }
 .teacher-coaching-example .example-action h2 { margin-top: 0; }
 .teacher-coaching-example .check { min-height: 44px; }
+.teacher-coaching-example .example-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.teacher-coaching-example .example-picker .btn[aria-pressed="true"] {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  border-color: currentColor;
+}

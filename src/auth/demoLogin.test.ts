@@ -77,6 +77,11 @@ describe('실제 로그인용 예시 기록', () => {
     expect(review).toMatchObject({ status: 'published', summary: memo, includeAction: false, teacherRecommendation });
     expect(review?.teacherEdit).toBeUndefined();
     expect(publishedDemoReview(parent, p.childId)).toEqual(review);
+    expect(publishedDemoReview(parent, p.childId, 'throw-and-shout')).toBeNull();
+    const actionReview = publishDemoReview(teacher, p.childId, '장난감이 매트에 떨어졌어요.', true,
+      { teacherEdit: { action: '장난감이 떨어진 자리를 확인해요.' } }, 'throw-and-shout');
+    expect(publishedDemoReview(parent, p.childId, 'throw-and-shout')).toEqual(actionReview);
+    expect(publishedDemoReview(parent, p.childId)).toEqual(review);
     expect(publishedDemoReview(parent, p.childId + 1)).toBeNull();
     expect(publishedDemoReview({ ...parent, email: 'another@example.com' }, p.childId)).toBeNull();
     expect(paths.some(path => path.includes('ai-observations'))).toBe(false);
