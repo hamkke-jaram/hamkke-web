@@ -81,8 +81,10 @@ export default function Landing() {
       </div>
     );
   }
-  if (loading || resuming) return <Loading />;
+  if (loading) return <Loading />;
+  // 이미 로그인되어 있으면 이어 열기를 기다리지 않고 바로 들어간다(세션과 기기 계정이 함께 있는 경우).
   if (user) return <Navigate to={from ?? (user.role === 'PARENT' ? '/p' : '/t')} replace />;
+  if (resuming) return <Loading />;
 
   async function start(role: Role) {
     if (!policies || busy) return;

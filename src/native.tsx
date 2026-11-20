@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /*
@@ -64,13 +64,16 @@ const TAPPABLE = 'button, a.btn, a.menu-row, a.kid-row, summary, [role="switch"]
 export function NativeBridge() {
   const nav = useNavigate();
   const { pathname } = useLocation();
+  // useNavigate는 화면이 바뀔 때마다 새 함수를 줄 수 있다. 앱과의 연결(ready·hjNavigate)은 한 번만 하도록 ref로 최신 것을 쓴다.
+  const navRef = useRef(nav);
+  navRef.current = nav;
 
   useEffect(() => {
     if (!inIosApp()) return;
     const root = document.documentElement;
     root.classList.add('ios-app');
-    window.hjNavigate = (path: string) => nav(path);
-    window.hjBack = () => nav(-1);
+    window.hjNavigate = (path: string) => navRef.current(path);
+    window.hjBack = () => navRef.current(-1);
     const onClick = (e: MouseEvent) => {
       if (e.target instanceof Element && e.target.closest(TAPPABLE)) haptic('soft');
     };
@@ -82,7 +85,7 @@ export function NativeBridge() {
       delete window.hjBack;
       document.removeEventListener('click', onClick, true);
     };
-  }, [nav]);
+  }, []);
 
   // 화면이 바뀌면 주소와 제목을 알린다. 제목은 불러온 뒤나 같은 주소에서도 바뀌므로(예: 준비 화면 → 시작 화면,
   // '콩이의 하루') 본문이 바뀔 때마다 살펴 제목이 달라졌으면 다시 알린다.
