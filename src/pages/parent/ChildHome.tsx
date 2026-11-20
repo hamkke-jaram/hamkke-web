@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AiConsentCard from '../../ai/AiConsentCard';
 import ObservationList from '../../ai/ObservationList';
+import ParentScenePreview from '../../ai/ParentScenePreview';
 import { aiConsentState, consentCardPlace, keepsAiRecords } from '../../ai/consentState';
 import { ApiError, api } from '../../api/client';
 import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
@@ -423,6 +424,8 @@ export default function ChildHome() {
           }
         />
       )}
+      {/* 선생님에게 넘어가는 줄인 장면 미리보기와 기록별 "보내지 않기". 가정 기록이 없으면 그리지 않는다. */}
+      {hasAiRecords && <ParentScenePreview childId={id} />}
 
       {/* 선생님 이야기: 선생님이 남긴 목표와 메모, 공유 화면으로 가는 길. 위의 둥근 버튼이 여기로 데려온다.
           남긴 것이 없어도 늘 보여서 선생님과 잇는 길이 여기에 있다. 못 불러왔으면 비어 있는 것과 구별되게 알린다. */}

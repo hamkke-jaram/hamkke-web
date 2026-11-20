@@ -407,3 +407,36 @@ button.ai-moment[aria-pressed="true"] {
 .evidence-section { display: block; font-size: .875rem; }
 .recommendation-evidence .evidence-credit { margin-top: 8px; font-size: .78rem; line-height: 1.5; }
 .evidence-missing { font-size: .875rem; }
+
+/* ── 가정 장면 요약(선생님에게 넘어가는 줄인 기록) ── */
+
+.home-scene {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.home-scene:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.home-scene-date {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.home-scene-part + .home-scene-part {
+  margin-top: 10px;
+}
+
+.home-scene-line {
+  margin: 0 0 6px;
+}
+
+.home-scene-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
