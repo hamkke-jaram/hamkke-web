@@ -7,7 +7,7 @@ import { healthNotice, useAiHealth } from '../../ai/health';
 import { useObservationRun } from '../../ai/useObservationRun';
 import { api, errorMessage } from '../../api/client';
 import type { AiConsent, Child, SaveRecordResponse } from '../../api/types';
-import { newUuid } from '../../api/uuid';
+import { recordIdForFile } from '../../api/uuid';
 import { FALLBACK_DISCLAIMER, useAuth } from '../../auth/AuthContext';
 import {
   AnalysisError,
@@ -221,7 +221,8 @@ export default function Record() {
         { signal: ctrl.signal, runAudio: runAudioInWorker },
       );
       if (stopped()) return;
-      await send(metrics, newUuid()); // crypto.randomUUID()는 http 주소(LAN)에서는 없다
+      // 같은 영상을 다시 고르면 같은 id가 되어, 서버가 새로 저장하지 않고 처음 기록을 돌려준다.
+      await send(metrics, recordIdForFile(id, file));
     } catch (err) {
       if (stopped()) return;
       const message =
