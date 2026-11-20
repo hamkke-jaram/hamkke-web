@@ -10,6 +10,7 @@ public/mediapipe/
 *.m4v
 # 원본 촬영물이 아닌 시연 전용 합성 영상.
 !/src/demo/teacher-review/media/block-play.mp4
+!/src/demo/teacher-review/media/throw-and-shout.mp4
 !/public/media/sinabro-guide-v1.mp4
 !/public/media/sinabro-walkthrough-v2.mp4
 !/public/media/sinabro-walkthrough-v3.mp4
