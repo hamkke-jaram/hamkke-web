@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Card, MetricFocus } from '../api/types';
-import { KNOWN_CODES, POSES, poseFor, poseSrc } from './coachingArt';
+import { ART_BY_POSE, KNOWN_CODES, POSES, poseFor, poseSrc } from './coachingArt';
 import { CoachingCardView } from './ui';
 
-// public/coaching 에 실제로 있는 그림 파일(불러오지는 않고 이름만 본다).
-const artFiles = Object.keys(import.meta.glob('../../public/coaching/*.webp')).map((path) => path.split('/').pop());
+// public/art 에 실제로 있는 그림 파일(불러오지는 않고 이름만 본다).
+const artFiles = Object.keys(import.meta.glob('../../public/art/*.webp')).map((path) => path.split('/').pop());
 
 const card = (over: Partial<Card> = {}): Card => ({
   id: 1,
@@ -66,16 +66,18 @@ describe('코칭 카드 그림 고르기', () => {
     expect(poseFor({ code: ' jp-g-01 ', metricFocus: 'GENERAL' })).toBe('clap-sing');
   });
 
-  it('포즈마다 그림 파일이 있고, 쓰지 않는 그림 파일은 없다', () => {
-    for (const pose of POSES) expect(poseSrc(pose)).toBe(`/coaching/${pose}.webp`);
-    expect([...artFiles].sort()).toEqual(POSES.map((pose) => `${pose}.webp`).sort());
+  it('포즈마다 모찌 그림 파일이 있다', () => {
+    for (const pose of POSES) {
+      expect(poseSrc(pose)).toBe(`/art/${ART_BY_POSE[pose]}.webp`);
+      expect(artFiles).toContain(`${ART_BY_POSE[pose]}.webp`);
+    }
   });
 });
 
 describe('코칭 카드 화면', () => {
   it('그림은 꾸밈으로(alt 없음) 크기를 정해 느리게 불러온다', () => {
     const html = renderToStaticMarkup(<CoachingCardView card={card({ code: 'JP-G-02' })} />);
-    expect(html).toContain('src="/coaching/ball-wait.webp"');
+    expect(html).toContain('src="/art/mochi-ball.webp"');
     expect(html).toContain('alt=""');
     expect(html).toContain('width="96"');
     expect(html).toContain('height="96"');
@@ -91,6 +93,6 @@ describe('코칭 카드 화면', () => {
     expect(html).toContain('공을 굴리고 잠깐 기다려 보세요.');
     expect(html).toContain('data-demo="coach-tried"');
     expect(html).toContain('data-demo="coach-evidence"');
-    expect(html).toContain('src="/coaching/blocks.webp"');
+    expect(html).toContain('src="/art/mochi-blocks.webp"');
   });
 });

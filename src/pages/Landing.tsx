@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import type { Role } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { INSTANT_TEST, readGuest, resumeGuest, seedSampleChild, startAsGuest } from '../auth/guest';
+import BrandMark from '../components/BrandMark';
 import Mascot from '../components/Mascot';
 import { useToast } from '../components/feedback';
 import { ErrorText, Loading } from '../components/ui';
@@ -56,14 +57,19 @@ export default function Landing() {
         login(t);
         nav(from ?? (t.user.role === 'PARENT' ? '/p' : '/t'), { replace: true });
       })
-      .catch(() => undefined) // 못 이으면 시작 버튼을 보여 준다
+      .catch(() => {
+        // 못 이으면 시작 버튼을 보여 준다. 계정이 서버에서 사라져 잊었으면(바로 테스트) 새로 준비한다.
+        if (INSTANT_TEST && readGuest() === null) setPreparing(true);
+      })
       .finally(() => setResuming(false));
   }, [loading, user, resuming, from, login, nav]);
 
   if (preparing && !error) {
     return (
+      // Figma '스플래시': 흰 바탕에 모찌 가족과 노란 글자 로고. 그 아래 준비 상태.
       <div className="instant-prep" aria-live="polite">
-        <Mascot name="dome" size={140} />
+        <Mascot name="family" size={237} />
+        <BrandMark width={137} />
         <h1>테스트를 준비하고 있어요</h1>
         {policiesError != null && !policies ? (
           <>

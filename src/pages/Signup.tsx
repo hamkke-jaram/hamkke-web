@@ -267,7 +267,7 @@ export default function Signup() {
           </span>
         </label>
         <p className="field-hint" id="signup-terms-desc" style={CONSENT_DESC}>
-          함께자람은 의료기기가 아닌 개인 건강관리(웰니스) 서비스이며 발달 상태를 판단하지 않아요.{' '}
+          시나브로는 의료기기가 아닌 개인 건강관리(웰니스) 서비스이며 발달 상태를 판단하지 않아요.{' '}
           <Link to="/terms" className="link-btn" aria-label="서비스 이용약관 자세히 보기">
             자세히
           </Link>

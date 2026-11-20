@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type UIEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { Delivery } from '../../api/types';
 import TriableCard from '../../components/TriableCard';
 import { poseFor, poseSrc, type Pose } from '../../components/coachingArt';
@@ -8,6 +9,8 @@ import { ArrowIcon } from './icons';
 interface CardProps {
   childId: number;
   delivery: Delivery;
+  /** 카드 바탕: 크림·보랏빛을 번갈아(Figma 홈). */
+  tone: 'cream' | 'lavender';
   onUpdated: (d: Delivery) => void;
   onGone: (d: Delivery) => void;
 }
@@ -16,13 +19,13 @@ interface CardProps {
 const failedArt = new Set<Pose>();
 
 /**
- * 아이 홈 '오늘의 코칭'의 카드 한 장(시안: 받은 날, 큰 제목, 한 줄, '놀이 살펴보기 →', 오른쪽 그림).
+ * 아이 홈 '오늘의 코칭'의 카드 한 장(Figma 2판: 받은 날 → 가운데 큰 모찌 그림 → 큰 제목 → 한 줄, 크림·보랏빛 바탕).
  *
  * 접힌 모습에는 제목과 본문의 첫 문장만 보인다. '놀이 살펴보기'를 펼치면 공통 코칭 카드(TriableCard)가 그대로 나와
  * 본문 전체, '오늘 해봤어요', 근거·출처·작성·검수를 모두 보여 준다(카드는 늘 출처와 함께 전한다).
  * 펼침은 <details>라서 시연이 그 안의 자리(coach-evidence·coach-tried)를 가리키면 저절로 열린다.
  */
-function HomeCoachCard({ childId, delivery, onUpdated, onGone }: CardProps) {
+function HomeCoachCard({ childId, delivery, tone, onUpdated, onGone }: CardProps) {
   const titleId = useId();
   const { card } = delivery;
   const pose = poseFor(card);
@@ -31,28 +34,33 @@ function HomeCoachCard({ childId, delivery, onUpdated, onGone }: CardProps) {
   const line = firstSentence(card.body);
   const showArt = !failedArt.has(pose);
   return (
-    <article className={showArt ? 'hc-card has-art' : 'hc-card'} aria-labelledby={titleId}>
-      <div className="hc-text">
-        {date && <p className="hc-date">{date}</p>}
-        <h3 id={titleId} className="hc-title">
-          {card.title}
-        </h3>
-        {line && <p className="hc-line">{line}</p>}
-      </div>
+    <article className={`hc-card tone-${tone}${showArt ? ' has-art' : ''}`} aria-labelledby={titleId}>
+      {date && <p className="hc-date">{date}</p>}
       {showArt && (
+        <Link to={`/p/children/${childId}/coaching/${delivery.id}`} state={{ delivery }} className="hc-art-link" tabIndex={-1} aria-hidden="true">
         <img
           className="hc-art"
           src={poseSrc(pose)}
           alt=""
-          width={132}
-          height={132}
+          width={180}
+          height={180}
           decoding="async"
           onError={() => {
             failedArt.add(pose);
             rerender((n) => n + 1);
           }}
         />
+        </Link>
       )}
+      <div className="hc-text">
+        <h3 id={titleId} className="hc-title">
+          {/* 제목을 누르면 '오늘의 코칭' 자세히 보기(Figma). 아래 '놀이 살펴보기'는 이 자리에서 펼쳐 본다. */}
+          <Link to={`/p/children/${childId}/coaching/${delivery.id}`} state={{ delivery }} className="hc-title-link">
+            {card.title}
+          </Link>
+        </h3>
+        {line && <p className="hc-line">{line}</p>}
+      </div>
       <details className="hc-more">
         <summary data-demo="coach-more">
           놀이 살펴보기
@@ -100,9 +108,9 @@ export default function HomeCoaching({ childId, deliveries, onUpdated, onGone }:
   return (
     <>
       <ul className={many ? 'hc-rail many' : 'hc-rail'} onScroll={many ? onScroll : undefined}>
-        {deliveries.map((d) => (
+        {deliveries.map((d, i) => (
           <li key={d.id}>
-            <HomeCoachCard childId={childId} delivery={d} onUpdated={onUpdated} onGone={onGone} />
+            <HomeCoachCard childId={childId} delivery={d} tone={i % 2 === 0 ? 'cream' : 'lavender'} onUpdated={onUpdated} onGone={onGone} />
           </li>
         ))}
       </ul>

@@ -166,12 +166,15 @@ export default function TeacherHome() {
     </section>
   );
 
+  // Figma 2판 '보호자 초대코드'(선생님 홈): 인사 → 크림 '초대 코드로 아이 연결' → 크림 '연결된 아이'.
+  // 연결된 아이가 없으면 빈 화면 안내(선생님 모찌)가 맨 위에 온다.
+  const empty = list && list.length === 0;
   return (
-    <div>
+    <div className="teacher-home">
       <h1>{user?.displayName ? `${user.displayName}님, 안녕하세요` : '안녕하세요'}</h1>
       <p className="lead">보호자가 공유한 기록만 주 단위로 볼 수 있어요.</p>
 
-      {listSection}
+      {empty && listSection}
 
       <Section title="초대 코드로 아이 연결">
         <form onSubmit={link} noValidate>
@@ -199,6 +202,8 @@ export default function TeacherHome() {
           </button>
         </form>
       </Section>
+
+      {!empty && listSection}
     </div>
   );
 }

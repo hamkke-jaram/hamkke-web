@@ -5,7 +5,8 @@ import { ApiError, api, errorMessage } from '../../api/client';
 import type { AiConsent, Child, InviteCode, LinkedTeacher, ShareSettings } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import EmptyState from '../../components/EmptyState';
-import { BackLink, DangerAction, useToast } from '../../components/feedback';
+import SubHead from '../../components/SubHead';
+import { DangerAction, useToast } from '../../components/feedback';
 import { ErrorText, Loading, Section, formatDate, loadStateView, useLoad } from '../../components/ui';
 import '../extra.css';
 
@@ -228,8 +229,9 @@ export default function Share() {
 
   return (
     <div>
-      <BackLink to={home} label={nickname ?? '아이 홈'} />
-      <h1>선생님과 나누기</h1>
+      {/* Figma 2판 '선생님 연결 관리': ‹ 제목. 공유할 항목은 알약 토글, 초대 코드는 크림 상자. */}
+      <SubHead title="선생님 연결 관리" fallback={home} />
+      {nickname && <p className="status-line" style={{ margin: '0 0 4px' }}>{nickname}의 기록</p>}
       <p className="lead">
         기록은 기본적으로 부모님만 볼 수 있어요. 켜 둔 항목만 연결된 선생님이 주 단위 요약으로 볼 수 있어요.
       </p>
@@ -325,7 +327,7 @@ export default function Share() {
                   data-demo="share-code-send"
                   onClick={() =>
                     void navigator
-                      .share({ text: `함께자람 초대 코드: ${code.code} (72시간 동안 한 번 사용 가능)` })
+                      .share({ text: `시나브로 초대 코드: ${code.code} (72시간 동안 한 번 사용 가능)` })
                       .catch(() => undefined)
                   }
                 >

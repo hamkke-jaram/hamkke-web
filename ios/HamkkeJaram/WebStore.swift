@@ -16,7 +16,7 @@ final class WebStore: NSObject, ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .loading
-    @Published private(set) var title = "함께자람"
+    @Published private(set) var title = "시나브로"
     @Published private(set) var path = "/"
     @Published private(set) var canGoBack = false
     /// 마지막으로 본 아이(기록하기 탭이 그 아이의 기록 화면으로 간다).

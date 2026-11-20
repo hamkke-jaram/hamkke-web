@@ -179,7 +179,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HJ_WEB_URL = "http://localhost:5173/";
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "함께자람";
+				INFOPLIST_KEY_CFBundleDisplayName = "시나브로";
 				INFOPLIST_KEY_NSCameraUsageDescription = "아이와 노는 모습을 실시간으로 관찰 기록할 때 카메라를 써요. 영상은 저장하거나 기기 밖으로 보내지 않아요.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "마이크는 쓰지 않아요. 영상 소리 분석은 고른 영상 파일 안에서만 해요.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "기록할 놀이 영상을 고를 때 사진 보관함을 열어요. 영상은 기기 밖으로 나가지 않아요.";
@@ -212,7 +212,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HJ_WEB_URL = "http://localhost:5173/";
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "함께자람";
+				INFOPLIST_KEY_CFBundleDisplayName = "시나브로";
 				INFOPLIST_KEY_NSCameraUsageDescription = "아이와 노는 모습을 실시간으로 관찰 기록할 때 카메라를 써요. 영상은 저장하거나 기기 밖으로 보내지 않아요.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "마이크는 쓰지 않아요. 영상 소리 분석은 고른 영상 파일 안에서만 해요.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "기록할 놀이 영상을 고를 때 사진 보관함을 열어요. 영상은 기기 밖으로 나가지 않아요.";

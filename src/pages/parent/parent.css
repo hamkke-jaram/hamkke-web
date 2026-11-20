@@ -144,6 +144,7 @@
 }
 
 .home-sec-link {
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -189,40 +190,52 @@
 }
 
 .hc-rail.many > li {
-  flex-basis: calc(100% - 20px);
+  /* 다음 카드가 오른쪽에 걸쳐 보이게(Figma: 카드 약 4/5 너비) */
+  flex-basis: 80%;
 }
 
-/* 크림 카드: 왼쪽에 받은 날·제목·한 줄, 오른쪽에 그림. 펼친 내용은 그 아래 카드 너비 전체를 쓴다. */
+/* Figma 2판 코칭 카드: 받은 날 → 가운데 큰 모찌 → 큰 제목 → 한 줄. 크림·보랏빛을 번갈아 쓴다. */
 .hc-card {
-  /* 그림 한 변. 글 칸의 오른쪽 여백과 같은 값을 써서 좁은 화면에서도 글과 그림이 겹치지 않는다. */
-  --hc-art: min(30vw, 132px);
   position: relative;
-  padding: 18px 20px 6px;
-  border-radius: var(--radius, 20px);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 8px;
+  border-radius: var(--radius, 15px);
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--edge, transparent);
 }
 
-.hc-text {
-  min-height: 104px;
-}
-
-.hc-card.has-art .hc-text,
-.hc-card.has-art .hc-more > summary {
-  margin-right: calc(var(--hc-art) + 2px);
+.hc-card.tone-lavender {
+  background: var(--lavender, var(--surface-2));
 }
 
 .hc-date {
-  margin: 0 0 6px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ink-2);
+}
+
+.hc-art {
+  display: block;
+  width: min(180px, 62%);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 2px auto 0;
+  object-fit: contain;
+}
+
+.hc-text {
+  min-height: 72px;
 }
 
 .hc-title {
   margin: 0 0 6px;
-  font-size: 21px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--lavender-ink, var(--ink));
   overflow-wrap: anywhere;
 }
 
@@ -232,20 +245,11 @@
   margin: 0;
   overflow: hidden;
   color: var(--ink-2);
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 500;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-}
-
-.hc-art {
-  position: absolute;
-  top: 18px;
-  right: 14px;
-  width: var(--hc-art);
-  height: var(--hc-art);
-  border-radius: 16px;
-  object-fit: contain;
 }
 
 .hc-more > summary {
@@ -313,6 +317,8 @@
 }
 
 .hc-dots span.on {
+  width: 20px;
+  border-radius: 4px;
   background: var(--cta, var(--brand));
   box-shadow: inset 0 0 0 1px var(--cta-line, transparent);
 }
@@ -403,46 +409,151 @@
   margin: 14px 0 4px;
 }
 
-/* 둥근 '선생님 이야기' 버튼(시안 홈의 오른쪽 아래). 화면에 떠 있지 않고 주간 기록 아래 오른쪽에 놓인다. */
-.home-fab-row {
+/* Figma 홈: '전문가의 도움이 필요하다면' 크림 띠(제목·한 줄·오른쪽 아래 길). */
+.expert-banner {
   display: flex;
-  justify-content: flex-end;
-  margin: -6px 0 20px;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 160px;
+  margin: 0 0 24px;
+  padding: 22px 22px 18px;
+  border-radius: var(--radius, 15px);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.home-fab {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 88px;
-  padding: 4px;
-  border: 0;
-  border-radius: 16px;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
+.expert-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.expert-sub {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.expert-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: auto;
+  align-self: flex-end;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/*
+ * Figma '홈_하단 버튼': 오른쪽 아래에 떠 있는 노란 동그라미(···). 펼치면 위로 항목이 쌓이고 화면을 살짝 어둡게 덮는다.
+ * 앱 화면 폭(최대 560px) 안쪽 오른쪽에 맞춘다. 돌아다니는 모찌(20)보다 위, 알림(30)보다 아래.
+ */
+.fab-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  background: rgb(0 0 0 / 0.12);
+}
+
+.fab {
+  position: fixed;
+  z-index: 25;
+  right: max(var(--gutter, 24px), calc((100vw - 560px) / 2 + var(--gutter, 24px)));
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.fab-toggle {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--cta-line, transparent);
+  border-radius: 50%;
+  background: var(--cta, var(--brand));
+  color: var(--cta-ink, var(--ink));
+  box-shadow: 0 6px 18px rgb(140 90 0 / 0.25);
   cursor: pointer;
 }
 
-.home-fab-dot {
-  display: grid;
-  place-items: center;
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--cta, var(--brand));
-  border: 1px solid var(--cta-line, transparent);
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.home-fab-dot .mascot {
-  width: 86%;
-  height: 86%;
-  margin: 8% 0 0;
-  object-fit: contain;
+.fab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.fab-label {
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.1), inset 0 0 0 1px var(--edge, transparent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fab-dot {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12), inset 0 0 0 1px var(--edge, transparent);
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.fab-dot.initial {
+  background: var(--surface);
+}
+
+.fab-dot.teacher {
+  background: var(--brand-soft, var(--surface-2));
+}
+
+.fab-dot.teacher .mascot {
+  width: 88%;
+  height: auto;
+  margin: 10% 0 0;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fab-menu > li {
+    animation: fab-in 0.18s ease-out both;
+  }
+
+  @keyframes fab-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+    }
+  }
 }
 
 /* ── 아이 등록 (Figma: 큰 캐릭터, 20px 제목, 노란 체크, 큰 노란 버튼) ── */
@@ -472,120 +583,430 @@
   font-weight: 700;
 }
 
-/* ── 영상 기록 안내 ── */
+/* ── Figma '기록하기'·'기록 분석 중'·'분석 결과' ── */
 
-.rec-guide {
-  margin-bottom: 14px;
-  padding: 14px 18px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius, 20px);
-  background: var(--surface);
+.rec-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: 4px 0 20px;
 }
 
-/* 촬영 화면처럼 보이는 꾸밈 자리(실제 미리보기가 아니다. 촬영은 폰 카메라 앱이 한다). */
-.rec-frame {
+.rec-hero img {
+  display: block;
+  width: 180px;
+  height: auto;
+}
+
+.rec-hero-art {
   position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 132px;
-  margin: 0 -4px 14px;
-  padding: 14px 12px 0;
-  border-radius: var(--radius-btn, 16px);
-  overflow: hidden;
+  display: block;
+  padding: 24px 40px 0 0;
+}
+
+.rec-lens {
+  position: absolute;
+  top: -6px;
+  right: -26px;
+  width: 110px !important;
+}
+
+.rec-hero-title {
+  margin: 14px 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.rec-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.rec-who {
+  display: block;
+  margin-top: 4px;
+}
+
+/* 크림 상자 속 번호 단계(번호는 글자로, 원 없이). */
+.rec-steps {
+  margin: 0 0 28px;
+  padding: 20px 24px;
+  border-radius: var(--radius, 15px);
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--edge, transparent);
 }
 
-.rec-frame .mascot {
-  display: block;
-  max-width: 62%;
-  height: auto;
-}
-
-/* 그림을 못 불러오면 빈 상자를 남기지 않는다(:has를 모르는 옛 브라우저에서는 빈 자리가 남을 뿐 깨지지 않는다). */
-.rec-frame:not(:has(.mascot)) {
-  display: none;
-}
-
-.rec-frame-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
+.rec-steps ol {
   display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--brand);
-  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: rec;
 }
 
-.rec-guide h2 {
-  margin: 0 0 4px;
+.rec-steps li {
+  display: flex;
+  gap: 18px;
+  font-size: 15px;
+  font-weight: 500;
+  counter-increment: rec;
+}
+
+.rec-steps li::before {
+  content: counter(rec);
+  flex: none;
+  width: 12px;
+  font-weight: 600;
 }
 
 .rec-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  margin: 4px 0 12px;
-}
-
-/* 큰 촬영 버튼: 노란 원 + 아래 이름. 버튼 하나라 누르는 영역은 원과 글 전체다. */
-.rec-shutter {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-width: 132px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: var(--radius, 20px);
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.rec-shutter-dot {
   display: grid;
-  place-items: center;
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  background: var(--cta, var(--brand));
-  color: var(--cta-ink, var(--brand-ink));
-  /* 흰 바탕에서 노랑만으로는 원의 경계가 흐리다. 주 버튼과 같은 테두리 색(--cta-line, 바탕 위 3:1)으로 경계를 준다. */
-  border: 1px solid var(--cta-line, transparent);
-  box-shadow:
-    0 0 0 5px var(--surface),
-    0 0 0 6px var(--line);
-}
-
-.rec-shutter:hover .rec-shutter-dot {
-  filter: brightness(0.97);
-}
-
-.rec-actions .btn {
-  gap: 8px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .rec-note {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+/* 분석 중: 가는 노란 막대 + 아래 오른쪽 퍼센트 */
+.rec-progress {
+  margin: 8px 0 32px;
+}
+
+.rec-progress .progress {
+  height: 6px;
+  margin: 0;
+  border-radius: 3px;
+  background: var(--neutral-box, var(--line));
+}
+
+.rec-progress-meta {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 6px;
-  margin: 0 0 14px;
-  font-size: 14px;
+  justify-content: space-between;
+  margin: 8px 0 18px;
+  font-size: 13px;
   color: var(--ink-2);
 }
 
-.rec-note .p-icon {
-  margin-top: 2px;
+.rec-analyzing .stage-list {
+  margin-top: 0;
+}
+
+/* 분석 결과 */
+.rec-result-title {
+  margin: 4px 0 4px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.rec-metrics {
+  margin: 18px 0 16px;
+}
+
+.rec-metrics .metric {
+  border-radius: var(--radius, 15px);
+  background: var(--surface-2);
+}
+
+.rec-gray-note {
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  border-radius: var(--radius, 15px);
+  background: var(--neutral-box, var(--surface-2));
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rec-gray-note p {
+  margin: 0;
+}
+
+.rec-gray-note p + p {
+  margin-top: 6px;
+}
+
+.rec-coach-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 28px;
+  padding: 20px 52px 20px 20px;
+  border-radius: var(--radius, 15px);
+  background: var(--lavender, var(--surface-2));
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.rec-coach-link strong {
+  font-size: 18px;
+  color: var(--lavender-ink, var(--ink));
+}
+
+.rec-coach-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rec-coach-line {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.rec-coach-link > .p-icon {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+}
+
+/* ── 코칭 카드 → 자세히 보기 길 ── */
+.hc-art-link {
+  display: block;
+}
+
+.hc-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hc-title-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Figma '홈_전체보기': 달 넘김 + 카드 줄 ── */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 8px 0 16px;
+}
+
+.month-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.month-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.month-btn:not(.next) .p-icon {
+  transform: rotate(180deg);
+}
+
+.month-btn:disabled {
+  color: var(--line);
+  cursor: default;
+}
+
+.coach-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.coach-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 15px);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.coach-row > .p-icon {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.coach-row-art {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.coach-row-art.lavender {
+  background: var(--lavender, var(--surface-2));
+}
+
+.coach-row-art img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.coach-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.coach-row-text strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.coach-row-date,
+.coach-row-line {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.coach-row-line {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Figma '오늘의 코칭' 자세히 보기 ── */
+.cd-hero {
+  margin: 0 calc(-1 * var(--gutter, 24px)) 8px;
+  padding: 16px var(--gutter, 24px) 20px;
+  background: var(--lavender, var(--surface-2));
+}
+
+.cd-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.cd-art {
+  display: block;
+  width: min(200px, 56%);
+  height: auto;
+  margin: 0 auto;
+}
+
+.cd-title {
+  margin: 6px 0 4px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--lavender-ink, var(--ink));
+}
+
+.cd-line {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.cd-sec {
+  margin: 24px 0;
+}
+
+.cd-sec h2,
+.cd-why h2 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.cd-steps {
+  display: grid;
+  gap: 16px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cd-steps li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.cd-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-soft, #ffdd99);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cd-why {
+  margin: 0 0 24px;
+  padding: 20px 20px 8px;
+  border-radius: var(--radius, 15px);
+  background: var(--lavender, var(--surface-2));
+}
+
+/* 공통 카드에서 위에 이미 보인 것(그림·제목·본문)은 가리고 근거·출처·'오늘 해봤어요'만 남긴다. */
+.cd-why-card .coach-card {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cd-why-card .coach-head,
+.cd-why-card .coach-card > p {
+  display: none;
+}
+
+.cd-why-card .evidence {
+  margin-top: 10px;
+  color: var(--ink-2);
+}
+
+.cd-done {
+  margin-bottom: 8px;
+}
+
+/* 떠 있는 버튼이 마지막 내용을 가리지 않게 아이 홈 아래에 여백을 둔다. */
+.child-home {
+  padding-bottom: 88px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -596,4 +1017,116 @@
   .hc-rail {
     scroll-behavior: auto;
   }
+}
+
+/* ── Figma 2판 '등록된 아이' ── */
+.kid-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.kid-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 15px);
+  background: var(--surface);
+}
+
+.kid-card-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.kid-card .avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--brand-soft, #ffdd99);
+  color: #6d4f12;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.kid-card-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.kid-card-text strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.kid-card-text span {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.kid-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+/* 삭제 확인 상자가 열리면 카드 너비 전체를 쓴다. */
+.kid-card-actions .confirm {
+  flex-basis: 100%;
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.kid-card-actions:has(.confirm) {
+  flex-basis: 100%;
+}
+
+.kid-act {
+  min-height: 32px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.kid-act.danger {
+  color: var(--danger, #ab0e0e);
+}
+
+.kid-sep {
+  color: var(--line);
+}
+
+.kid-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 15px);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.kid-add span {
+  font-size: 22px;
+  line-height: 1;
 }

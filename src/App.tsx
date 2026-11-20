@@ -25,6 +25,8 @@ import Terms from './pages/Terms';
 import { useMotionOn } from './motion';
 import { NativeBridge } from './native';
 import ChildEdit from './pages/parent/ChildEdit';
+import Children from './pages/parent/Children';
+import { CoachingDetail, CoachingList } from './pages/parent/Coaching';
 import ChildHome from './pages/parent/ChildHome';
 import ChildNew from './pages/parent/ChildNew';
 import Records from './pages/parent/Records';
@@ -65,17 +67,19 @@ function Layout() {
   return (
     <div className="app">
       <header className="topbar">
-        <Link to={home} className="brand">
+        {/* Figma(해커톤_발자국): 왼쪽 노란 글자 로고, 오른쪽 설정(톱니). 도움받기는 홈의 '전문가의 도움이 필요하다면'과 설정에 있다. */}
+        <Link to={home} className="brand" aria-label="시나브로 처음으로">
           <BrandMark />
-          함께자람
         </Link>
         <span className="spacer" />
         {/* 아이콘만 보이는 버튼. 이름은 aria-label(낭독)과 title(마우스를 올렸을 때)로 알린다. */}
-        <Link to="/support" className="icon-btn" aria-label="도움받기" title="도움받기" aria-current={pathname === '/support' ? 'page' : undefined}>
-          <Icon name="info" className="topbar-icon" />
-        </Link>
+        {!user && (
+          <Link to="/support" className="icon-btn" aria-label="도움받기" title="도움받기" aria-current={pathname === '/support' ? 'page' : undefined}>
+            <Icon name="info" className="topbar-icon" />
+          </Link>
+        )}
         {user && (
-          <Link to="/account" className="icon-btn" aria-label="내 정보" title="내 정보" aria-current={pathname === '/account' ? 'page' : undefined}>
+          <Link to="/account" className="icon-btn" aria-label="설정" title="설정" aria-current={pathname === '/account' ? 'page' : undefined}>
             <Icon name="settings" className="topbar-icon" />
           </Link>
         )}
@@ -128,9 +132,12 @@ export default function App() {
         <Route path="/account" element={<RequireUser><Account /></RequireUser>} />
 
         <Route path="/p" element={<RequireRole role="PARENT"><ParentHome /></RequireRole>} />
+        <Route path="/p/children" element={<RequireRole role="PARENT"><Children /></RequireRole>} />
         <Route path="/p/children/new" element={<RequireRole role="PARENT"><ChildNew /></RequireRole>} />
         <Route path="/p/children/:childId" element={<RequireRole role="PARENT"><ChildHome /></RequireRole>} />
         <Route path="/p/children/:childId/edit" element={<RequireRole role="PARENT"><ChildEdit /></RequireRole>} />
+        <Route path="/p/children/:childId/coaching" element={<RequireRole role="PARENT"><CoachingList /></RequireRole>} />
+        <Route path="/p/children/:childId/coaching/:deliveryId" element={<RequireRole role="PARENT"><CoachingDetail /></RequireRole>} />
         <Route path="/p/children/:childId/records" element={<RequireRole role="PARENT"><Records /></RequireRole>} />
         <Route path="/p/children/:childId/record" element={<RequireRole role="PARENT"><Record /></RequireRole>} />
         <Route path="/p/children/:childId/share" element={<RequireRole role="PARENT"><Share /></RequireRole>} />

@@ -6,7 +6,6 @@ import { aiConsentState, consentCardPlace, keepsAiRecords } from '../../ai/conse
 import { ApiError, api } from '../../api/client';
 import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
-import Mascot from '../../components/Mascot';
 import TriableCard from '../../components/TriableCard';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
 import { usePagedList } from '../../components/paging';
@@ -22,6 +21,7 @@ import {
   useLoad,
 } from '../../components/ui';
 import HomeCoaching from './HomeCoaching';
+import HomeFab from './HomeFab';
 import WeekCard from './WeekCard';
 import { CameraIcon, ChevronIcon } from './icons';
 import { thisWeekStats } from './week';
@@ -198,16 +198,7 @@ export default function ChildHome() {
   // '오늘의 코칭'에서 넘겨 볼 카드: 가장 최근 카드와 그 앞의 카드 몇 장.
   const railCards = latest ? [latest, ...pastCards.slice(0, RAIL_CARDS - 1)] : [];
 
-  /** '지난 코칭': 아래의 지난 코칭 카드 펼침을 열고 그리로 간다. */
-  function openPast() {
-    const el = pastRef.current;
-    if (!el) return;
-    el.open = true;
-    el.scrollIntoView({ block: 'start' });
-    el.querySelector('summary')?.focus({ preventScroll: true });
-  }
-
-  /** 둥근 '선생님 이야기' 버튼: 아래의 선생님 이야기(받은 목표와 메모)로 간다. */
+  /** 떠 있는 메뉴의 '선생님 이야기': 아래의 선생님 이야기(받은 목표와 메모)로 간다. */
   function goStory() {
     const el = storyRef.current;
     if (!el) return;
@@ -254,7 +245,7 @@ export default function ChildHome() {
   }
 
   return (
-    <div>
+    <div className="child-home">
       {backLink}
       {/* 화면 머리: 왼쪽 정렬 큰 제목 + 한 줄 부제(시안 홈). 아이 사진·생김새를 대신하는 그림은 두지 않는다. */}
       <div className="home-head">
@@ -311,12 +302,11 @@ export default function ChildHome() {
             <h2 id="childhome-coach-h" tabIndex={-1}>
               오늘의 코칭
             </h2>
-            {pastCards.length > 0 && (
-              <button type="button" className="home-sec-link" data-demo="childhome-past-link" onClick={openPast}>
-                지난 코칭
-                <ChevronIcon size={16} />
-              </button>
-            )}
+            {/* Figma: '전체 보기 >' — 받은 카드를 달별로 모아 보는 화면 */}
+            <Link to={`/p/children/${id}/coaching`} className="home-sec-link" data-demo="childhome-past-link">
+              전체 보기
+              <ChevronIcon size={16} />
+            </Link>
           </div>
           <HomeCoaching childId={id} deliveries={railCards} onUpdated={replaceCard} onGone={dropCard} />
         </section>
@@ -383,15 +373,22 @@ export default function ChildHome() {
         </div>
       </section>
 
-      {/* 시안 홈의 오른쪽 아래 둥근 버튼: 받은 선생님 이야기(아래 구역)로 간다. 얼굴 그림은 꾸밈이다. */}
-      <div className="home-fab-row">
-        <button type="button" className="home-fab" data-demo="childhome-story-jump" onClick={goStory}>
-          <span className="home-fab-dot">
-            <Mascot name="teacher" size={56} />
-          </span>
-          선생님 이야기
-        </button>
-      </div>
+      {/* Figma 홈: 주간 기록 아래 '전문가의 도움이 필요하다면' 크림 띠. 상담·기관 안내로 간다. */}
+      <Link to="/support" className="expert-banner">
+        <span className="expert-title">전문가의 도움이 필요하다면</span>
+        <span className="expert-sub">아이에게 맞는 상담과 가까운 기관을 알아보세요.</span>
+        <span className="expert-go">
+          상담 · 기관 안내
+          <ChevronIcon size={16} />
+        </span>
+      </Link>
+
+      {/* Figma '홈_하단 버튼': 오른쪽 아래에 떠 있는 노란 버튼 → 아이 추가하기 · 다른 아이 · 선생님 이야기 */}
+      <HomeFab
+        others={(siblings.data ?? []).filter((k) => k.id !== id)}
+        canAdd={childCount < MAX_CHILDREN}
+        onStory={goStory}
+      />
 
       {/* 처음부터 꺼져 있을 때의 켜기 안내는 여기(주간 기록 아래)에 둔다. AI 서버가 설정된 경우만. */}
       {aiChange?.at === 'middle' && aiChangeNotice}

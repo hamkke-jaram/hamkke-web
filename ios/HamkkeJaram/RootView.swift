@@ -13,8 +13,8 @@ struct RootView: View {
 
             VStack(spacing: 0) {
                 HeaderBar(
-                    // 탭 맨 위 화면은 본문이 큰 제목을 보여 주므로 머리줄에는 앱 이름, 그 아래 화면은 화면 제목.
-                    title: Tab.isRoot(web.path) ? "함께자람" : web.title,
+                    // 탭 맨 위 화면은 본문이 큰 제목을 보여 주므로 머리줄에는 노란 글자 로고(Figma 홈 머리), 그 아래 화면은 화면 제목.
+                    title: Tab.isRoot(web.path) ? nil : web.title,
                     showBack: web.canGoBack && !Tab.isRoot(web.path),
                     onBack: { Haptics.play("soft"); web.goBack() },
                     onReload: { web.reload() },
@@ -74,7 +74,7 @@ enum Tab: CaseIterable {
         case .home: "홈"
         case .record: "기록하기"
         case .support: "도움받기"
-        case .account: "내 정보"
+        case .account: "설정"
         }
     }
 
@@ -83,7 +83,7 @@ enum Tab: CaseIterable {
         case .home: "house.fill"
         case .record: "video.fill"
         case .support: "heart.text.square.fill"
-        case .account: "person.crop.circle.fill"
+        case .account: "gearshape.fill"
         }
     }
 
@@ -189,7 +189,8 @@ struct PressableStyle: ButtonStyle {
 // MARK: - 머리줄
 
 struct HeaderBar: View {
-    let title: String
+    /// nil이면 시나브로 글자 로고를 보여 준다.
+    let title: String?
     let showBack: Bool
     let onBack: () -> Void
     let onReload: () -> Void
@@ -208,17 +209,27 @@ struct HeaderBar: View {
                 .buttonStyle(PressableStyle())
                 .accessibilityLabel("뒤로")
                 .transition(.move(edge: .leading).combined(with: .opacity))
-            } else if let mark = Art.image("brand-mark") {
-                Image(uiImage: mark).resizable().scaledToFit().frame(width: 40, height: 28)
-                    .accessibilityHidden(true)
             }
-            Text(title)
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-                .contentTransition(.opacity)
+            if let title {
+                Text(title)
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .contentTransition(.opacity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .animation(.easeOut(duration: 0.2), value: title)
+            } else {
+                Group {
+                    if let mark = Art.image("wordmark") {
+                        Image(uiImage: mark).resizable().scaledToFit().frame(height: 22)
+                    } else {
+                        Text("시나브로").font(.system(size: 19, weight: .heavy)).foregroundStyle(Theme.cta)
+                    }
+                }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .animation(.easeOut(duration: 0.2), value: title)
+                .accessibilityElement()
+                .accessibilityLabel("시나브로")
+            }
             Menu {
                 Button("새로고침", systemImage: "arrow.clockwise", action: onReload)
                 Button("휴대폰으로 열기 (QR)", systemImage: "qrcode", action: onQR)
@@ -246,16 +257,18 @@ struct SplashView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Theme.surface2, Theme.bg], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-            VStack(spacing: 18) {
-                MochiView(image: "mochi-dome", size: 150, hop: 80)
-                VStack(spacing: 6) {
-                    Text("함께자람")
-                        .font(.system(size: 32, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
+            // Figma '스플래시': 흰 바탕, 모찌 가족(통통 뛰는), 노란 시나브로 글자 로고.
+            Theme.bg.ignoresSafeArea()
+            VStack(spacing: 22) {
+                MochiView(image: "mochi-family", size: 237, hop: 60)
+                VStack(spacing: 8) {
+                    if let mark = Art.image("wordmark") {
+                        Image(uiImage: mark).resizable().scaledToFit().frame(width: 137)
+                    } else {
+                        Text("시나브로").font(.system(size: 32, weight: .heavy)).foregroundStyle(Theme.cta)
+                    }
                     Text("아이 곁의 시간을 함께 기록해요")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Theme.ink2)
                 }
                 .opacity(appear ? 1 : 0)
@@ -268,7 +281,7 @@ struct SplashView: View {
         }
         .onAppear { withAnimation(.easeOut(duration: 0.5).delay(0.15)) { appear = true } }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("함께자람을 여는 중")
+        .accessibilityLabel("시나브로를 여는 중")
     }
 }
 
