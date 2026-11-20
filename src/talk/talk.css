@@ -3,10 +3,17 @@
  * 내 이야기는 오른쪽 노란 말풍선, 상대 이야기는 왼쪽 흰 말풍선, 선생님 관찰 메모는 크림 카드.
  */
 
+/* 이야기가 짧아도 입력칸이 화면 맨 아래에 오도록 화면 높이만큼 채운다(면책 문구는 그 아래, 스크롤하면 보인다).
+   입력칸은 고정(fixed)이 아니라 흐름 안에 붙여 둬서 휴대폰 키보드가 올라오면 함께 밀려 올라간다.
+   빼는 값: 브라우저는 웹 상단바와 본문 위 여백, iOS 앱은 본문 위 여백만(머리줄은 앱이 그린다). */
 .talk {
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - 160px);
+  min-height: calc(100dvh - 80px);
+}
+
+html.ios-app .talk {
+  min-height: calc(100dvh - 16px);
 }
 
 .talk-head {
@@ -93,6 +100,28 @@
   color: var(--ink-2);
   font-size: 12.5px;
   font-weight: 600;
+}
+
+/* 면책 문구: 이 화면에서는 이야기 흐름 맨 위에 작게(아래 공통 문구는 감춘다). */
+body.talk-on .app > .disclaimer {
+  display: none;
+}
+
+body.talk-on main {
+  padding-bottom: 0;
+}
+
+.talk-disclaimer .disclaimer {
+  padding: 8px 12px;
+  margin: 0 0 4px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.talk-disclaimer .disclaimer p + p {
+  margin-top: 4px !important;
 }
 
 /* 선생님 관찰 메모 카드 */

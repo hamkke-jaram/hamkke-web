@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import Mascot from '../components/Mascot';
 import SubHead from '../components/SubHead';
 import { useToast } from '../components/feedback';
-import { ErrorText, Loading, formatAge, useLoad } from '../components/ui';
+import { Disclaimer, ErrorText, Loading, formatAge, useLoad } from '../components/ui';
 import { haptic } from '../native';
 import { buildTimeline, usePolling, useTalk, type TalkMessage, type TimelineItem } from './talk';
 import './talk.css';
@@ -78,6 +78,12 @@ export default function TalkPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const seen = useRef<Set<number> | null>(null);
+
+  // 이 화면에서는 면책 문구를 이야기 흐름 맨 위에 두고, 아래 공통 문구는 감춘다(입력칸이 늘 맨 아래에 오게).
+  useEffect(() => {
+    document.body.classList.add('talk-on');
+    return () => document.body.classList.remove('talk-on');
+  }, []);
 
   const timeline = useMemo(() => buildTimeline(talk.messages ?? [], notes), [talk.messages, notes]);
   const notesById = useMemo(() => new Map(notes.map((n) => [n.id, n])), [notes]);
@@ -163,6 +169,10 @@ export default function TalkPage() {
           </button>
         </div>
       )}
+
+      <div className="talk-disclaimer">
+        <Disclaimer />
+      </div>
 
       <div className="talk-list" ref={listRef} aria-live="polite" aria-relevant="additions">
         {timeline.length === 0 && talk.messages !== null && (
