@@ -109,7 +109,6 @@ function Layout() {
   return (
     <div className="app">
       <header className="topbar">
-        {/* Figma(해커톤_발자국): 왼쪽 노란 글자 로고, 오른쪽 설정(톱니). 도움받기는 홈의 '전문가의 도움이 필요하다면'과 설정에 있다. */}
         <Link to={home} className="brand" aria-label="시나브로 처음으로">
           <BrandMark />
         </Link>

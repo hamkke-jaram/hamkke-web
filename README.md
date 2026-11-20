@@ -21,7 +21,7 @@ npm run dev     # http://localhost:5173 (/api → http://localhost:8080, /ai/ �
 
 앱 이름을 **시나브로**로 바꾸고(저장소·코드 이름 hamkke는 그대로) 화면을 Figma 2판에 맞췄다.
 
-- 글자 로고 `public/brand/wordmark.svg`(상단바·시작 화면), 모찌 그림 `public/art/*.webp`(코칭 카드·영상 기록·분석 중). 코칭 포즈 → 그림은 `components/coachingArt.ts`의 `ART_BY_POSE`.
+- 시나브로 모찌 로고 `public/characters/dome.webp`(상단바·로그인), 웹 아이콘 `public/brand/mochi-*.png`, 모찌 그림 `public/art/*.webp`(코칭 카드·영상 기록·분석 중). 코칭 포즈 → 그림은 `components/coachingArt.ts`의 `ART_BY_POSE`.
 - 색: 제목 거의 검정(`--ink`), 보조 회색 `#5a5a5a`, 코칭의 보랏빛 면 `--lavender`, 안내 회색 면 `--neutral-box`, 좌우 여백 27px. 켜고 끄는 칸(`role="switch"`)은 알약 토글.
 - 하위 화면 머리 `components/SubHead.tsx`(‹ 가운데 제목). iOS 앱 안에서는 앱 머리줄이 대신해 눈에서만 감춘다.
 - 아이 홈: 크림·보랏빛 코칭 카드(가운데 모찌, 제목·이미지를 누르면 자세히), '전체 보기', '전문가의 도움이 필요하다면' 띠, 오른쪽 아래 떠 있는 버튼(아이 추가하기 · 다른 아이 · 선생님 이야기, `HomeFab.tsx`).

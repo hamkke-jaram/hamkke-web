@@ -257,7 +257,6 @@ a {
   min-height: 44px;
 }
 
-/* 로고 마크(public/brand/mark.webp). 꾸밈. */
 .brand-mark {
   display: block;
   flex: none;

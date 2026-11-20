@@ -18,7 +18,7 @@ export default function Login() {
   const [params] = useSearchParams();
   return (
     <>
-      <div className="login-mark"><BrandMark width={112} /></div>
+      <div className="login-mark"><BrandMark width={72} /></div>
       <h1>로그인</h1>
       {params.get('demo') === '1'
         ? <DemoLoginForm switchRole={params.get('switch') === '1'} />
