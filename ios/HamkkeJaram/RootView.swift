@@ -13,7 +13,8 @@ struct RootView: View {
 
             VStack(spacing: 0) {
                 HeaderBar(
-                    title: web.title,
+                    // 탭 맨 위 화면은 본문이 큰 제목을 보여 주므로 머리줄에는 앱 이름, 그 아래 화면은 화면 제목.
+                    title: Tab.isRoot(web.path) ? "함께자람" : web.title,
                     showBack: web.canGoBack && !Tab.isRoot(web.path),
                     onBack: { Haptics.play("soft"); web.goBack() },
                     onReload: { web.reload() },
@@ -103,8 +104,10 @@ enum Tab: CaseIterable {
         return .home
     }
 
+    /// 탭의 맨 위 화면(뒤로 버튼 없이 앱 이름을 보여 준다): 시작·보호자 홈·아이 홈·선생님 홈·도움받기·내 정보.
     static func isRoot(_ path: String) -> Bool {
-        ["/", "/p", "/t", "/support", "/account"].contains(path)
+        if ["/", "/p", "/t", "/support", "/account"].contains(path) { return true }
+        return path.range(of: #"^/p/children/\d+/?$"#, options: .regularExpression) != nil
     }
 
     /// 들어가기 전(시작·준비 화면)과 실시간 카메라 화면에서는 탭을 숨긴다.
