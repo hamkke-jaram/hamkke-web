@@ -177,6 +177,7 @@ export async function prepare(need: Need, policies: Policies, onProgress: Progre
     vars: {
       guardianVersion: policies.guardianVersion,
       aiVersion: policies.aiAnalysisVersion ?? '',
+      ...(policies.aiAnalysisMaxFrames !== undefined && { aiMaxFrames: String(policies.aiAnalysisMaxFrames) }),
       termsVersion: policies.termsVersion,
       privacyVersion: policies.privacyVersion,
     },

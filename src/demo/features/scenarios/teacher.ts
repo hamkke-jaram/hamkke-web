@@ -1,3 +1,4 @@
+import { MAX_UPLOAD_FRAMES } from '../../../ai/frames';
 import { ymdFromToday } from '../timing';
 import type { Scenario, StepContext } from '../types';
 import { childHome, childId, hasShared, isOk, n, sharedNames, teacherChild } from './helpers';
@@ -302,9 +303,11 @@ export const aiCapture: Scenario = {
             say: n('허락 두 가지를 켜 둘게요', '보호자의 AI 관찰 기록 동의와 "기관 촬영 허락"을 화면 밖에서 켜요. 둘 다 있어야 선생님이 촬영할 수 있어요.', 'server'),
             run: async (ctx) => {
               const id = childId(ctx.data);
+              const maxFrames = Number(ctx.data.vars.aiMaxFrames);
               const a = await ctx.services.check('parent', 'PUT', `/children/${id}/ai-consent`, {
                 agreed: true,
                 version: ctx.data.vars.aiVersion,
+                ...(maxFrames === MAX_UPLOAD_FRAMES && { maxFrames }),
               });
               ctx.show(a.id);
               const s = await ctx.services.check('parent', 'PUT', `/children/${id}/share-settings`, {

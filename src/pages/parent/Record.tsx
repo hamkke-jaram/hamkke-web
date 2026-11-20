@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import { Link, useParams } from 'react-router-dom';
 import ObservationCard from '../../ai/ObservationCard';
 import ObservationRunStatus from '../../ai/ObservationRunStatus';
-import { MAX_FRAMES, sampleFramesFromFile } from '../../ai/frames';
+import { MAX_FRAMES, MAX_UPLOAD_FRAMES, sampleFramesFromFile, sampleUploadFramesFromFile } from '../../ai/frames';
 import { healthNotice, useAiHealth } from '../../ai/health';
 import { useObservationRun } from '../../ai/useObservationRun';
 import { api, errorMessage } from '../../api/client';
@@ -118,6 +118,7 @@ function ChildRecord({ id }: { id: number }) {
     [id, aiOn],
   );
   const aiAgreed = aiOn && consent.data?.agreed === true;
+  const maximumFrames = aiAgreed && consent.data?.maxFrames === MAX_UPLOAD_FRAMES ? MAX_UPLOAD_FRAMES : MAX_FRAMES;
   // AI 서버가 지금 관찰 기록을 만들 수 있는지 미리 확인한다. 준비되지 않았으면 숫자 기록만 남기고 사진은 보내지 않는다.
   const { health: aiHealth, recheck: recheckAi } = useAiHealth(aiAgreed);
   // '다시 확인'을 누른 동안에는 앞선 안내와 버튼을 그대로 둔다(버튼이 사라지면 초점을 잃는다).
@@ -148,13 +149,15 @@ function ChildRecord({ id }: { id: number }) {
   const makeObservation = useCallback(
     (recordedAt: string) => {
       const file = fileRef.current;
-      if (!file) return;
+      if (!file || !aiAgreed) return;
       void startAi(async (signal) => {
-        const sampled = await sampleFramesFromFile(file, MAX_FRAMES, signal);
-        return { frames: sampled.frames, durationSec: sampled.durationSec, recordedAt };
+        const sampled = maximumFrames === MAX_UPLOAD_FRAMES
+          ? await sampleUploadFramesFromFile(file, signal)
+          : await sampleFramesFromFile(file, MAX_FRAMES, signal);
+        return { ...sampled, recordedAt };
       });
     },
-    [startAi],
+    [aiAgreed, maximumFrames, startAi],
   );
 
   /** 사진을 뽑기 직전에 AI 서버를 다시 확인하고, 준비되었을 때만 관찰 기록을 만든다. */
@@ -297,7 +300,7 @@ function ChildRecord({ id }: { id: number }) {
         <section className="card" aria-labelledby="record-audio-title">
           <h2 id="record-audio-title" ref={messageRef} tabIndex={-1}>{phase.message}</h2>
           <p>소리가 필요한 수치 기록은 저장되지 않았어요.</p>
-          {aiAgreed && <p>장면 사진으로 AI 관찰 기록을 만들 수 있어요. 영상 원본과 소리는 전송하지 않아요.</p>}
+          {aiAgreed && <p>장면 사진 최대 {maximumFrames}장으로 AI 관찰 기록을 만들 수 있어요. 영상 원본과 소리는 전송하지 않아요.</p>}
           {aiSkipped && <p role="status">{settledAiNotice ?? 'AI 서버를 확인하지 못했어요.'}</p>}
           {aiAgreed && ai.state.kind === 'idle' && (
             <button type="button" className="btn block" aria-disabled={checking || undefined} onClick={retry}>
@@ -398,7 +401,7 @@ function ChildRecord({ id }: { id: number }) {
         {/* 무엇이 기기 밖으로 나가는지와 데이터 안내. 시연이 이 문장을 가리킨다(record-lead). */}
         <p className="rec-note" data-demo="record-lead">
           {aiAgreed
-            ? '영상 원본과 소리는 이 기기에서 분석해요. 숫자 3개를 저장하고, 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 지워요. 가정의 AI 관찰 기록을 공유하면 연결된 선생님이 관찰 문장과 대응 근거를 검토해 보내요.'
+            ? `영상 원본과 소리는 이 기기에서 분석해요. 숫자 3개를 저장하고, 장면 사진 최대 ${maximumFrames}장을 AI 서버로 보내 살펴본 뒤 지워요. 가정의 AI 관찰 기록을 공유하면 연결된 선생님이 관찰 문장과 대응 근거를 검토해 보내요.`
             : '영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.'}{' '}
           처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
         </p>
