@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import type { AiObservation, EvidenceRecommendation, LinkedTeacher, PublishedGuidance, ShareSettings } from '../api/types';
 import { formatDate } from '../components/ui';
 import { watchSharedDetail } from '../pages/teacher/useSharedDetail';
+import { EvidenceDetails } from './EvidenceDetails';
 
 export type ReviewAccess = 'ready' | 'sharing-off' | 'no-teacher' | 'unknown';
 
@@ -22,42 +23,27 @@ export function useReviewAccess(childId: number | null): ReviewAccess {
   return result && result.childId === childId ? result.value : 'unknown';
 }
 
-export function sourceUrl(url: string): string | null {
-  try {
-    const source = new URL(url);
-    return source.protocol === 'https:' && !source.username && !source.password ? source.href : null;
-  } catch {
-    return null;
-  }
-}
-
 export function EvidenceItem({ item }: { item: EvidenceRecommendation }) {
-  const href = sourceUrl(item.sourceUrl);
-  const sourceHost = href ? new URL(href).hostname : '';
   return (
     <div className="evidence-item">
       <p className="evidence-scene">관찰한 상황 · {item.observation}</p>
       <p className="evidence-action">{item.action}</p>
-      <p><strong>추천 이유</strong> {item.reason}</p>
-      {href && <p className="evidence-source"><a href={href} target="_blank" rel="noopener noreferrer">
-        {item.sourcePublisher} · {item.sourceTitle}
-      </a>{item.sourceSection && <span>{item.sourceSection}</span>}</p>}
-      {sourceHost === 'www.cdc.gov' && <p className="evidence-source muted">미국 CDC에서 원문을 무료로 제공합니다. CDC와 미국 보건복지부, 미국 정부는 이 서비스를 보증하지 않습니다.</p>}
-      {sourceHost === 'help-for-early-years-providers.education.gov.uk' && <p className="evidence-source muted">
-        © Crown copyright. Contains public sector information licensed under the{' '}
-        <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" target="_blank" rel="noopener noreferrer" lang="en">Open Government Licence v3.0</a>.
-      </p>}
+      <EvidenceDetails evidence={item} />
     </div>
   );
 }
 
-export function ReviewedResult({ guidance }: { guidance: PublishedGuidance }) {
+export function ReviewedResult({ guidance, summaryLabel = '관찰한 행동', recommendationsLabel = '상황에 맞는 대응' }: {
+  guidance: PublishedGuidance;
+  summaryLabel?: string;
+  recommendationsLabel?: string;
+}) {
   return (
     <section className="review-result" data-demo="ai-reviewed-result" aria-label="선생님이 검토한 관찰과 대응">
       <p className="review-status">선생님 검토 완료 {guidance.reviewedAt && <span>· {formatDate(guidance.reviewedAt)}</span>}</p>
-      <h3>관찰한 행동</h3>
+      <h3>{summaryLabel}</h3>
       <p className="review-summary">{guidance.summary}</p>
-      <h3>상황에 맞는 대응</h3>
+      <h3>{recommendationsLabel}</h3>
       {guidance.recommendations.length
         ? guidance.recommendations.map(item => <EvidenceItem key={item.sourceId} item={item} />)
         : <p>이번 검토에서 전달된 대응 방법은 없어요.</p>}

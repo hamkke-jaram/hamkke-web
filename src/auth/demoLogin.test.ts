@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as client from '../api/client';
 import type { Policies, Role } from '../api/types';
-import { deleteCurrentDemoWorkspace, hasDemoConsent, isDemoWorkspaceChild, prepareDemoLogin } from './demoLogin';
+import { deleteCurrentDemoWorkspace, hasDemoConsent, isDemoWorkspaceChild, prepareDemoLogin, publishedDemoReview, publishDemoReview } from './demoLogin';
 
 const policies: Policies = {
   termsVersion: 't1', privacyVersion: 'p1', guardianVersion: 'g1', aiAnalysisVersion: 'ai1',
@@ -63,6 +63,22 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('실제 로그인용 예시 기록', () => {
+  it('QR 검토 예시는 이 기기의 체험 쌍에서 선생님이 완료한 내용만 보호자에게 전달한다', async () => {
+    const p = await prepareDemoLogin('PARENT', policies);
+    const t = await prepareDemoLogin('TEACHER', policies);
+    const parent = p.tokens.user, teacher = t.tokens.user;
+    const memo = '직접 확인한 선생님 메모';
+    expect(publishDemoReview(parent, p.childId, memo, true)).toBeNull();
+    expect(publishDemoReview(teacher, p.childId + 1, memo, true)).toBeNull();
+    expect(publishedDemoReview(parent, p.childId)).toBeNull();
+    const review = publishDemoReview(teacher, p.childId, memo, false);
+    expect(review).toMatchObject({ status: 'published', summary: memo, includeAction: false });
+    expect(publishedDemoReview(parent, p.childId)).toEqual(review);
+    expect(publishedDemoReview(parent, p.childId + 1)).toBeNull();
+    expect(publishedDemoReview({ ...parent, email: 'another@example.com' }, p.childId)).toBeNull();
+    expect(paths.some(path => path.includes('ai-observations'))).toBe(false);
+  });
+
   it('동시에 시작한 두 역할이 한 쌍의 계정과 같은 아이를 쓰고 각각 비밀번호로 로그인한다', async () => {
     const [p,t] = await Promise.all([prepareDemoLogin('PARENT',policies),prepareDemoLogin('TEACHER',policies)]);
     expect(accounts).toHaveLength(2);

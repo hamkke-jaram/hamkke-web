@@ -35,9 +35,26 @@
 }
 
 .daycare-details p { margin: 0; line-height: 1.55; }
+.daycare-details .evidence-missing { margin-top: 8px; }
 .daycare-details .daycare-source { margin-top: 8px; font-size: .875rem; }
 .daycare-source a { display: inline-block; min-height: 24px; color: inherit; text-underline-offset: 3px; }
 .daycare-status { margin: 0 0 8px; font-size: .875rem; }
+.daycare-review {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--edge);
+  font-size: .875rem;
+}
+.coaching-review-links { display: grid; justify-items: start; margin-top: 8px; }
+.coaching-review-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 /* ── 보호자 초대코드 ── */
 .invite-page {

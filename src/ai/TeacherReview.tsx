@@ -8,7 +8,8 @@ import { usePagedList } from '../components/paging';
 import { formatDate, Loading, loadStateView, MoreButton } from '../components/ui';
 import { useSharedDetail } from '../pages/teacher/useSharedDetail';
 import { formatClock } from './labels';
-import { EvidenceItem, observationNeedsReview, ReviewedResult, sourceUrl } from './ReviewResult';
+import { EvidenceItem, observationNeedsReview, ReviewedResult } from './ReviewResult';
+import { sourceUrl } from './EvidenceDetails';
 import './ai.css';
 
 export function TeacherReviewInbox() {

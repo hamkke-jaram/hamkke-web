@@ -96,6 +96,7 @@ export interface DaycareRecommendation {
   action: string;
   sourceCode: string;
   sourceTitle: string;
+  evidence?: RecommendationEvidence | null;
 }
 
 export interface SupportResource {
@@ -273,15 +274,18 @@ export interface AiObservation extends ObservationContent {
   publishedGuidance?: PublishedGuidance | null;
 }
 
-export interface EvidenceRecommendation {
-  observation: string;
-  action: string;
+export interface RecommendationEvidence {
   reason: string;
   sourceId: string;
   sourceTitle: string;
   sourcePublisher: string;
   sourceUrl: string;
   sourceSection: string;
+}
+
+export interface EvidenceRecommendation extends RecommendationEvidence {
+  observation: string;
+  action: string;
 }
 
 export interface ObservationGuidance {

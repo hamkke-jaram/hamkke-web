@@ -1,0 +1,15 @@
+.teacher-coaching-example video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  background: var(--neutral-box);
+}
+.teacher-coaching-example .example-action {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  padding: 16px;
+  border-radius: 14px;
+}
+.teacher-coaching-example .example-action h2 { margin-top: 0; }
+.teacher-coaching-example .check { min-height: 44px; }

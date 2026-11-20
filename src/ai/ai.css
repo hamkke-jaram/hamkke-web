@@ -375,13 +375,13 @@ button.ai-moment[aria-pressed="true"] {
 .review-status { color: var(--lavender-ink); font-weight: 700; }
 .review-result { padding: 15px; border-radius: var(--radius); background: var(--lavender); color: var(--lavender-ink); }
 .review-result h3:not(:first-child) { margin-top: 15px; }
-.review-result a, .evidence-source a { text-decoration: underline; text-underline-offset: 3px; color: inherit; }
+.review-result a, .recommendation-evidence a { text-decoration: underline; text-underline-offset: 3px; color: inherit; }
 .review-result p, .evidence-item p { margin: 6px 0; line-height: 1.55; }
 .review-queue, .review-scenes { list-style: none; padding: 0; margin: 0; }
 .review-queue li + li, .review-scenes li + li { margin-top: 8px; }
 .review-queue a, .review-choice { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
 .review-queue a { display: grid; gap: 4px; color: inherit; }
-.review-queue span, .evidence-scene, .evidence-source { font-size: .875rem; }
+.review-queue span, .evidence-scene { font-size: .875rem; }
 .review-scenes li { display: flex; gap: 8px; align-items: baseline; }
 .observation-review textarea { min-height: 88px; width: 100%; margin-bottom: 10px; }
 .review-choice { margin: 12px 0; }
@@ -389,4 +389,16 @@ button.ai-moment[aria-pressed="true"] {
 .review-choice input { width: 18px; height: 18px; flex: none; }
 .evidence-item + .evidence-item { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
 .evidence-action { font-weight: 700; }
-.evidence-source span { display: block; }
+.recommendation-evidence {
+  margin-block: 10px;
+  padding-inline-start: 12px;
+  border-inline-start: 3px solid color-mix(in srgb, var(--lavender-ink) 30%, transparent);
+  overflow-wrap: anywhere;
+}
+.recommendation-evidence dl { margin: 0; }
+.recommendation-evidence dt { font-size: .875rem; font-weight: 700; }
+.recommendation-evidence dt:not(:first-child) { margin-top: 8px; }
+.recommendation-evidence dd { margin: 2px 0 0; line-height: 1.55; }
+.evidence-section { display: block; font-size: .875rem; }
+.recommendation-evidence .evidence-credit { margin-top: 8px; font-size: .78rem; line-height: 1.5; }
+.evidence-missing { font-size: .875rem; }

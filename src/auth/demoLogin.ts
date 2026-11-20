@@ -4,11 +4,15 @@ import { createDemo, demoRequest, newDemoPair, SeedError, type DemoPair } from '
 
 type Identity = Pick<User, 'id' | 'email' | 'role'>;
 type Versions = Pick<Policies, 'termsVersion' | 'privacyVersion' | 'guardianVersion'>;
+export type ExampleReview = {
+  status: 'published'; summary: string; includeAction: boolean; reviewedAt: string;
+};
 type Workspace = {
   pair: DemoPair;
   versions: Versions;
   ids?: { PARENT: number; TEACHER: number; child: number };
   deleting?: boolean;
+  exampleReview?: ExampleReview;
 };
 const KEY = 'hj.demo.login.v1';
 const roles: Role[] = ['PARENT', 'TEACHER'];
@@ -70,6 +74,25 @@ export function isCurrentDemoUser(user: Identity | null | undefined): boolean {
 export function isDemoWorkspaceChild(user: Identity | null | undefined, childId: number): boolean {
   const workspace = read();
   return matches(user, workspace) && workspace?.ids?.child === childId;
+}
+
+export function publishedDemoReview(user: Identity | null | undefined, childId: number) {
+  const workspace = read();
+  if (workspace?.ids?.child !== childId || workspace.deleting || !matches(user, workspace)) return null;
+  const review = workspace.exampleReview;
+  return review?.status === 'published'
+    && typeof review.summary === 'string' && !!review.summary.trim() && review.summary.length <= 500
+    && typeof review.includeAction === 'boolean' && Number.isFinite(Date.parse(review.reviewedAt)) ? review : null;
+}
+
+export function publishDemoReview(user: Identity, childId: number, summary: string, includeAction: boolean) {
+  const workspace = read();
+  const text = summary.trim();
+  if (!workspace?.ids || workspace.ids.child !== childId || workspace.deleting
+    || user.role !== 'TEACHER' || !matches(user, workspace) || !text || text.length > 500) return null;
+  const review: ExampleReview = { status: 'published', summary: text, includeAction, reviewedAt: new Date().toISOString() };
+  save({ ...workspace, exampleReview: review });
+  return review;
 }
 
 export function hasDemoConsent(policies: Policies): boolean {

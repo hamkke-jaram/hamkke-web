@@ -41,6 +41,7 @@ import Share from './pages/parent/Share';
 import TeacherChild from './pages/teacher/TeacherChild';
 import InviteCode from './pages/teacher/InviteCode';
 import { TeacherCoachingDetail, TeacherCoachingList } from './pages/teacher/TeacherCoaching';
+import TeacherCoachingExample from './pages/teacher/TeacherCoachingExample';
 import TeacherHome from './pages/teacher/TeacherHome';
 import { StoryCompose, StoryView } from './pages/teacher/TeacherStory';
 import TalkPage from './talk/TalkPage';
@@ -201,6 +202,7 @@ function ServiceRoutes() {
         <Route path="/t/children/:childId/story/new" element={<RequireRole role="TEACHER"><StoryCompose /></RequireRole>} />
         <Route path="/t/children/:childId/story/:noteId" element={<RequireRole role="TEACHER"><StoryView /></RequireRole>} />
         <Route path="/t/children/:childId/coaching" element={<RequireRole role="TEACHER"><TeacherCoachingList /></RequireRole>} />
+        <Route path="/t/children/:childId/coaching/example" element={<RequireRole role="TEACHER"><TeacherCoachingExample /></RequireRole>} />
         <Route path="/t/children/:childId/coaching/:deliveryId" element={<RequireRole role="TEACHER"><TeacherCoachingDetail /></RequireRole>} />
         <Route path="/t/children/:childId" element={<RequireRole role="TEACHER"><TeacherChild /></RequireRole>} />
         <Route path="/t/children/:childId/observe" element={<RequireRole role="TEACHER"><Observe /></RequireRole>} />

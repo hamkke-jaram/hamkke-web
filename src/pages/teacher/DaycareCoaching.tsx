@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, requestDaycareCoaching } from '../../api/client';
 import type { DaycareRecommendation, Delivery } from '../../api/types';
-import { CoachingRows } from './CoachingRows';
+import { CoachingReviewLinks, CoachingRows } from './CoachingRows';
 
 type Result =
   | { state: 'loading' }
@@ -61,6 +61,7 @@ export function DaycareCoaching({
           setAttempt(value => value + 1);
         }}>추천 다시 받기</button>
       )}
+      {!recommendation && result.state !== 'loading' && <CoachingReviewLinks childId={childId} />}
     </>
   );
 }

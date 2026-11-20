@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 import type { DaycareRecommendation, Delivery } from '../../api/types';
+import { EvidenceDetails } from '../../ai/EvidenceDetails';
+import { useAuth } from '../../auth/AuthContext';
+import { isDemoWorkspaceChild } from '../../auth/demoLogin';
 import { poseFor, poseSrc, type Pose } from '../../components/coachingArt';
 import { firstSentence } from '../parent/coachText';
 import { ChevronIcon } from '../parent/icons';
@@ -7,6 +10,17 @@ import { artClass } from '../parent/parentMotion';
 import { kstDateKey } from '../parent/week';
 
 export type CoachPick = { selectedId: number | null; onPick: (delivery: Delivery) => void };
+
+export function CoachingReviewLinks({ childId }: { childId: number }) {
+  const { user } = useAuth();
+  const showExample = user?.role === 'TEACHER' && isDemoWorkspaceChild(user, childId);
+  return <div className="coaching-review-links">
+    <Link data-demo="th-coach-review-inbox" to={`/t/children/${childId}/ai-reviews`}>가정 영상 검토함 열기</Link>
+    {showExample && <Link data-demo="th-coach-review-example" to={`/t/children/${childId}/coaching/example`}>
+      예시 영상으로 검토 과정 체험하기
+    </Link>}
+  </div>;
+}
 
 export function sharedDayLabel(iso: string, now = Date.now()) {
   const date = kstDateKey(Date.parse(iso));
@@ -58,10 +72,15 @@ export function CoachingRows({ childId, rows, recommendation, pick }: {
             </summary>
             <div className="daycare-details">
               <p>{recommendation.action}</p>
+              <EvidenceDetails evidence={recommendation.evidence} />
               <p className="daycare-source">
                 바탕이 된 가정 코칭{' '}
                 {source ? <Link to={sourcePath(source.id)}>{source.card.title}</Link> : recommendation.sourceTitle}
               </p>
+              <div className="daycare-review">
+                <p>보호자가 영상을 기록하고 관찰 기록을 공유하면 선생님이 AI의 관찰 내용과 추천 근거를 확인해요. 관찰 문장을 수정하고 전달할 대응을 골라 보호자에게 보낼 수 있어요.</p>
+                <CoachingReviewLinks childId={childId} />
+              </div>
             </div>
           </details>
         </li>

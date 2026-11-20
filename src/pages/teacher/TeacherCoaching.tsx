@@ -11,9 +11,10 @@ import { Loading, MoreButton, loadStateView } from '../../components/ui';
 import { firstSentence, monthLabel, splitSteps } from '../parent/coachText';
 import { kstDateKey } from '../parent/week';
 import { DaycareCoaching } from './DaycareCoaching';
-import { CoachingRows, sharedDayLabel, type CoachPick } from './CoachingRows';
+import { CoachingReviewLinks, CoachingRows, sharedDayLabel, type CoachPick } from './CoachingRows';
 import { ChevronIcon } from '../parent/icons';
 import { artClass } from '../parent/parentMotion';
+import { sourceUrl } from '../../ai/EvidenceDetails';
 import '../parent/parent.css';
 import './teacher.css';
 
@@ -72,10 +73,9 @@ function CoachMonths({
   }, [list.items]);
 
   if (list.loading && !list.items) return <Loading />;
-  if (list.error && !list.items && notShared(list.error)) return <NotSharedNote />;
-  const fail = loadStateView(list, '코칭을');
-  if (fail) return fail;
-  if (months.length === 0) return <p className="muted th-empty">아직 가정에서 받은 코칭이 없어요.</p>;
+  const notice = list.error && !list.items && notShared(list.error) ? <NotSharedNote />
+    : loadStateView(list, '코칭을') ?? (months.length === 0 ? <p className="muted th-empty">아직 가정에서 받은 코칭이 없어요.</p> : null);
+  if (notice) return <>{notice}{!pick && <CoachingReviewLinks childId={childId} />}</>;
 
   const month = picked && months.includes(picked) ? picked : months[0];
   const at = months.indexOf(month);
@@ -126,6 +126,7 @@ function SharedCoachingPage({ childId }: { childId: number }) {
           {accessError.status === 409 ? <p>공유된 코칭이 바뀌었어요.</p> : accessError.status === 401
             ? <p>로그인 상태를 확인해 주세요.</p> : <NotSharedNote />}
           <button type="button" className="btn secondary small" onClick={() => setAccessError(null)}>다시 불러오기</button>
+          {accessError.status !== 401 && <CoachingReviewLinks childId={childId} />}
         </div>
       ) : (
         <CoachMonths childId={childId} picked={picked} setPicked={setPicked} onAccessChanged={setAccessError} />
@@ -191,6 +192,7 @@ export function TeacherCoachingDetail() {
   }
   const { card } = delivery;
   const pose = poseFor(card);
+  const reference = sourceUrl(card.sourceUrl);
   return (
     <div className="coach-detail">
       <SubHead title="가정에서 받은 코칭" fallback={`/t/children/${id}/coaching`} />
@@ -216,7 +218,7 @@ export function TeacherCoachingDetail() {
         </ol>
       </section>
       <p className="muted th-source">
-        출처: {card.sourceUrl ? <a href={card.sourceUrl} target="_blank" rel="noreferrer">{card.sourceTitle}</a> : card.sourceTitle}
+        출처: {reference ? <a href={reference} target="_blank" rel="noopener noreferrer">{card.sourceTitle}</a> : card.sourceTitle}
         {card.author && ` · 작성 ${card.author}`}
         {card.reviewer && ` · 검수 ${card.reviewer}`}
       </p>
