@@ -94,7 +94,7 @@ export function StoryCompose() {
     if (picking || !returnFocus.current) return;
     returnFocus.current = false;
     const el = attachArea.current?.querySelector<HTMLElement>('.story-attach-main, .story-attach-add');
-    el?.scrollIntoView({ block: 'center' });
+    el?.scrollIntoView({ block: 'nearest' });
     el?.focus({ preventScroll: true });
   }, [picking]);
 

@@ -168,6 +168,10 @@ export function CoachPicker({
         <span className="sub-head-btn" aria-hidden="true" />
       </div>
       <CoachMonths childId={childId} list={list} pick={{ selectedId, onPick }} />
+      {/* iOS 앱은 웹의 머리줄(×)을 감추고, 이 고르기는 따로 된 화면이 아니라 앱의 뒤로도 닿지 않는다. 늘 보이는 닫기를 둔다. */}
+      <button type="button" className="btn secondary block" data-demo="th-coach-picker-cancel" onClick={onClose}>
+        고르지 않고 돌아가기
+      </button>
     </div>
   );
 }
