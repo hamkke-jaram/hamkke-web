@@ -35,8 +35,10 @@ function phoneEntry(): Plugin {
         const addr = server.httpServer?.address() as AddressInfo | null;
         if (!host || !ip || !addr) return; // localhost에서만 열었으면 휴대폰이 닿지 못한다
         url = `http://${ip}:${addr.port}/`;
-        void QRCode.toString(url, { type: 'terminal', small: true }).then((qr) => {
-          server.config.logger.info(`\n  휴대폰으로 열기 (같은 와이파이): ${url}\n${qr}`);
+        // 터미널 QR은 데모 입구(/try)를 가리킨다. 실제 서비스 입구는 url 그대로('/', 가입·로그인).
+        const demo = `${url}try`;
+        void QRCode.toString(demo, { type: 'terminal', small: true }).then((qr) => {
+          server.config.logger.info(`\n  휴대폰으로 데모 열기 (같은 와이파이): ${demo}\n  실제 서비스(가입·로그인): ${url}\n${qr}`);
         });
       });
     },

@@ -100,7 +100,7 @@ export default function ChildNew() {
       ) : (
         <>
           <p className="lead">
-            {onboarding && '반가워요. 이제 함께할 아이를 등록해 주세요. '}
+            {onboarding && '가입을 마쳤어요. 이제 함께할 아이를 등록해 주세요. '}
             실명 대신 집에서 부르는 별칭을 써 주세요.
           </p>
 

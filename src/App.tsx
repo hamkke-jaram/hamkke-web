@@ -18,6 +18,8 @@ import Login from './pages/Login';
 import NotFound, { ScreenErrorBoundary } from './pages/NotFound';
 import Privacy from './pages/Privacy';
 import QrEntry from './pages/QrEntry';
+import TryDemo from './pages/TryDemo';
+import { TRY_ENABLED } from './auth/guest';
 import Reconsent from './pages/Reconsent';
 import Signup from './pages/Signup';
 import Support from './pages/Support';
@@ -104,8 +106,7 @@ function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return <Loading />;
-  // 로그인 화면 대신 시작 화면으로 보낸다. 이 기기 계정이 있으면 거기서 바로 이어서 이 화면으로 돌아온다.
-  if (!user) return <Navigate to="/" replace state={{ from: loc.pathname }} />;
+  if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   if (user.role !== role) return <Navigate to={user.role === 'PARENT' ? '/p' : '/t'} replace />;
   return <>{children}</>;
 }
@@ -114,7 +115,7 @@ function RequireUser({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return <Loading />;
-  if (!user) return <Navigate to="/" replace state={{ from: loc.pathname }} />;
+  if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   return <>{children}</>;
 }
 
@@ -129,6 +130,8 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/support" element={<Support />} />
         <Route path="/qr" element={<QrEntry />} />
+        {/* QR로 들어오는 데모(예시 데이터, 로그인 없음). 실제 서비스 입구는 '/'(가입·로그인). 개발·시연 빌드에만. */}
+        {TRY_ENABLED && <Route path="/try" element={<TryDemo />} />}
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         {DEMO_ENABLED && <Route path="/demo" element={<DemoStart />} />}

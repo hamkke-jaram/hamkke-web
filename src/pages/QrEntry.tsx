@@ -6,7 +6,8 @@ import { useToast } from '../components/feedback';
 import { Loading } from '../components/ui';
 
 /*
- * /qr — 휴대폰으로 열기. 찍으면 시작 화면(/)이 열리고 '시작하기' 한 번으로 바로 쓴다(로그인 없음).
+ * /qr — 휴대폰으로 데모 열기. 찍으면 데모 입구(/try)가 열려 로그인 없이 예시 데이터로 채운 화면을 바로 본다.
+ * (실제 서비스는 '/'에서 가입·로그인한다.)
  * 들어올 주소:
  * - VITE_PUBLIC_URL을 정해 빌드했으면 그 주소(배포)
  * - 개발 서버를 이 컴퓨터(localhost)에서 보고 있으면 개발 서버가 알려 주는 와이파이 주소(npm run dev:lan일 때만)
@@ -15,9 +16,10 @@ import { Loading } from '../components/ui';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 
+/** QR이 가리킬 주소: 데모 입구(/try). 실제 서비스 입구('/')가 아니라 예시 데이터로 채운 화면이 바로 열린다. */
 export function entryUrlFrom(origin: string, publicUrl?: string): string {
   const base = (publicUrl?.trim() || origin).replace(/\/+$/, '');
-  return `${base}/`;
+  return `${base}/try`;
 }
 
 type Target = { url: string; viaLan: boolean } | { url: null; reason: 'local-only' };
@@ -30,7 +32,7 @@ async function findTarget(): Promise<Target> {
     try {
       const r = await fetch('/__lan', { cache: 'no-store' });
       const { url } = (await r.json()) as { url: string | null };
-      if (url) return { url, viaLan: true };
+      if (url) return { url: entryUrlFrom(url), viaLan: true };
     } catch {
       /* 아래 안내로 */
     }
@@ -72,11 +74,11 @@ export default function QrEntry() {
     <div className="qr-entry">
       <div className="page-head">
         <div className="page-head-text">
-          <h1>휴대폰으로 열기</h1>
+          <h1>휴대폰으로 데모 열기</h1>
         </div>
         <Mascot name="friend" size={88} />
       </div>
-      <p className="lead">휴대폰 카메라로 아래 QR 코드를 찍으면 바로 열려요. 로그인 없이 '시작하기'만 누르면 돼요.</p>
+      <p className="lead">휴대폰 카메라로 아래 QR 코드를 찍으면 예시 아이와 기록으로 채운 데모가 바로 열려요. 로그인하지 않아도 돼요.</p>
 
       {!target ? (
         <Loading />
@@ -118,8 +120,8 @@ export default function QrEntry() {
         </section>
       )}
 
-      <Link to="/" className="btn block ghost">
-        이 기기에서 시작하기
+      <Link to="/try" className="btn block ghost">
+        이 기기에서 데모 열기
       </Link>
     </div>
   );
