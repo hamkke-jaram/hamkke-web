@@ -19,7 +19,7 @@ export interface MascotProps {
  * 그림의 세로/가로 비율. 불러오기 전에 자리를 미리 잡아 화면이 밀리지 않게 하려는 값이다.
  * 파일을 바꿔 비율이 달라져도 그림은 제 비율대로 보인다(CSS height: auto).
  */
-const RATIO: Record<MascotName, number> = {
+export const MASCOT_RATIO: Record<MascotName, number> = {
   family: 462 / 640,
   teddy: 497 / 640,
   dome: 505 / 640,
@@ -44,7 +44,7 @@ export default function Mascot({ name, size = 120, className }: MascotProps) {
       src={mascotSrc(name)}
       alt=""
       width={size}
-      height={Math.round(size * RATIO[name])}
+      height={Math.round(size * MASCOT_RATIO[name])}
       decoding="async"
       onError={() => {
         failed.add(name);

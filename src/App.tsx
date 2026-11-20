@@ -6,6 +6,7 @@ import { useAuth } from './auth/AuthContext';
 import BrandMark from './components/BrandMark';
 import { useRouteFocus } from './components/feedback';
 import { Icon } from './components/icons';
+import MochiBuddy from './components/MochiBuddy';
 import { Disclaimer, Loading } from './components/ui';
 import { DEMO_ENABLED } from './demo/DemoContext';
 import DemoStart from './demo/DemoStart';
@@ -16,10 +17,12 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import NotFound, { ScreenErrorBoundary } from './pages/NotFound';
 import Privacy from './pages/Privacy';
+import QrEntry from './pages/QrEntry';
 import Reconsent from './pages/Reconsent';
 import Signup from './pages/Signup';
 import Support from './pages/Support';
 import Terms from './pages/Terms';
+import { useMotionOn } from './motion';
 import ChildEdit from './pages/parent/ChildEdit';
 import ChildHome from './pages/parent/ChildHome';
 import ChildNew from './pages/parent/ChildNew';
@@ -33,9 +36,13 @@ import TeacherHome from './pages/teacher/TeacherHome';
 /** 약관 다시 동의를 받는 동안에도 열 수 있는 화면(바뀐 내용 읽기, 도움받기, 내 데이터 내려받기·탈퇴). */
 const OPEN_DURING_RECONSENT = ['/terms', '/privacy', '/support', '/account'];
 
+/** 돌아다니는 모찌를 두지 않는 화면: 촬영·실시간 카메라(영상과 버튼을 가리지 않게). */
+const NO_BUDDY = /\/(record|observe)$/;
+
 function Layout() {
   const { user } = useAuth();
   const { pathname } = useLocation();
+  const motionOn = useMotionOn();
   useRouteFocus();
   const home = user ? (user.role === 'PARENT' ? '/p' : '/t') : '/';
   const pending = user?.pendingConsents ?? [];
@@ -77,6 +84,10 @@ function Layout() {
       </main>
       <Disclaimer />
       {DEMO_ENABLED && <DemoTour />}
+      {/* 화면 설정 '움직이는 캐릭터'. 약관 다시 동의 중에는 두지 않는다. 선생님에게는 선생님 모찌가 다닌다. */}
+      {motionOn && !blocked && !NO_BUDDY.test(pathname) && (
+        <MochiBuddy name={user?.role === 'TEACHER' ? 'teacher' : 'dome'} hopKey={pathname} />
+      )}
     </div>
   );
 }
@@ -85,15 +96,17 @@ function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return <Loading />;
-  if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  // 로그인 화면 대신 시작 화면으로 보낸다. 이 기기 계정이 있으면 거기서 바로 이어서 이 화면으로 돌아온다.
+  if (!user) return <Navigate to="/" replace state={{ from: loc.pathname }} />;
   if (user.role !== role) return <Navigate to={user.role === 'PARENT' ? '/p' : '/t'} replace />;
   return <>{children}</>;
 }
 
 function RequireUser({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const loc = useLocation();
   if (loading) return <Loading />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace state={{ from: loc.pathname }} />;
   return <>{children}</>;
 }
 
@@ -105,6 +118,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/qr" element={<QrEntry />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         {DEMO_ENABLED && <Route path="/demo" element={<DemoStart />} />}

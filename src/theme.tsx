@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MotionSwitch, saveMotionPref, useMotionPref } from './motion';
 
 /*
  * 화면 설정(밝기·고대비). 고르지 않은 항목은 기기 설정(prefers-color-scheme, prefers-contrast)을 따른다.
@@ -104,9 +105,10 @@ const SCHEMES: Array<{ value: Scheme; label: string }> = [
   { value: 'dark', label: '어둡게' },
 ];
 
-/** 화면 설정의 내용(밝기·고대비). 제목은 쓰는 쪽에서 붙인다 — 내 정보 화면은 목록 행 제목 아래에 펼쳐 보인다. */
+/** 화면 설정의 내용(밝기·고대비·움직이는 캐릭터). 제목은 쓰는 쪽에서 붙인다 — 내 정보 화면은 목록 행 제목 아래에 펼쳐 보인다. */
 export function ThemeSettings() {
   const { pref, update, deviceHighContrast } = useThemePref();
+  const motionPref = useMotionPref();
   const highOn = pref.contrast === 'more' || (pref.contrast === 'system' && deviceHighContrast);
   return (
     <>
@@ -136,9 +138,17 @@ export function ThemeSettings() {
           onChange={(e) => update({ contrast: e.target.checked ? 'more' : 'normal' })}
         />
       </label>
-      {(pref.scheme !== 'system' || pref.contrast !== 'system') && (
+      <MotionSwitch />
+      {(pref.scheme !== 'system' || pref.contrast !== 'system' || motionPref !== 'system') && (
         <p className="status-line">
-          <button type="button" className="link-btn" onClick={() => update({ scheme: 'system', contrast: 'system' })}>
+          <button
+            type="button"
+            className="link-btn"
+            onClick={() => {
+              update({ scheme: 'system', contrast: 'system' });
+              saveMotionPref('system');
+            }}
+          >
             기기 설정으로 되돌리기
           </button>
         </p>
