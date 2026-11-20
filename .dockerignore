@@ -11,3 +11,5 @@ public/mediapipe
 **/*.mov
 **/*.webm
 **/*.m4v
+# 안드로이드 앱 껍데기(Capacitor)는 웹 이미지에 필요 없다(빌드 산출물만 100MB 넘게 쌓인다)
+android

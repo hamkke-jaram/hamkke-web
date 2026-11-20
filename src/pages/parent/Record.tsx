@@ -569,7 +569,8 @@ export default function Record() {
         />
       )}
 
-      <Link to={`/p/children/${id}`} className="btn block" data-demo="record-done">
+      {/* replace: 저장을 마친 기록 화면은 방문 기록에서 뺀다(앱의 뒤로 가기가 끝난 기록 화면으로 돌아가지 않게). */}
+      <Link to={`/p/children/${id}`} replace className="btn block" data-demo="record-done">
         확인하고 홈으로
       </Link>
     </div>

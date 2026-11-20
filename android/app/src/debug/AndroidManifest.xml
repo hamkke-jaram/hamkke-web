@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 디버그 빌드에서만: 개발 서버(http://localhost, 에뮬레이터의 10.0.2.2)와 평문 통신을 허용한다. 릴리스 빌드에는 들어가지 않는다. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>
