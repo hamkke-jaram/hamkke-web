@@ -5,7 +5,7 @@ import AiConsentCard from './AiConsentCard';
 
 // 카드는 지금 동의 문서 버전만 로그인 정보에서 읽는다. 처음 그려진 모습만 확인하므로(DOM 없이 돈다) 그 값만 흉내 낸다.
 vi.mock('../auth/AuthContext', () => ({
-  useAuth: () => ({ policies: { aiAnalysisVersion: '2026-12-v2' }, reloadPolicies: () => undefined }),
+  useAuth: () => ({ policies: { aiAnalysisVersion: '2026-11-v2', aiAnalysisMaxFrames: 24 }, reloadPolicies: () => undefined }),
 }));
 
 function render(consent: AiConsent, paused = false) {
@@ -14,7 +14,7 @@ function render(consent: AiConsent, paused = false) {
   );
 }
 
-const ON: AiConsent = { agreed: true, version: '2026-12-v2', agreedAt: '2026-12-01T02:00:00Z' };
+const ON: AiConsent = { agreed: true, version: '2026-11-v2', agreedAt: '2026-11-21T02:00:00Z', maxFrames: 24 };
 const OFF: AiConsent = { agreed: false, version: null, agreedAt: null };
 const OUTDATED: AiConsent = { agreed: false, version: '2026-11-v1', agreedAt: '2026-11-13T02:10:00Z' };
 
@@ -31,10 +31,21 @@ describe('AiConsentCard', () => {
   it('켜짐: 켜져 있다는 표시와 끄기가 보인다', () => {
     const html = render(ON);
     expect(html).toContain('켜져 있어요');
-    expect(html).toContain('동의 내용 버전 2026-12-v2');
+    expect(html).toContain('동의 내용 버전 2026-11-v2');
+    expect(html).not.toContain('data-demo="ai-upgrade"');
     expect(html).toContain('data-demo="ai-off"');
     expect(html).toContain('AI 관찰 기록 끄기');
     expect(html).not.toContain('data-demo="ai-open"');
+  });
+
+  it('기존 6장 동의는 켜 두고 최신 동의 내용을 한 번만 다시 확인할 수 있다', () => {
+    const oldConsent = { ...ON, version: '2026-11-v1', maxFrames: 6 };
+    const html = render(oldConsent);
+    expect(html).toContain('켜져 있어요');
+    expect(html).toContain('최대 6장');
+    expect(html).toContain('data-demo="ai-upgrade"');
+    expect(html).not.toContain('최대 24장');
+    expect(render(oldConsent, true)).not.toContain('data-demo="ai-upgrade"');
   });
 
   it('동의 문서가 바뀌어 꺼짐: 왜 꺼졌는지, 기록이 남아 있다는 것, 다시 켜기와 끄기를 함께 보인다', () => {

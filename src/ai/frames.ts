@@ -2,7 +2,8 @@
  * 장면 사진 뽑기. 영상 파일이나 실시간 카메라 화면에서 정지 사진을 몇 장 골라 작은 JPEG로 만든다.
  *
  * 지키는 것(hamkke-api/docs/ai-observation.md 3·5장):
- * - 최대 6장, 긴 변 512px 이하, JPEG, 소리 없음. 한 장은 300KB 이하, 전체 본문은 2MB 이하.
+ * - 실시간 촬영은 최대 6장, 영상 파일은 최대 24장. 긴 변 512px 이하 JPEG만 뽑는다.
+ * - 한 장은 300KB 이하, 전체 본문은 2MB 이하. 소리는 보내지 않는다.
  * - 사진은 메모리에만 둔다. 저장소(localStorage·IndexedDB 등)나 콘솔에 남기지 않는다.
  * - 영상 원본은 읽기만 하고 어디로도 보내지 않는다. 다 쓰면 ObjectURL을 해제한다.
  */
@@ -27,6 +28,7 @@ export interface VideoRange {
 }
 
 export const MAX_FRAMES = 6;
+export const MAX_UPLOAD_FRAMES = 24;
 export const FRAME_LONG_EDGE = 512;
 /** 한 장의 디코딩 크기 한도(AI 서버와 같은 값). */
 export const FRAME_MAX_BYTES = 300 * 1024;
@@ -38,13 +40,15 @@ const MIN_QUALITY = 0.3;
 const METADATA_TIMEOUT_MS = 15_000;
 const SEEK_TIMEOUT_MS = 8_000;
 const READY_TIMEOUT_MS = 2_000;
+const SECONDS_PER_FRAME_GROUP = 12;
+const DENSE_WINDOW_SECONDS = 10;
 
 /** 사진을 뽑지 못했을 때. message는 화면에 그대로 보여 줄 수 있는 문장이다. */
 export class FrameError extends Error {}
 
 /** count장을 보낼 때 한 장이 넘지 말아야 할 크기(바이트). 한 장 한도와 전체 본문 한도를 함께 지킨다. */
 export function frameByteLimit(count: number): number {
-  const n = Math.max(1, Math.min(MAX_FRAMES, Math.floor(count)));
+  const n = Math.max(1, Math.min(MAX_UPLOAD_FRAMES, Math.floor(count)));
   return Math.min(FRAME_MAX_BYTES, Math.floor((BODY_BUDGET_CHARS * 3) / 4 / n));
 }
 
@@ -172,6 +176,10 @@ async function resolveDuration(video: HTMLVideoElement, signal?: AbortSignal): P
 /** 처음과 끝 5%를 뺀 구간에서 고르게 나눈 시각들. */
 export function frameTimes(durationSec: number, count: number): number[] {
   const n = Math.max(1, Math.min(MAX_FRAMES, Math.floor(count)));
+  return evenlySpacedFrameTimes(durationSec, n);
+}
+
+function evenlySpacedFrameTimes(durationSec: number, n: number): number[] {
   const start = durationSec * 0.05;
   const end = durationSec * 0.95;
   if (n === 1) return [(start + end) / 2];
@@ -179,19 +187,45 @@ export function frameTimes(durationSec: number, count: number): number[] {
   return Array.from({ length: n }, (_, i) => start + step * i);
 }
 
+/** 전체 길이를 촘촘히 고를 수 없으면 영상 곳곳에 짧은 연속 장면을 배치한다. */
+export function uploadFrameTimes(durationSec: number): number[] {
+  const groups = Math.min(MAX_UPLOAD_FRAMES / MAX_FRAMES, Math.max(1, Math.ceil(durationSec / SECONDS_PER_FRAME_GROUP)));
+  const count = groups * MAX_FRAMES;
+  if (groups === 1 || durationSec * 0.9 / (count - 1) <= 2) {
+    return evenlySpacedFrameTimes(durationSec, count);
+  }
+  const spacing = (durationSec - DENSE_WINDOW_SECONDS) / (groups - 1);
+  const windowTimes = frameTimes(DENSE_WINDOW_SECONDS, MAX_FRAMES);
+  return Array.from({ length: groups }, (_, group) => windowTimes.map(t => t + group * spacing)).flat();
+}
+
 /**
  * 영상 파일에서 장면 사진을 고르게 뽑는다. 화면에 보이지 않는 <video>로 해당 시각을 찾아가 그린다.
  * 찾아가기가 제한 시간 안에 끝나지 않은 시각은 건너뛴다. 한 장도 못 뽑으면 FrameError.
  */
-export async function sampleFramesFromFile(
+export function sampleFramesFromFile(
   file: File,
   count = MAX_FRAMES,
   signal?: AbortSignal,
   range?: VideoRange,
 ): Promise<SampledFrames> {
+  return sampleFileAtTimes(file, signal, duration => {
+    const start = range?.start ?? 0;
+    const end = range?.end ?? duration;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > duration || end <= start) {
+      throw new FrameError('영상 안에서 공유할 구간을 골라 주세요.');
+    }
+    return frameTimes(end - start, count).map(t => start + t);
+  });
+}
+
+/** 기록 페이지의 영상 전체에서 길이에 맞춰 사진 위치를 고른다. */
+export function sampleUploadFramesFromFile(file: File, signal?: AbortSignal): Promise<SampledFrames> {
+  return sampleFileAtTimes(file, signal, uploadFrameTimes);
+}
+
+async function sampleFileAtTimes(file: File, signal: AbortSignal | undefined, timesForDuration: (duration: number) => number[]) {
   throwIfAborted(signal);
-  const n = Math.max(1, Math.min(MAX_FRAMES, Math.floor(count)));
-  const maxBytes = frameByteLimit(n);
   const url = URL.createObjectURL(file);
   const video = document.createElement('video');
   video.muted = true;
@@ -206,16 +240,13 @@ export async function sampleFramesFromFile(
     const duration = await resolveDuration(video, signal);
     if (!Number.isFinite(duration)) throw new FrameError('영상 길이를 알 수 없어서 장면 사진을 뽑지 못했어요.');
 
-    const start = range?.start ?? 0;
-    const end = range?.end ?? duration;
-    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > duration || end <= start) {
-      throw new FrameError('영상 안에서 공유할 구간을 골라 주세요.');
-    }
+    const times = timesForDuration(duration);
+    const maxBytes = frameByteLimit(times.length);
     const frames: Frame[] = [];
-    for (const relativeTime of frameTimes(end - start, n)) {
+    for (const time of times) {
       throwIfAborted(signal);
       const seeked = waitFor(video, 'seeked', SEEK_TIMEOUT_MS, signal);
-      video.currentTime = start + relativeTime;
+      video.currentTime = time;
       if ((await seeked) === 'timeout') continue;
       // 찾아간 직후에는 그림이 아직 준비되지 않았을 수 있다(HAVE_CURRENT_DATA 미만).
       if (video.readyState < 2) {

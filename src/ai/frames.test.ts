@@ -4,11 +4,14 @@ import {
   FRAME_MAX_BYTES,
   FrameError,
   MAX_FRAMES,
+  MAX_UPLOAD_FRAMES,
   captureFrame,
   discardFrames,
   frameByteLimit,
   frameTimes,
   sampleFramesFromFile,
+  sampleUploadFramesFromFile,
+  uploadFrameTimes,
   type Frame,
 } from './frames';
 
@@ -171,6 +174,41 @@ describe('frameTimes · frameByteLimit', () => {
       // base64는 3바이트를 4글자로 적는다.
       expect(Math.ceil(limit / 3) * 4 * n).toBeLessThan(2 * 1024 * 1024);
     }
+  });
+});
+
+describe('영상 길이에 맞춘 장면 사진', () => {
+  it('짧은 영상은 6장, 44.57초 영상은 초반 5.7초와 끝을 포함해 24장을 고른다', () => {
+    expect(uploadFrameTimes(10)).toEqual(frameTimes(10, MAX_FRAMES));
+    expect(uploadFrameTimes(20)).toHaveLength(12);
+    expect(uploadFrameTimes(30)).toHaveLength(18);
+    const times = uploadFrameTimes(44.57);
+    expect(times).toHaveLength(MAX_UPLOAD_FRAMES);
+    expect(times[2]).toBeCloseTo(5.7, 1);
+    expect(times.at(-1)).toBeCloseTo(42.3, 1);
+  });
+
+  it('긴 영상의 처음부터 끝까지 4개 구간을 고르고 각 구간은 촘촘하게 본다', () => {
+    const times = uploadFrameTimes(124);
+    expect(times).toHaveLength(MAX_UPLOAD_FRAMES);
+    expect(times.filter((_, i) => i % MAX_FRAMES === 0)).toEqual([0.5, 38.5, 76.5, 114.5]);
+    expect(times.at(-1)).toBeCloseTo(123.5);
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i] - times[i - 1]).toBeGreaterThan(0);
+      if (i % MAX_FRAMES) expect(times[i] - times[i - 1]).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('24장을 열고 닫는 동안 영상은 한 번만 읽으며 JSON 본문은 2MB보다 작다', async () => {
+    world.duration = 44.57;
+    world.sizeOf = (_w, _h, quality) => quality > 0.6 ? 80_000 : 54_000;
+    const sampled = await sampleUploadFramesFromFile(FILE);
+    expect(sampled.frames).toHaveLength(MAX_UPLOAD_FRAMES);
+    expect(sampled.frames[2].t).toBe(5.7);
+    expect(sampled.durationSec).toBe(44.6);
+    expect(JSON.stringify(sampled).length).toBeLessThan(2_000_000);
+    expect(world.videos).toHaveLength(1);
+    expect(world.videos[0].released).toBe(true);
   });
 });
 

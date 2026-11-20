@@ -1,6 +1,6 @@
 import { ApiError, api } from '../api/client';
 import type { AiObservation, AiSession, AnalyzeResponse, Delivery, SaveAiObservationResponse } from '../api/types';
-import { MAX_FRAMES, isAbortError, type Frame } from './frames';
+import { MAX_FRAMES, MAX_UPLOAD_FRAMES, isAbortError, type Frame } from './frames';
 
 /**
  * AI 관찰 기록 만들기 (hamkke-api/docs/ai-observation.md 3장).
@@ -130,7 +130,8 @@ function sessionError(e: unknown): AiError {
 
 /** 서버가 알려 준 장수(maxFrames)보다 많으면 고르게 덜어 낸다. */
 function limitFrames(frames: Frame[], max: number): Frame[] {
-  const n = Math.max(1, Math.min(MAX_FRAMES, Math.floor(max) || MAX_FRAMES));
+  const advertisedLimit = Number.isFinite(max) ? Math.floor(max) || MAX_FRAMES : MAX_FRAMES;
+  const n = Math.max(1, Math.min(MAX_UPLOAD_FRAMES, advertisedLimit));
   if (frames.length <= n) return frames;
   if (n === 1) return [frames[Math.floor(frames.length / 2)]];
   return Array.from({ length: n }, (_, i) => frames[Math.round((i * (frames.length - 1)) / (n - 1))]);

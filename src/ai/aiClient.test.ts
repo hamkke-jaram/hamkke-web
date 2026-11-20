@@ -153,6 +153,22 @@ describe('createObservation', () => {
     expect(sent.frames.map((f) => f.t)).toEqual([0, 36, 60]);
   });
 
+  it.each([
+    { maxFrames: undefined, sent: 6 },
+    { maxFrames: 6, sent: 6 },
+    { maxFrames: 24, sent: 24 },
+    { maxFrames: 30, sent: 24 },
+  ])('토큰의 사진 수 상한을 지킨다 (서버 $maxFrames장)', async ({ maxFrames, sent }) => {
+    const calls = mockFetch({ session: () => json(200, { token: 'session-token', maxFrames }) });
+    const frames = Array.from({ length: 30 }, (_, i) => ({ t: i, jpeg: `/9j/frame-${i}` }));
+    await createObservation(7, frames);
+    expect(sessionsOf(calls)[0].body).toBe('');
+    const uploaded = (JSON.parse(sentPhotos(calls)[0].body) as { frames: Frame[] }).frames;
+    expect(uploaded).toHaveLength(sent);
+    expect(uploaded[0].t).toBe(0);
+    expect(uploaded.at(-1)?.t).toBe(29);
+  });
+
   it('동의가 없으면 사진을 보내지 않고 안내한다', async () => {
     const calls = mockFetch({
       session: () => json(422, { code: 'AI_CONSENT_REQUIRED', message: '동의가 필요해요.' }),

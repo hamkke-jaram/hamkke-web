@@ -43,6 +43,8 @@ export interface Policies {
   disclaimer: string;
   /** 'AI 관찰 기록' 동의 내용의 버전. 동의를 보낼 때 그대로 돌려준다. */
   aiAnalysisVersion: string;
+  /** 현재 동의 문서에 표시할 가정 영상 분석의 사진 수 상한. 이전 서버는 이 필드가 없다. */
+  aiAnalysisMaxFrames?: number;
   /** AI 서버가 설정되어 있는지. false면 새로 만드는 화면을 숨긴다(이미 있는 기록 보기·삭제·동의 끄기는 남긴다). */
   aiObservationEnabled: boolean;
 }
@@ -217,6 +219,8 @@ export interface AiConsent {
   agreed: boolean;
   version: string | null;
   agreedAt: string | null;
+  /** 보호자가 동의한 가정 영상 분석의 사진 수 상한. 이전 서버는 이 필드가 없다. */
+  maxFrames?: number;
 }
 
 /** POST /children/{id}/ai-sessions — 분석 한 번에 쓰는 토큰(사용자 로그인 토큰과 다르다). */

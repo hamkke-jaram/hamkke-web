@@ -4,6 +4,7 @@ import type { AiConsent } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { formatDate } from '../components/ui';
 import { aiConsentState } from './consentState';
+import { MAX_FRAMES, MAX_UPLOAD_FRAMES } from './frames';
 import './ai.css';
 
 interface Props {
@@ -21,11 +22,14 @@ interface Props {
 }
 
 /** 무엇이 어디로 가고 언제 지워지는지(명세 2장 1번). 켜기 전에도, 켠 뒤에도 같은 내용을 보여 준다. */
-function ConsentFacts() {
+function ConsentFacts({ maxFrames }: { maxFrames: number }) {
   return (
     <dl className="ai-facts" data-demo="ai-facts">
       <dt>무엇을 보내나요</dt>
-      <dd>장면 사진 최대 6장이에요. 소리는 보내지 않고, 영상 원본도 보내지 않아요.</dd>
+      <dd>
+        가정 영상 한 편에서 장면 사진을 최대 {maxFrames}장 보내요. 실시간 카메라는 최대 {MAX_FRAMES}장이에요.
+        영상 원본과 소리는 보내지 않아요.
+      </dd>
       <dt>어디로 가나요</dt>
       <dd>시나브로 AI 서버로 가요. AI가 사진을 보고 아이와 어른의 모습을 짧은 글로 적어요.</dd>
       <dt>언제 지워지나요</dt>
@@ -48,7 +52,7 @@ function ConsentFacts() {
 export default function AiConsentCard({ childId, nickname, consent, paused = false, onChange }: Props) {
   const { policies, reloadPolicies } = useAuth();
   const [open, setOpen] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [acceptedPolicy, setAcceptedPolicy] = useState<string | null>(null);
   const [confirmOff, setConfirmOff] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +60,11 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
   const headingId = useId();
   const version = policies?.aiAnalysisVersion ?? '';
   const state = aiConsentState(consent);
+  const policyMax = policies?.aiAnalysisMaxFrames === MAX_UPLOAD_FRAMES ? MAX_UPLOAD_FRAMES : MAX_FRAMES;
+  const agreedMax = consent.maxFrames === MAX_UPLOAD_FRAMES ? MAX_UPLOAD_FRAMES : MAX_FRAMES;
+  const policyKey = `${version}/${policyMax}`;
+  const checked = acceptedPolicy === policyKey;
+  const upgrading = state === 'on' && !!version && consent.version !== version && policyMax > agreedMax;
 
   async function run(fn: () => Promise<void>) {
     if (busyRef.current) return;
@@ -74,18 +83,23 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
     if (!checked || !version) return;
     void run(async () => {
       try {
-        const saved = await api<AiConsent | undefined>('PUT', `/children/${childId}/ai-consent`, { agreed: true, version });
+        const saved = await api<AiConsent | undefined>('PUT', `/children/${childId}/ai-consent`, {
+          agreed: true,
+          version,
+          ...(policyMax === MAX_UPLOAD_FRAMES && { maxFrames: policyMax }),
+        });
         setOpen(false);
-        setChecked(false);
+        setAcceptedPolicy(null);
         onChange({
           agreed: true,
           version: saved?.version ?? version,
           agreedAt: saved?.agreedAt ?? new Date().toISOString(),
+          maxFrames: saved?.maxFrames,
         });
       } catch (e) {
         if (e instanceof ApiError && e.code === 'AI_CONSENT_VERSION_MISMATCH') {
           // 동의 내용이 바뀐 경우: 새 버전을 받아 온 뒤 다시 읽고 체크하게 한다.
-          setChecked(false);
+          setAcceptedPolicy(null);
           reloadPolicies();
           setError('동의 내용이 새로 바뀌었어요. 내용을 다시 읽고 체크해 주세요.');
         } else {
@@ -101,7 +115,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
         await api('DELETE', `/children/${childId}/ai-consent`);
         setConfirmOff(false);
         setOpen(false);
-        setChecked(false);
+        setAcceptedPolicy(null);
         onChange({ agreed: false, version: null, agreedAt: null });
       } catch (e) {
         setError(
@@ -156,7 +170,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
   /** 켜기: 동의 내용을 읽고 체크한 뒤 켠다. 처음 켤 때와 바뀐 내용에 다시 동의할 때가 함께 쓴다. */
   const agreeForm = (
     <div>
-      <ConsentFacts />
+      <ConsentFacts maxFrames={policyMax} />
       <label className="check">
         <input
           type="checkbox"
@@ -164,7 +178,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
           data-demo="ai-check"
           checked={checked}
           disabled={busy}
-          onChange={(e) => setChecked(e.target.checked)}
+          onChange={(e) => setAcceptedPolicy(e.target.checked ? policyKey : null)}
         />
         <span>
           <strong>
@@ -188,7 +202,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
           data-demo="ai-later"
           onClick={() => {
             setOpen(false);
-            setChecked(false);
+            setAcceptedPolicy(null);
             setError(null);
           }}
         >
@@ -202,7 +216,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
           data-demo="ai-agree"
           onClick={turnOn}
         >
-          {busy ? '켜는 중…' : '동의하고 켜기'}
+          {busy ? '켜는 중…' : upgrading ? '동의하고 자세히 분석하기' : '동의하고 켜기'}
         </button>
       </div>
       {version && <p className="muted" style={{ marginBottom: 0 }}>동의 내용 버전 {version}</p>}
@@ -219,7 +233,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
           <span className="chip brand ai-on-chip">✓ 켜져 있어요</span>
         </div>
         <p className="muted" style={{ marginTop: 0 }}>
-          장면 사진 최대 6장을 AI 서버로 보내 살펴보고, 살펴본 직후 사진을 지워요. 소리는 보내지 않아요.
+          가정 영상 한 편에서 장면 사진을 최대 {agreedMax}장 보내고, 살펴본 직후 사진을 지워요.
           {consent.agreedAt && ` ${formatDate(consent.agreedAt)}에 동의했어요.`}
         </p>
         {paused && (
@@ -230,11 +244,16 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
         )}
         <details>
           <summary>동의한 내용 다시 보기</summary>
-          <ConsentFacts />
+          <ConsentFacts maxFrames={agreedMax} />
           {consent.version && <p className="muted">동의 내용 버전 {consent.version}</p>}
         </details>
-        {errorLine}
-        {offControl({
+        {!paused && upgrading && (open ? agreeForm : (
+          <button type="button" className="btn block secondary" data-demo="ai-upgrade" onClick={() => setOpen(true)}>
+            자세한 영상 분석 동의 내용 보기
+          </button>
+        ))}
+        {(!open || paused || !upgrading) && errorLine}
+        {(!open || paused || !upgrading) && offControl({
           trigger: 'AI 관찰 기록 끄기',
           question: `끄면 ${nickname}의 AI 관찰 기록이 모두 지워지고 되돌릴 수 없어요. 함께한 시간 같은 숫자 기록과 코칭 카드는 그대로 남아요. 끌까요?`,
           cancel: '계속 켜 두기',
