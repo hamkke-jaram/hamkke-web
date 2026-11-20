@@ -52,24 +52,35 @@ html.ios-app .talk {
 }
 
 .talk-live-dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #3fae6a;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .talk-live-dot {
-    animation: talk-pulse 1.6s ease-in-out infinite;
+/* 살아 있음 표시: 점 둘레로 번지는 고리(transform·opacity만). 1.6초에 한 번. */
+.talk-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgb(63 174 106 / 0.45);
+  opacity: 0;
+}
+
+:root[data-motion='on'] .talk-live-dot::after {
+  animation: talk-pulse 1.6s var(--ease-out) infinite;
+}
+
+@keyframes talk-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
   }
-  @keyframes talk-pulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgb(63 174 106 / 0.45);
-    }
-    50% {
-      box-shadow: 0 0 0 5px rgb(63 174 106 / 0);
-    }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
   }
 }
 
@@ -243,17 +254,82 @@ body.talk-on main {
   color: var(--ink-3);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .talk-row,
-  .talk-note {
-    animation: talk-in 0.28s ease-out;
+/* 보내는 중: 흐릿한 말풍선 + '보내는 중…'. 보내지면 같은 자리에서 진해지고 '보냄 ✓'이 잠깐 보인다. */
+.talk-row.pending .talk-bubble {
+  opacity: 0.55;
+}
+
+.talk-status {
+  margin: 3px 4px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.talk-status.sent {
+  margin: 0;
+  color: var(--brand);
+}
+
+:root[data-motion='on'] .talk-status.sent {
+  animation: rise-in var(--dur-base) var(--ease-out) both;
+}
+
+/* 말풍선 들어오기: 내 것은 오른쪽 아래에서, 상대 것은 왼쪽 아래에서 커지며. */
+:root[data-motion='on'] .talk-row,
+:root[data-motion='on'] .talk-note {
+  animation: talk-in var(--dur-base) var(--ease-out) both;
+}
+
+:root[data-motion='on'] .talk-row.mine {
+  transform-origin: 100% 100%;
+}
+
+:root[data-motion='on'] .talk-row.theirs {
+  transform-origin: 0 100%;
+}
+
+/* 방금 보낸 것은 '보내는 중' 말풍선이 이미 들어와 있었으므로 다시 들어오지 않는다. */
+:root[data-motion='on'] .talk-row.sent {
+  animation: none;
+}
+
+/* 화면을 연 뒤 도착한 상대 이야기: 톡(살짝 넘쳤다 제자리). */
+:root[data-motion='on'] .talk-row.arrived {
+  animation: talk-arrive var(--dur-slow) var(--ease-spring) both;
+}
+
+@keyframes talk-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
   }
-  @keyframes talk-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.98);
-    }
+}
+
+@keyframes talk-arrive {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
   }
+  60% {
+    opacity: 1;
+  }
+}
+
+/* 입력칸 위 줄: 왼쪽에 앉은 작은 모찌(MiniBuddy), 그 옆에 빠른 답 칩. */
+.talk-quick-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.talk-quick-row .talk-quick {
+  flex: 1;
+  min-width: 0;
+}
+
+.talk-mochi {
+  margin-bottom: 10px;
 }
 
 /* 아래에 붙어 있는 입력칸 */
@@ -414,16 +490,16 @@ body.talk-on main {
   text-align: center;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .talk-badge {
-    animation: talk-pop 0.35s ease-out;
+/* 안 읽은 수가 생기거나 바뀔 때 한 번 톡(TalkEntry가 수가 바뀌면 배지를 새로 그린다). */
+:root[data-motion='on'] .talk-badge {
+  animation: talk-pop var(--dur-slow) var(--ease-spring);
+}
+
+@keyframes talk-pop {
+  0% {
+    transform: scale(0.4);
   }
-  @keyframes talk-pop {
-    0% {
-      transform: scale(0.4);
-    }
-    70% {
-      transform: scale(1.15);
-    }
+  70% {
+    transform: scale(1.15);
   }
 }

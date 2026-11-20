@@ -4,7 +4,7 @@ import { FOCUS_LABEL } from '../ai/labels';
 import { errorMessage } from '../api/client';
 import type { Card, Delivery, SupportResource, WeekSummary } from '../api/types';
 import { FALLBACK_DISCLAIMER, useAuth } from '../auth/AuthContext';
-import { poseFor, poseSrc, type Pose } from './coachingArt';
+import { artMotionFor, poseFor, poseSrc, type Pose } from './coachingArt';
 
 export function Disclaimer() {
   const { policies } = useAuth();
@@ -18,8 +18,15 @@ export function Disclaimer() {
   );
 }
 
+/** 불러오는 중: 화면 자리를 미리 잡는 막대 세 줄(움직이는 캐릭터가 켜져 있으면 빛이 지나간다). */
 export function Loading() {
-  return <div className="spinner" role="status" aria-label="불러오는 중" />;
+  return (
+    <div className="loading-skeleton" role="status" aria-label="불러오는 중">
+      <div className="skeleton" />
+      <div className="skeleton" />
+      <div className="skeleton" />
+    </div>
+  );
 }
 
 export function ErrorText({ error }: { error: unknown }) {
@@ -94,6 +101,7 @@ export function CoachingCardView({
         {failedPose !== pose && (
           <span className="coach-art">
             <img
+              className={artMotionFor(pose)}
               src={poseSrc(pose)}
               alt=""
               width={96}

@@ -249,6 +249,81 @@ body.buddy-on.fdemo-on .app {
   transform-origin: 50% 50%;
 }
 
+/* 인사(buddyBus 'wave'): 몸 옆에서 손(몸 색 동그라미)을 흔든다. 평소에는 몸 뒤에 숨어 있다. */
+.buddy-hand {
+  position: absolute;
+  right: -5px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid #6b3d1c;
+  transform-origin: -2px 120%;
+  transform: scale(0);
+  opacity: 0;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.buddy-layer.waving .buddy-hand {
+  opacity: 1;
+  transform: scale(1);
+  animation: buddy-wave 0.42s ease-in-out 0.15s infinite alternate;
+}
+
+@keyframes buddy-wave {
+  from {
+    transform: rotate(-28deg);
+  }
+  to {
+    transform: rotate(22deg);
+  }
+}
+
+/* 생각(buddyBus 'think'): 머리 위에 점 세 개가 차례로 떠오른다(한 점이 1.2초에 한 번). */
+.buddy-think {
+  position: absolute;
+  left: 50%;
+  display: none;
+  gap: 5px;
+  transform: translateX(-30%);
+  pointer-events: none;
+}
+
+.buddy-layer.thinking .buddy-think {
+  display: flex;
+}
+
+.buddy-think span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-2, #6b5444);
+  opacity: 0.25;
+  animation: buddy-dot 1.2s ease-in-out infinite;
+}
+
+.buddy-think span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.buddy-think span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes buddy-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+}
+
 /* 누르면 떠오르는 하트. 모찌 볼 색. */
 .buddy-heart {
   position: absolute;

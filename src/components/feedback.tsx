@@ -12,6 +12,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { Link, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { mascotSrc } from './Mascot';
 import { ErrorText } from './ui';
 
 /*
@@ -46,6 +47,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {/* 알림 영역은 비어 있어도 늘 둔다(그래야 새 문장이 읽힌다). */}
       <div className={message ? 'toast show' : 'toast'} role="status" aria-live="polite">
+        {/* 알림과 함께 톡 튀어 나오는 작은 모찌(꾸밈). 문장이 있을 때만 그린다(새 알림마다 다시 튀어 나오게). */}
+        {message && <img className="toast-mochi" src={mascotSrc('dome')} alt="" aria-hidden="true" width={26} height={21} />}
         {message}
       </div>
     </ToastContext.Provider>
@@ -224,6 +227,10 @@ export function DangerAction({
   }
   return (
     <div className="confirm" role="group" aria-labelledby={describedBy(labelledBy, qid)} ref={boxRef}>
+      {/* 상자 위 테두리 너머로 내다보는 모찌(꾸밈). 상자 밖이라 글·버튼을 가리지 않는다. */}
+      <span className="confirm-peek" aria-hidden="true">
+        <img src={mascotSrc('friend')} alt="" width={40} height={31} />
+      </span>
       <p id={qid}>
         <strong>{question}</strong>
         {detail ? <> {detail}</> : null}

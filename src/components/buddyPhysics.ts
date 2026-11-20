@@ -13,7 +13,9 @@
  * 겉모양만 바꾸는 우연(깜빡임·두리번)은 rand를 쓰지 않고 정해진 수열을 쓴다(시험에서 rand 순서를 흔들지 않게).
  */
 
-export type BuddyMode = 'idle' | 'walk' | 'crouch' | 'air' | 'drag' | 'sleep' | 'dance';
+export type BuddyMode = 'idle' | 'walk' | 'crouch' | 'air' | 'drag' | 'sleep' | 'dance' | 'wave' | 'think' | 'peek';
+/** 공중에 있어서 바로 못 한 일. 내려앉으면 한다(buddyBus 신호, 엿보기). */
+export type BuddyQueued = 'wave' | 'think' | 'sleep' | 'peek' | null;
 export type BuddyEyes = 'open' | 'closed' | 'happy' | 'dizzy';
 
 export interface BuddyBounds {
@@ -66,6 +68,16 @@ export interface BuddyState {
   woke: boolean;
   /** 겉모양용 수열 번호. */
   seq: number;
+  /** 응원(cheer): 내려앉은 뒤 한 번 더 뛸 횟수. */
+  hopsLeft: number;
+  /** 밤(기기 시각 22~6시)이면 true. 쉬는 동안 더 자주, 더 오래 존다. 그리는 쪽이 정한다. */
+  sleepy: boolean;
+  /** 공중에서 받은 신호. 내려앉으면 한다. */
+  queued: BuddyQueued;
+  /** 엿보기 쪽(-1 왼쪽, 1 오른쪽). 0이면 엿보지 않는다. 가장자리로 걸어가는 동안에도 정해져 있다. */
+  peekSide: -1 | 0 | 1;
+  /** 엿보기를 시작한 뒤 흐른 시간(초). */
+  peekT: number;
 }
 
 export interface BuddyPose {
@@ -83,6 +95,12 @@ export interface BuddyPose {
   /** 머리 위에 별이 도는지(어지러움), 졸고 있는지. */
   stars: boolean;
   sleeping: boolean;
+  /** 손 흔드는 중, 생각하는 중(머리 위 점 세 개). */
+  waving: boolean;
+  thinking: boolean;
+  /** 엿보기: 가장자리 밖으로 숨은 정도(몸 너비 배수, 쪽 부호 포함). 그리는 쪽이 몸 너비를 곱해 x에 더한다. */
+  peekShift: number;
+  peeking: boolean;
 }
 
 export const GRAVITY = 2600;
@@ -103,6 +121,15 @@ const SPRING_K = 380;
 const SPRING_C = 13;
 const LEAN_K = 90;
 const LEAN_C = 9;
+/** 응원(cheer) 한 번 뛰는 세기(약 60px). */
+export const CHEER_VY = 560;
+/** 엿보기 한 번의 길이(초): 숨기 → 숨어 있기 → 빼꼼 → 쳐다보기 → 나오기. */
+export const PEEK_TIME = 3.8;
+/** 빼꼼 내민 동안 밖에 숨어 있는 몸의 비율. */
+const PEEK_HIDDEN = 0.42;
+const WAVE_TIME = 1.8;
+const THINK_TIME = 2.6;
+
 /** 이보다 세게 떨어지면 한 번 더 튀어 오른다. */
 const BOUNCE_MIN = 650;
 const BOUNCE_KEEP = 0.33;
@@ -157,6 +184,11 @@ export function spawnBuddy(b: BuddyBounds, rand: Rand = Math.random): BuddyState
     impact: 0,
     woke: false,
     seq: Math.floor(x),
+    hopsLeft: 0,
+    sleepy: false,
+    queued: null,
+    peekSide: 0,
+    peekT: 0,
   };
 }
 
@@ -182,10 +214,12 @@ function nextAction(s: BuddyState, b: BuddyBounds, rand: Rand, free: IsFree) {
   if (span < 40) return hopInPlace(s);
   const r = rand();
   // 제자리에서 하는 일은 아래에 누를 것이 없을 때만(버튼 위에서 오래 머물지 않게).
+  // 밤에는 쉬는 동안 할 일의 절반쯤이 졸기다(더 오래).
+  const sleepCut = s.sleepy ? 0.18 : 0.07;
   if (r < 0.28 && free(s.x)) {
-    if (r < 0.07) {
+    if (r < sleepCut) {
       s.mode = 'sleep';
-      s.timer = between(rand, 7, 11);
+      s.timer = s.sleepy ? between(rand, 12, 18) : between(rand, 7, 11);
       return;
     }
     if (r < 0.15) {
@@ -256,6 +290,29 @@ function land(s: BuddyState, rand: Rand) {
   s.vy = 0;
   s.vx = 0;
   s.thrown = false;
+  if (s.hopsLeft > 0) {
+    s.hopsLeft--;
+    s.walking = false;
+    s.mode = 'crouch';
+    s.timer = 0.08;
+    s.pendingVy = CHEER_VY;
+    s.pendingVx = 0;
+    s.joy = Math.max(s.joy, 0.8);
+    return;
+  }
+  if (s.queued && s.dizzy <= 0) {
+    const q = s.queued;
+    s.queued = null;
+    if (q === 'peek' && s.peekSide !== 0) {
+      // 가까운 가장자리까지 걸어가서 엿본다.
+      s.mode = 'walk';
+      s.walking = true;
+      s.timer = 0.16;
+      return;
+    }
+    startAct(s, q);
+    return;
+  }
   if (s.walking) {
     s.mode = 'walk';
     s.timer = 0.16;
@@ -295,6 +352,13 @@ function stepFace(s: BuddyState, dt: number) {
   } else if (s.walking) tx = Math.sign(s.targetX - s.x);
   else if (s.mode === 'air') ty = s.vy > 0 ? -0.6 : 0.6;
   else if (s.mode === 'sleep') tx = 0;
+  else if (s.mode === 'think') {
+    tx = 0.7;
+    ty = -1; // 위를 올려다보며 생각
+  } else if (s.mode === 'peek') {
+    tx = -s.peekSide; // 화면 안쪽을 쳐다본다
+    ty = 0;
+  }
   const k = Math.min(1, dt * 9);
   s.lookX += (tx - s.lookX) * k;
   s.lookY += (ty - s.lookY) * k;
@@ -317,6 +381,9 @@ export function stepBuddy(s: BuddyState, dt: number, b: BuddyBounds, rand: Rand 
   if (s.mode === 'drag') leanTarget = clamp(s.vx * 0.03, -28, 28);
   else if (s.mode === 'air') leanTarget = clamp(s.vx * 0.05, -14, 14);
   else if (s.mode === 'dance') leanTarget = 14 * Math.sin(s.clock * 2 * Math.PI * 1.6);
+  else if (s.mode === 'wave') leanTarget = 7 * Math.sin(s.clock * 2 * Math.PI * 1.8);
+  else if (s.mode === 'think') leanTarget = 6;
+  else if (s.mode === 'peek') leanTarget = -s.peekSide * 16 * peekOut(s.peekT);
   else if (s.dizzy > 0) leanTarget = 9 * Math.sin(s.clock * 2 * Math.PI * 0.9);
   s.leanV += (LEAN_K * (leanTarget - s.lean) - LEAN_C * s.leanV) * dt;
   s.lean = clamp(s.lean + s.leanV * dt, -35, 35);
@@ -349,6 +416,7 @@ export function stepBuddy(s: BuddyState, dt: number, b: BuddyBounds, rand: Rand 
   }
 
   s.y = 0;
+  if (s.mode === 'peek') s.peekT += dt;
   s.timer -= dt;
   if (s.timer > 0) return s;
   switch (s.mode) {
@@ -356,7 +424,10 @@ export function stepBuddy(s: BuddyState, dt: number, b: BuddyBounds, rand: Rand 
       nextAction(s, b, rand, free);
       break;
     case 'walk':
-      if (Math.abs(s.targetX - s.x) < 6) toIdle(s, rand);
+      if (Math.abs(s.targetX - s.x) < 6) {
+        if (s.peekSide !== 0) startAct(s, 'peek');
+        else toIdle(s, rand);
+      }
       else {
         s.mode = 'crouch';
         s.timer = 0.07;
@@ -372,7 +443,17 @@ export function stepBuddy(s: BuddyState, dt: number, b: BuddyBounds, rand: Rand 
       s.squashV -= 2.2;
       break;
     case 'dance':
+    case 'wave':
+    case 'think':
       toIdle(s, rand);
+      break;
+    case 'peek':
+      // 다 나와서 반갑게 웃는다.
+      s.peekSide = 0;
+      s.peekT = 0;
+      toIdle(s, rand);
+      s.joy = 0.9;
+      s.squashV -= 1.6;
       break;
   }
   return s;
@@ -385,6 +466,8 @@ export function stepBuddy(s: BuddyState, dt: number, b: BuddyBounds, rand: Rand 
 export function tapBuddy(s: BuddyState, rand: Rand = Math.random): BuddyState {
   if (s.mode === 'drag') return s;
   s.walking = false;
+  s.peekSide = 0;
+  s.peekT = 0;
   if (s.mode === 'sleep') {
     s.woke = true;
     s.vy = TAP_VY * 0.85;
@@ -439,6 +522,8 @@ export function nearestFree(x: number, b: BuddyBounds, free: IsFree, step = 16):
 export function cheerBuddy(s: BuddyState): BuddyState {
   if (s.mode === 'drag' || s.mode === 'air') return s;
   s.walking = false;
+  s.peekSide = 0;
+  s.peekT = 0;
   s.vx = 0;
   s.vy = 520;
   s.y = 0.01;
@@ -451,6 +536,10 @@ export function cheerBuddy(s: BuddyState): BuddyState {
 /** 손가락으로 집어 들었을 때. 매달린 듯 조금 늘어난다(자고 있었으면 깬다). */
 export function grabBuddy(s: BuddyState): BuddyState {
   s.mode = 'drag';
+  s.peekSide = 0;
+  s.peekT = 0;
+  s.queued = null;
+  s.hopsLeft = 0;
   s.walking = false;
   s.pendingVy = 0;
   s.vx = 0;
@@ -476,6 +565,110 @@ export function releaseBuddy(s: BuddyState, vx: number, vy: number): BuddyState 
   s.thrown = Math.hypot(s.vx, s.vy) > THROW_SPEED;
   if (s.y <= 0) s.y = 0.01;
   return s;
+}
+
+/** 땅 위에서 바로 시작하는 동작(손 흔들기·생각·졸기·엿보기). */
+function startAct(s: BuddyState, act: Exclude<BuddyQueued, null>) {
+  s.vx = 0;
+  s.vy = 0;
+  s.walking = false;
+  if (act === 'wave') {
+    s.mode = 'wave';
+    s.timer = WAVE_TIME;
+    s.joy = WAVE_TIME;
+  } else if (act === 'think') {
+    s.mode = 'think';
+    s.timer = THINK_TIME;
+  } else if (act === 'sleep') {
+    s.mode = 'sleep';
+    s.timer = s.sleepy ? 14 : 8;
+  } else {
+    if (s.peekSide === 0) s.peekSide = -1;
+    s.mode = 'peek';
+    s.peekT = 0;
+    s.timer = PEEK_TIME;
+  }
+}
+
+/** 땅 위라서 바로 다른 동작으로 바꿔도 되는지. 공중·웅크림이면 내려앉은 뒤에 한다. */
+function grounded(s: BuddyState) {
+  return s.mode === 'idle' || s.mode === 'walk' || s.mode === 'sleep' || s.mode === 'dance' || s.mode === 'wave' || s.mode === 'think';
+}
+
+export type BuddySignal = 'celebrate' | 'cheer' | 'wave' | 'peek' | 'think' | 'sleep';
+
+/**
+ * buddyBus 신호에 맞춰 움직인다(보호자·선생님이 저장·보냄 같은 일을 마쳤을 때).
+ * - celebrate: 크게 폴짝(하트는 그리는 쪽이 띄운다). cheer: 작게 두 번 뜀.
+ * - wave: 손 흔들기, think: 위를 보며 생각(점 세 개), sleep: 졸기, peek: 가까운 가장자리에서 빼꼼.
+ * 들고 있는 동안은 무시한다. 공중이면 내려앉은 뒤에 한다(뛰기는 공중에서 한 번 더 뛴다).
+ */
+export function signalBuddy(s: BuddyState, kind: BuddySignal, b: BuddyBounds): BuddyState {
+  if (s.mode === 'drag') return s;
+  if (kind !== 'peek' && s.mode === 'peek') {
+    // 엿보던 중이면 그 자리(가장자리)에서 바로 나와서 한다.
+    s.peekSide = 0;
+    s.peekT = 0;
+    s.mode = 'idle';
+  }
+  if (kind === 'celebrate' || kind === 'cheer') {
+    s.queued = null;
+    s.hopsLeft = kind === 'cheer' ? 1 : 0;
+    s.joy = Math.max(s.joy, kind === 'celebrate' ? 1.4 : 1.6);
+    if (s.mode === 'air') {
+      s.vy = Math.max(s.vy, 0) + (kind === 'celebrate' ? AIR_TAP_VY : CHEER_VY * 0.8);
+      return s;
+    }
+    if (s.mode === 'sleep') s.woke = true;
+    s.walking = false;
+    s.mode = 'crouch';
+    s.timer = 0.09;
+    s.squashV += 2.8;
+    s.pendingVy = kind === 'celebrate' ? TAP_VY : CHEER_VY;
+    s.pendingVx = 0;
+    return s;
+  }
+  if (kind === 'peek') {
+    if (s.mode === 'peek' || s.peekSide !== 0) return s;
+    s.peekSide = s.x - b.minX <= b.maxX - s.x ? -1 : 1;
+    s.targetX = s.peekSide < 0 ? b.minX : b.maxX;
+    if (!grounded(s)) {
+      s.queued = 'peek';
+      return s;
+    }
+    if (Math.abs(s.targetX - s.x) < 6) startAct(s, 'peek');
+    else {
+      s.walking = true;
+      s.mode = 'walk';
+      s.timer = 0;
+    }
+    return s;
+  }
+  if (!grounded(s)) {
+    s.queued = kind;
+    return s;
+  }
+  startAct(s, kind);
+  return s;
+}
+
+/** 엿보기에서 밖으로 숨은 정도(0 다 나옴 ~ 1 다 숨음). 숨기 → 숨어 있기 → 빼꼼 → 쳐다보기 → 나오기. */
+export function peekHidden(t: number): number {
+  const ease = (v: number) => 1 - (1 - v) * (1 - v);
+  if (t < 0.45) return ease(t / 0.45);
+  if (t < 1.1) return 1;
+  if (t < 1.45) {
+    // 빼꼼: 조금 더 나왔다가 제자리(통통).
+    const v = (t - 1.1) / 0.35;
+    return 1 - (1 - PEEK_HIDDEN) * ease(v) - 0.08 * Math.sin(v * Math.PI);
+  }
+  if (t < PEEK_TIME - 0.5) return PEEK_HIDDEN;
+  return PEEK_HIDDEN * (1 - ease(Math.min(1, (t - (PEEK_TIME - 0.5)) / 0.5)));
+}
+
+/** 빼꼼 내민 동안만 안쪽으로 기운다(0 또는 1). */
+function peekOut(t: number) {
+  return t >= 1.1 && t < PEEK_TIME - 0.5 ? 1 : 0;
 }
 
 /** 지금 상태를 그릴 모양으로 바꾼다. */
@@ -509,5 +702,9 @@ export function buddyPose(s: BuddyState): BuddyPose {
     lookY: s.lookY,
     stars: s.dizzy > 0,
     sleeping: s.mode === 'sleep',
+    waving: s.mode === 'wave',
+    thinking: s.mode === 'think',
+    peekShift: s.mode === 'peek' ? s.peekSide * peekHidden(s.peekT) : 0,
+    peeking: s.mode === 'peek',
   };
 }

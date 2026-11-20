@@ -216,7 +216,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
           <h2 id={headingId} style={{ margin: 0 }}>
             AI 관찰 기록
           </h2>
-          <span className="chip brand">✓ 켜져 있어요</span>
+          <span className="chip brand ai-on-chip">✓ 켜져 있어요</span>
         </div>
         <p className="muted" style={{ marginTop: 0 }}>
           장면 사진 최대 6장을 AI 서버로 보내 살펴보고, 살펴본 직후 사진을 지워요. 소리는 보내지 않아요.

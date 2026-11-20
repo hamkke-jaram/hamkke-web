@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { SupportResource } from '../api/types';
 import SubHead from '../components/SubHead';
@@ -29,6 +30,16 @@ export default function Support() {
           지금은 최신 안내를 불러오지 못해 앱에 담긴 목록을 보여 드려요.</p>
       )}
       <p className="muted">전화번호와 운영 시간은 기관 사정에 따라 바뀔 수 있어요.</p>
+      {/* 지역 기관 찾기(T-022): 특수학교·특수교육지원센터·육아종합지원센터 등을 지역별로 */}
+      <Link to="/support/facilities" className="fac-entry press" data-demo="support-facilities-link">
+        <span className="fac-entry-text">
+          <strong>우리 지역 기관 찾기</strong>
+          <span className="muted">특수학교, 특수교육지원센터, 육아종합지원센터, 정신건강복지센터, 장애인복지관</span>
+        </span>
+        <span className="menu-chev" aria-hidden="true">
+          ›
+        </span>
+      </Link>
     </div>
   );
 }

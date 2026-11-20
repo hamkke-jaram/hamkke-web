@@ -9,6 +9,7 @@ import SubHead from '../../components/SubHead';
 import { DangerAction, useToast } from '../../components/feedback';
 import { ErrorText, Loading, Section, formatDate, loadStateView, useLoad } from '../../components/ui';
 import '../extra.css';
+import './parent.css';
 
 type ShareKey = keyof Omit<ShareSettings, 'updatedAt'>;
 interface ShareItem {
@@ -228,7 +229,8 @@ export default function Share() {
   const savingNote = saving ? <span className="muted">저장 중…</span> : undefined;
 
   return (
-    <div>
+    // share-page: 구역이 차례로 떠오르고, 공유 스위치를 켜면 손잡이가 말랑하게 눌렸다 펴진다(parent-motion.css).
+    <div className="share-page">
       {/* Figma 2판 '선생님 연결 관리': ‹ 제목. 공유할 항목은 알약 토글, 초대 코드는 크림 상자. */}
       <SubHead title="선생님 연결 관리" fallback={home} />
       {nickname && <p className="status-line" style={{ margin: '0 0 4px' }}>{nickname}의 기록</p>}

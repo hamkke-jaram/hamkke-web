@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, api, onSessionChange } from '../api/client';
 import type { Role, TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { buddy } from '../components/buddyBus';
 import { Field, PasswordField, describedBy, looksLikeEmail, refocus, useToast } from '../components/feedback';
 import Mascot from '../components/Mascot';
 import { ErrorText, Loading } from '../components/ui';
@@ -152,6 +153,7 @@ export default function Signup() {
         nav('/p/children/new', { replace: true, state: { onboarding: true } });
       } else {
         toast('가입을 마쳤어요. 반가워요.');
+        buddy.emit('wave');
         nav('/t', { replace: true });
       }
     } catch (err) {

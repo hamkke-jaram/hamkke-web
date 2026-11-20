@@ -28,7 +28,12 @@ export default function TalkEntry({ childId, role }: { childId: number; role: 'P
           {isParent ? '메모에 답하고, 집에서 있었던 일을 나눠요' : '가정에서 온 이야기에 답하고, 오늘 소식을 전해요'}
         </span>
       </span>
-      {unread > 0 && <span className="talk-badge">{unread > 99 ? '99+' : unread}</span>}
+      {/* key: 수가 바뀌면 새로 그려 한 번 톡 튄다(talk.css). */}
+      {unread > 0 && (
+        <span className="talk-badge" key={unread}>
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
       <span className="menu-chev" aria-hidden="true">
         ›
       </span>

@@ -8,6 +8,7 @@ import { usePagedList } from '../../components/paging';
 import { Loading, MoreButton, loadStateView } from '../../components/ui';
 import { dayLabel, firstSentence, monthKey, monthLabel, splitSteps } from './coachText';
 import { ChevronIcon } from './icons';
+import { artClass, useTriedCheer } from './parentMotion';
 import './parent.css';
 
 /*
@@ -18,6 +19,20 @@ import './parent.css';
  */
 
 const PAGE = 30;
+
+/**
+ * '왜 도움이 될까요?' 상자: 공통 코칭 카드(근거·출처·작성·검수, '오늘 해봤어요') 그대로.
+ * '오늘 해봤어요'를 누르면 하트가 떠오르고 돌아다니는 모찌가 기뻐한다(보호자가 한 일에만 반응한다).
+ */
+function WhyCard({ childId, delivery, onUpdated }: { childId: number; delivery: Delivery; onUpdated: (d: Delivery) => void }) {
+  const cheer = useTriedCheer(delivery, onUpdated);
+  return (
+    <div className="cd-why-card p-hearts-host">
+      <TriableCard childId={childId} delivery={delivery} onUpdated={cheer.onUpdated} />
+      {cheer.hearts}
+    </div>
+  );
+}
 
 export function CoachingList() {
   const { childId } = useParams();
@@ -69,7 +84,15 @@ export function CoachingList() {
                 <li key={d.id}>
                   <Link to={`/p/children/${id}/coaching/${d.id}`} state={{ delivery: d }} className="coach-row">
                     <span className={`coach-row-art${i % 2 ? ' lavender' : ''}`}>
-                      <img src={poseSrc(poseFor(d.card))} alt="" width={64} height={64} loading="lazy" decoding="async" />
+                      <img
+                        className={artClass(poseFor(d.card)) || undefined}
+                        src={poseSrc(poseFor(d.card))}
+                        alt=""
+                        width={64}
+                        height={64}
+                        loading="lazy"
+                        decoding="async"
+                      />
                     </span>
                     <span className="coach-row-text">
                       <span className="coach-row-date">{dayLabel(d.deliveredAt)}</span>
@@ -115,7 +138,8 @@ export function CoachingDetail() {
       <SubHead title="오늘의 코칭" fallback={`/p/children/${id}`} />
       <section className="cd-hero" aria-labelledby="cd-title">
         <p className="cd-label">{dayLabel(delivery.deliveredAt)}</p>
-        <img className="cd-art" src={poseSrc(poseFor(card))} alt="" width={200} height={200} decoding="async" />
+        {/* 모찌 그림의 움직임은 공용(coachingArt.ts의 artMotionFor, fe-2 — parentMotion.tsx artClass로 붙인다). 설정이 꺼져 있으면 정지 그림. */}
+        <img className={`cd-art ${artClass(poseFor(card))}`.trim()} src={poseSrc(poseFor(card))} alt="" width={200} height={200} decoding="async" />
         <h2 id="cd-title" className="cd-title">
           {card.title}
         </h2>
@@ -139,9 +163,7 @@ export function CoachingDetail() {
       <section className="cd-why" aria-labelledby="cd-why-h">
         <h2 id="cd-why-h">왜 도움이 될까요?</h2>
         {/* 근거·출처·작성·검수와 '오늘 해봤어요'는 공통 카드 그대로(카드는 늘 출처와 함께 전한다). */}
-        <div className="cd-why-card">
-          <TriableCard childId={id} delivery={delivery} onUpdated={setCurrent} />
-        </div>
+        <WhyCard childId={id} delivery={delivery} onUpdated={setCurrent} />
       </section>
 
       <button type="button" className="btn block cd-done" onClick={() => nav(`/p/children/${id}`)}>

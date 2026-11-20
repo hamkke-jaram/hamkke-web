@@ -43,7 +43,8 @@ describe('보호자·선생님 이야기(talk)', () => {
   it('함께 보기의 두 휴대폰은 서로 다른 주소로 열고, 계정은 # 뒤로만 넘긴다', () => {
     const o = duoOrigins({ protocol: 'http:', port: '5173' });
     expect(o.PARENT).toBe('http://localhost:5173');
-    expect(o.TEACHER).toBe('http://127.0.0.1:5173');
+    // 127.0.0.1이 아니라 *.localhost: 윈도우의 vite는 [::1]에만 열려 IPv4 주소로는 닿지 않는다.
+    expect(o.TEACHER).toBe('http://teacher.localhost:5173');
     expect(new URL(o.PARENT).origin).not.toBe(new URL(o.TEACHER).origin);
     const url = enterUrl(o.TEACHER, { accessToken: 'acc', refreshToken: 'ref' }, '/t/children/3/talk', 2);
     const u = new URL(url);

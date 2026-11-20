@@ -6,6 +6,7 @@ import { INSTANT_TEST, readGuest, resumeGuest, seedSampleChild, startAsGuest } f
 import BrandMark from '../components/BrandMark';
 import Mascot from '../components/Mascot';
 import { useToast } from '../components/feedback';
+import { buddy } from '../components/buddyBus';
 import { ErrorText, Loading } from '../components/ui';
 import { DEMO_ENABLED } from '../demo/DemoContext';
 
@@ -68,7 +69,7 @@ export default function Landing() {
     return (
       // Figma '스플래시': 흰 바탕에 모찌 가족과 노란 글자 로고. 그 아래 준비 상태.
       <div className="instant-prep" aria-live="polite">
-        <Mascot name="family" size={237} />
+        <Mascot name="family" size={237} live />
         <BrandMark width={137} />
         <h1>테스트를 준비하고 있어요</h1>
         {policiesError != null && !policies ? (
@@ -105,6 +106,7 @@ export default function Landing() {
         else nav(from ?? '/p', { replace: true });
       } else {
         if (created) toast('반가워요. 보호자에게 받은 초대 코드를 넣어 주세요.');
+        buddy.emit('wave');
         nav(from ?? '/t', { replace: true });
       }
     } catch (e) {
@@ -123,12 +125,12 @@ export default function Landing() {
           <br />
           작은 변화에 맞춘 양육 코칭을 전해 드려요.
         </p>
-        <Mascot name="family" size={220} />
+        <Mascot name="family" size={220} live />
       </div>
 
-      <section className="card soft">
+      <section className="card soft rise-in">
         <h2>이렇게 함께해요</h2>
-        <ol className="steps">
+        <ol className="steps stagger">
           <li>폰을 세워 두고 아이와 노는 모습을 1~3분 찍어요.</li>
           <li>
             폰 안에서 분석해 함께한 시간, 반응 시간, 크게 운 횟수를 기록해요.{' '}

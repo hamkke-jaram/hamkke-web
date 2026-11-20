@@ -1,3 +1,5 @@
+@import './parent-motion.css';
+
 /*
  * 부모 화면(보호자 홈·아이 등록·아이 홈·영상 기록·기록 목록·공유)의 시안 모양(pm/design/README.md, ref-coaching-record.jpg).
  * 색은 styles.css의 변수만 쓴다(값을 직접 적지 않는다). 그래야 밝은·어두운·고대비 화면에 그대로 맞춰진다.
@@ -543,18 +545,7 @@
   animation: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .fab-menu > li {
-    animation: fab-in 0.18s ease-out both;
-  }
-
-  @keyframes fab-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.96);
-    }
-  }
-}
+/* 떠 있는 메뉴의 펼침 움직임은 parent-motion.css(화면 설정 '움직이는 캐릭터'를 따른다). */
 
 /* ── 아이 등록 (Figma: 큰 캐릭터, 20px 제목, 노란 체크, 큰 노란 버튼) ── */
 

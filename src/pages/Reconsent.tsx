@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ApiError, api } from '../api/client';
 import type { PolicyConsentType, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { buddy } from '../components/buddyBus';
 import { describedBy, refocus, useToast } from '../components/feedback';
 import { ErrorText, Loading } from '../components/ui';
 
@@ -83,6 +84,7 @@ export default function Reconsent({ pending }: { pending: PolicyConsentType[] })
       if (me) setUser(me);
       else if (user) setUser({ ...user, pendingConsents: (user.pendingConsents ?? []).filter((t) => !items.includes(t)) });
       toast('다시 동의해 주셔서 고마워요.');
+      buddy.emit('wave');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'VALIDATION_FAILED') {
         // 그사이 약관이 또 바뀌었다: 새 버전을 받아 다시 읽고 체크하게 한다.

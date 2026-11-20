@@ -1346,15 +1346,15 @@ h3[tabindex='-1']:focus {
   background: transparent;
   box-shadow: none;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .toast.show {
-    animation: toast-in 0.18s ease-out;
-  }
-  @keyframes toast-in {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -6px);
-    }
+/* 알림이 위에서 톡 내려온다(움직임 체계: '움직이는 캐릭터'가 꺼지면 바로 보인다). */
+:root[data-motion='on'] .toast.show {
+  animation: toast-in var(--dur-slow) var(--ease-spring);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px) scale(0.92);
   }
 }
 
@@ -1820,4 +1820,390 @@ input[type='date'] {
 
 input[type='date']::-webkit-date-and-time-value {
   text-align: left;
+}
+
+/* ==========================================================================
+ * 움직임 체계(T-019)
+ * - 길이·이징은 아래 변수만 쓴다. 움직임은 transform·opacity만(자리가 밀리지 않게, 안드로이드 WebView에서도 가볍게).
+ * - 모든 움직임은 <html data-motion="on">일 때만 있다. 화면 설정 '움직이는 캐릭터'를 끄거나,
+ *   고르지 않은 채 기기에서 '동작 줄이기'를 켜면 data-motion="off"라 화면 전환은 즉시, 캐릭터는 멈춘다(motion.tsx).
+ * - 깜빡임은 초당 3번을 넘지 않는다. 큰 면에 blur를 쓰지 않는다.
+ * ========================================================================== */
+:root {
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+  /* 빠르게 나와 부드럽게 멈춤(들어오기), 살짝 넘쳤다 돌아옴(스프링 느낌), 오가기 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root[data-motion='off'] {
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+  --dur-slow: 0ms;
+}
+
+/* 들어올 때 살짝 떠오르기 */
+:root[data-motion='on'] .rise-in {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* 목록 차례로 나타나기: 감싼 칸에 .stagger. 앞 8개까지 40ms씩 늦게, 그 뒤는 함께. */
+:root[data-motion='on'] .stagger > * {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+}
+
+:root[data-motion='on'] .stagger > :nth-child(2) { animation-delay: 40ms; }
+:root[data-motion='on'] .stagger > :nth-child(3) { animation-delay: 80ms; }
+:root[data-motion='on'] .stagger > :nth-child(4) { animation-delay: 120ms; }
+:root[data-motion='on'] .stagger > :nth-child(5) { animation-delay: 160ms; }
+:root[data-motion='on'] .stagger > :nth-child(6) { animation-delay: 200ms; }
+:root[data-motion='on'] .stagger > :nth-child(7) { animation-delay: 240ms; }
+:root[data-motion='on'] .stagger > :nth-child(n + 8) { animation-delay: 280ms; }
+
+/* 누를 때 눌림: 버튼·메뉴 줄·칩은 기본으로, 다른 것은 .press를 붙인다. */
+:root[data-motion='on'] :is(.btn, .icon-btn, .menu-row, .talk-chip, .talk-send, .talk-entry, .press) {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+:root[data-motion='on'] :is(.btn, .icon-btn, .menu-row, .talk-chip, .talk-send, .talk-entry, .press):active:not([aria-disabled='true']):not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 60ms;
+}
+
+/* 불러오는 중 반짝임: 자리를 미리 잡는 회색 막대(.skeleton). 반짝임은 위를 지나가는 빛(transform)이다. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  /* 바탕(--surface)보다 살짝 밝은/짙은 빛. 밝게·어둡게 테마 모두 같은 변수로 맞는다. */
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 75%, transparent), transparent);
+  opacity: 0;
+}
+
+:root[data-motion='on'] .skeleton::after {
+  opacity: 1;
+  animation: skeleton-shine 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes skeleton-shine {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* 불러오는 중(components/ui.tsx Loading): 카드 모양 막대 세 줄. */
+.loading-skeleton {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.loading-skeleton .skeleton {
+  height: 18px;
+}
+
+.loading-skeleton .skeleton:first-child {
+  height: 26px;
+  width: 55%;
+}
+
+.loading-skeleton .skeleton:last-child {
+  width: 80%;
+}
+
+/* 화면 전환(App.tsx Layout): 주소가 바뀌면 새 화면이 앞으로 가기는 오른쪽에서, 뒤로 가기는 왼쪽에서 살짝 밀려 들어온다. */
+:root[data-motion='on'] main.route-in {
+  animation: route-in-forward var(--dur-base) var(--ease-out) both;
+}
+
+:root[data-motion='on'] main.route-in[data-dir='back'] {
+  animation-name: route-in-back;
+}
+
+@keyframes route-in-forward {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+
+@keyframes route-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+}
+
+/* 화면 속 캐릭터(Mascot live): 통통 튀어 들어온 뒤 숨쉬고, 눈을 깜빡인다(4.6초에 한 번). */
+.mascot-live {
+  position: relative;
+  display: block;
+}
+
+.mascot-live .mascot-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mascot-live .mascot-blink {
+  opacity: 0;
+}
+
+:root[data-motion='on'] .mascot.mascot-live {
+  animation:
+    mascot-in 700ms var(--ease-spring) both,
+    mascot-breathe 3.4s ease-in-out 700ms infinite;
+}
+
+:root[data-motion='on'] .mascot-live .mascot-blink {
+  animation: mascot-blink 4.6s linear 1.2s infinite;
+}
+
+@keyframes mascot-in {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.7, 0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-8px) scale(0.95, 1.08);
+  }
+  70% {
+    transform: translateY(0) scale(1.07, 0.93);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  95%,
+  100% {
+    opacity: 0;
+  }
+  96%,
+  98.5% {
+    opacity: 1;
+  }
+}
+
+/* 알림(토스트) 앞의 작은 모찌. 알림이 뜰 때 톡 튀어 나온다. */
+.toast-mochi {
+  display: none;
+  width: 26px;
+  height: auto;
+  margin: -4px 8px -4px -4px;
+  vertical-align: middle;
+}
+
+.toast.show .toast-mochi {
+  display: inline-block;
+}
+
+:root[data-motion='on'] .toast.show .toast-mochi {
+  animation: toast-mochi 520ms var(--ease-spring) 80ms both;
+}
+
+@keyframes toast-mochi {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.5);
+  }
+}
+
+/* 확인 상자: 위 테두리 너머로 모찌가 빼꼼 내다본다(오른쪽, 글·버튼과 겹치지 않게 상자 밖). */
+.confirm {
+  position: relative;
+}
+
+.confirm-peek {
+  position: absolute;
+  right: 16px;
+  bottom: 100%;
+  width: 40px;
+  height: 22px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confirm-peek img {
+  display: block;
+  width: 40px;
+  height: auto;
+}
+
+:root[data-motion='on'] .confirm-peek img {
+  animation: confirm-peek 600ms var(--ease-spring) 120ms both;
+}
+
+@keyframes confirm-peek {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* 한자리 모찌(components/MiniBuddy.tsx): buddyBus 신호에 맞춘 움직임 */
+.mini-buddy {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.mini-body {
+  display: block;
+  transform-origin: 50% 100%;
+}
+
+.mini-buddy .mascot {
+  animation: none;
+}
+
+.mini-heart,
+.mini-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mini-heart {
+  margin-left: -6px;
+  color: #f2877a;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mini-dots {
+  display: flex;
+  gap: 3px;
+  transform: translateX(-30%);
+}
+
+.mini-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-2);
+}
+
+:root[data-motion='on'] .mini-celebrate .mini-body {
+  animation: mini-jump 650ms var(--ease-out);
+}
+
+:root[data-motion='on'] .mini-celebrate .mini-heart {
+  animation: mini-heart 900ms var(--ease-out) 150ms;
+}
+
+:root[data-motion='on'] .mini-cheer .mini-body {
+  animation: mini-hop 380ms var(--ease-out) 2;
+}
+
+:root[data-motion='on'] .mini-wave .mini-body {
+  animation: mini-wiggle 420ms var(--ease-in-out) 3;
+}
+
+:root[data-motion='on'] .mini-peek .mini-body {
+  animation: mini-peek 1.4s var(--ease-spring);
+}
+
+:root[data-motion='on'] .mini-think .mini-dots {
+  opacity: 1;
+}
+
+:root[data-motion='on'] .mini-think .mini-dots span {
+  animation: buddy-dot 1.2s ease-in-out 2;
+}
+
+:root[data-motion='on'] .mini-think .mini-dots span:nth-child(2) { animation-delay: 0.2s; }
+:root[data-motion='on'] .mini-think .mini-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+:root[data-motion='on'] .mini-sleep .mini-body {
+  animation: mini-nod 1.6s var(--ease-in-out);
+}
+
+@keyframes mini-jump {
+  0% { transform: none; }
+  15% { transform: scale(1.12, 0.86); }
+  45% { transform: translateY(-70%) scale(0.92, 1.1); }
+  75% { transform: scale(1.08, 0.92); }
+  100% { transform: none; }
+}
+
+@keyframes mini-hop {
+  0% { transform: none; }
+  20% { transform: scale(1.08, 0.9); }
+  55% { transform: translateY(-35%) scale(0.95, 1.06); }
+  100% { transform: none; }
+}
+
+@keyframes mini-wiggle {
+  0%, 100% { transform: rotate(0); }
+  30% { transform: rotate(-10deg); }
+  70% { transform: rotate(10deg); }
+}
+
+@keyframes mini-peek {
+  0% { transform: none; }
+  25% { transform: translateY(40%) scale(1, 0.5); opacity: 0.4; }
+  55% { transform: translateY(-6%) scale(1, 1.05); opacity: 1; }
+  100% { transform: none; }
+}
+
+@keyframes mini-nod {
+  0%, 100% { transform: rotate(0); }
+  40%, 70% { transform: rotate(12deg) scale(1, 0.95); }
+}
+
+@keyframes mini-heart {
+  0% { opacity: 0; transform: translateY(6px) scale(0.5); }
+  25% { opacity: 1; transform: translateY(0) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-26px) scale(0.9); }
+}
+
+/* 상담·기관 안내 → 지역 기관 찾기(T-022)로 가는 줄 */
+.fac-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--control);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.fac-entry-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.fac-entry-text .muted {
+  font-size: 13px;
 }

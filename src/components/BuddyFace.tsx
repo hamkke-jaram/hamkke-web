@@ -36,14 +36,26 @@ function spiral(r: number) {
   return `M ${pts.join(' L ')}`;
 }
 
-export function BuddyFace({ name, svgRef }: { name: MascotName; svgRef: Ref<SVGSVGElement> }) {
+/**
+ * svgRef가 있으면 매 장면 paintFace로 바꾼다(돌아다니는 모찌). 없으면 eyes로 정한 눈을 늘 그린다
+ * (화면 속 캐릭터의 깜빡임 덮개: CSS가 잠깐씩만 보이게 한다).
+ */
+export function BuddyFace({ name, svgRef, eyes, className }: { name: MascotName; svgRef?: Ref<SVGSVGElement>; eyes?: BuddyEyes; className?: string }) {
   const rig = EYE_RIG[name];
   if (!rig) return null;
   const { r, ink } = rig;
   const line = { fill: 'none', stroke: ink, strokeWidth: r * 0.42, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  const gid = `buddy-patch-${name}`;
+  const gid = `buddy-patch-${name}${eyes ? `-${eyes}` : ''}`;
   return (
-    <svg ref={svgRef} className="buddy-face" viewBox={`0 0 ${rig.w} ${rig.h}`} preserveAspectRatio="none" data-eyes="open" style={{ display: 'none' }}>
+    <svg
+      ref={svgRef}
+      className={className ? `buddy-face ${className}` : 'buddy-face'}
+      viewBox={`0 0 ${rig.w} ${rig.h}`}
+      preserveAspectRatio="none"
+      data-eyes={eyes ?? 'open'}
+      style={eyes ? undefined : { display: 'none' }}
+      aria-hidden="true"
+    >
       <defs>
         <radialGradient id={gid}>
           <stop offset="0.72" stopColor={rig.body} />

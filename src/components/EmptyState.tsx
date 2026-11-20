@@ -31,7 +31,7 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={className ? `empty-state ${className}` : 'empty-state'}>
-      {mascot && <Mascot name={mascot} size={mascotSize} />}
+      {mascot && <Mascot name={mascot} size={mascotSize} live />}
       {/* id를 준 제목은 코드에서 포커스를 옮길 수 있게 한다(다시 불러온 뒤 등). 탭 순서에는 들지 않는다. */}
       <Title id={titleId} tabIndex={titleId ? -1 : undefined} className="empty-state-title">
         {title}

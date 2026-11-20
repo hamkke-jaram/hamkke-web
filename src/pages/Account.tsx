@@ -5,6 +5,7 @@ import { ApiError, api, setSession } from '../api/client';
 import type { Child, ConsentRecord, TokenResponse, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { forgetGuest, guestPasswordFor, isGuestUser } from '../auth/guest';
+import { buddy } from '../components/buddyBus';
 import { DangerAction, Field, PasswordField, refocus, useToast } from '../components/feedback';
 import { Icon } from '../components/icons';
 import { ErrorText, Loading, formatDate, useLoad } from '../components/ui';
@@ -115,6 +116,7 @@ export default function Account() {
       const me = await api<User>('PATCH', '/me', { displayName: trimmed });
       setUser(me);
       toast('이름을 바꿨어요.');
+      buddy.emit('cheer');
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors[0]?.field === 'displayName') {
         const message = err.message;
@@ -405,6 +407,13 @@ export default function Account() {
         <Link to="/support" className="menu-row">
           <Icon name="info" />
           <span className="menu-text">상담 · 기관 안내</span>
+          <span className="menu-chev" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+        <Link to="/support/facilities" className="menu-row" data-demo="account-row-facilities">
+          <Icon name="info" />
+          <span className="menu-text">지역 기관 찾기</span>
           <span className="menu-chev" aria-hidden="true">
             ›
           </span>

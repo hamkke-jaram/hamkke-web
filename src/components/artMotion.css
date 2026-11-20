@@ -1,0 +1,217 @@
+/*
+ * 코칭 모찌 그림의 움직임(coachingArt.ts artMotionFor → <img class="art-motion art-hug …">). 꾸밈.
+ * - 그림: 말랑한 숨쉬기 + 그림별 몸짓(아래쪽 기준으로 찌그러지고 늘어남). transform만 쓴다.
+ * - 장식(하트·♪·반짝이·공 그림자): 그림을 감싼 칸의 ::before·::after(:has). 그림 안쪽 위 가장자리에서만 움직여 글자를 가리지 않는다.
+ * - 화면 밖이면 멈춘다(.in-view가 없을 때, artMotion.ts). '움직이는 캐릭터'가 꺼져 있거나 기기의 동작 줄이기면
+ *   <html data-motion="off">라 아무 규칙도 걸리지 않아 정지 그림이다.
+ * - 반복은 모두 2.4초 이상에 한 번(깜빡임 없음).
+ */
+
+.art-motion {
+  transform-origin: 50% 100%;
+}
+
+/* 그림별 반복 */
+.art-hug { --art-loop: art-hug 4.2s var(--ease-in-out) infinite; }
+.art-cuddle { --art-loop: art-rock 5.6s var(--ease-in-out) infinite; }
+.art-ball { --art-loop: art-ball 2.4s var(--ease-in-out) infinite; }
+.art-stack { --art-loop: art-stack 3.4s var(--ease-in-out) infinite; }
+.art-wave { --art-loop: art-wave 3s var(--ease-in-out) infinite; }
+
+:root[data-motion='on'] .art-motion {
+  animation: var(--art-loop, art-breathe 3.6s ease-in-out infinite);
+  animation-play-state: paused;
+  transition: scale 320ms var(--ease-spring);
+}
+
+:root[data-motion='on'] .art-motion.in-view {
+  animation-play-state: running;
+}
+
+/* 화면에 들어올 때, 캐러셀에서 지금 카드가 될 때 한 번 톡(등장이 뒤에 있어 그동안 반복을 덮는다). */
+:root[data-motion='on'] .art-motion.in-view.art-enter,
+:root[data-motion='on'] .is-active .art-motion.in-view {
+  animation:
+    var(--art-loop, art-breathe 3.6s ease-in-out infinite),
+    art-pop 650ms var(--ease-spring);
+}
+
+/* 감싼 링크·버튼을 누르는 동안 말랑하게 눌렸다가 놓으면 통 돌아온다(scale은 반복 움직임과 겹쳐진다). */
+:root[data-motion='on'] :active > .art-motion,
+:root[data-motion='on'] .art-motion:active {
+  scale: 1.07 0.9;
+  transition-duration: 90ms;
+}
+
+/* ── 장식: 그림을 감싼 칸 ── */
+:has(> .art-motion) {
+  position: relative;
+}
+
+:has(> .art-hug)::before,
+:has(> .art-hug)::after,
+:has(> .art-cuddle)::before,
+:has(> .art-wave)::before,
+:has(> .art-wave)::after,
+:has(> .art-ball)::before {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  line-height: 1;
+}
+
+/* 하트(안기·품기): 그림 위쪽 오른편에서 천천히 떠오른다. 둘째 하트는 반 박자 늦게, 조금 왼쪽. */
+:has(> .art-hug)::before,
+:has(> .art-hug)::after,
+:has(> .art-cuddle)::before {
+  content: '♥';
+  top: 14%;
+  left: calc(50% + 12%);
+  font-size: 16px;
+  color: #f2877a;
+}
+
+:has(> .art-hug)::after {
+  left: calc(50% - 4%);
+  top: 20%;
+  font-size: 12px;
+}
+
+/* 음표·반짝이(손 흔들기) */
+:has(> .art-wave)::before {
+  content: '♪';
+  top: 12%;
+  left: calc(50% + 16%);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+:has(> .art-wave)::after {
+  content: '✦';
+  top: 26%;
+  left: calc(50% - 22%);
+  font-size: 13px;
+  color: #f5b301;
+}
+
+/* 공 그림자: 그림 바닥 가운데. 공이 뜨면 작고 옅어진다. */
+:has(> .art-ball)::before {
+  content: '';
+  left: 50%;
+  bottom: 2%;
+  width: 34%;
+  height: 7px;
+  margin-left: -17%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(60 38 18 / 0.22), rgb(60 38 18 / 0));
+  opacity: 1;
+  z-index: 0;
+}
+
+:root[data-motion='on'] :has(> .art-hug.in-view)::before {
+  animation: art-float 4.2s var(--ease-out) infinite;
+}
+
+:root[data-motion='on'] :has(> .art-hug.in-view)::after {
+  animation: art-float 4.2s var(--ease-out) 2.1s infinite;
+}
+
+:root[data-motion='on'] :has(> .art-cuddle.in-view)::before {
+  animation: art-float 6s var(--ease-out) 1s infinite;
+}
+
+:root[data-motion='on'] :has(> .art-wave.in-view)::before {
+  animation: art-float 3s var(--ease-out) 0.3s infinite;
+}
+
+:root[data-motion='on'] :has(> .art-wave.in-view)::after {
+  animation: art-twinkle 3s var(--ease-in-out) 1.4s infinite;
+}
+
+:root[data-motion='on'] :has(> .art-ball.in-view)::before {
+  animation: art-shadow 2.4s var(--ease-in-out) infinite;
+}
+
+/* ── 움직임 ── */
+@keyframes art-breathe {
+  0%, 100% { transform: none; }
+  25% { transform: rotate(-0.6deg); }
+  50% { transform: scale(1.022, 0.975); }
+  75% { transform: rotate(0.6deg); }
+}
+
+/* 숨쉬다가 한 번 꼭(오므렸다 펴기) */
+@keyframes art-hug {
+  0%, 100% { transform: none; }
+  28% { transform: scale(1.02, 0.978); }
+  52% { transform: none; }
+  66% { transform: scale(0.955, 1.035); }
+  77% { transform: scale(1.03, 0.97); }
+  88% { transform: scale(0.995, 1.005); }
+}
+
+/* 가장 차분하게: 느린 숨 + 아주 작은 좌우 흔들 */
+@keyframes art-rock {
+  0%, 100% { transform: none; }
+  25% { transform: rotate(-1.2deg) scale(1.01, 0.99); }
+  50% { transform: scale(1.014, 0.986); }
+  75% { transform: rotate(1.2deg) scale(1.01, 0.99); }
+}
+
+/* 숨쉬다가 통통 작은 뜀 */
+@keyframes art-ball {
+  0%, 100% { transform: none; }
+  30% { transform: scale(1.015, 0.985); }
+  55% { transform: none; }
+  63% { transform: scale(1.06, 0.93); }
+  73% { transform: translateY(-7%) scale(0.97, 1.04); }
+  83% { transform: scale(1.05, 0.95); }
+  91% { transform: scale(0.99, 1.01); }
+}
+
+@keyframes art-shadow {
+  0%, 55%, 100% { transform: scale(1); opacity: 1; }
+  63% { transform: scale(1.08); opacity: 1; }
+  73% { transform: scale(0.72); opacity: 0.55; }
+  83% { transform: scale(1.1); opacity: 1; }
+}
+
+/* 쌓인 것이 흔들리듯 좌우 */
+@keyframes art-stack {
+  0%, 50%, 100% { transform: none; }
+  25% { transform: rotate(-2deg) scale(1.01, 0.99); }
+  75% { transform: rotate(2deg) scale(1.01, 0.99); }
+}
+
+/* 손 흔들듯 기울었다가 숨쉬기 */
+@keyframes art-wave {
+  0%, 100% { transform: none; }
+  12% { transform: rotate(-3deg); }
+  26% { transform: rotate(2.5deg); }
+  40% { transform: rotate(-1.5deg); }
+  54% { transform: none; }
+  77% { transform: scale(1.018, 0.98); }
+}
+
+/* 톡 등장(채움 없이: 끝나면 반복 움직임으로 돌아간다) */
+@keyframes art-pop {
+  0% { opacity: 0.3; transform: translateY(10%) scale(0.7, 0.62); }
+  50% { opacity: 1; transform: translateY(-3%) scale(0.96, 1.07); }
+  75% { transform: scale(1.05, 0.95); }
+  100% { transform: none; }
+}
+
+/* 장식이 떠올랐다 사라진다(앞부분만 보이고 나머지는 쉼) */
+@keyframes art-float {
+  0% { opacity: 0; transform: translateY(4px) scale(0.6); }
+  10% { opacity: 1; transform: translateY(0) scale(1); }
+  45% { opacity: 0; transform: translate(5px, -20px) scale(0.9); }
+  100% { opacity: 0; transform: translate(5px, -20px) scale(0.9); }
+}
+
+@keyframes art-twinkle {
+  0%, 40%, 100% { opacity: 0; transform: scale(0.4) rotate(0); }
+  15% { opacity: 1; transform: scale(1.1) rotate(20deg); }
+}

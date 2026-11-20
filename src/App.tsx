@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react';
-import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import Observe from './ai/Observe';
 import type { Role } from './api/types';
 import { useAuth } from './auth/AuthContext';
@@ -7,6 +7,7 @@ import BrandMark from './components/BrandMark';
 import { useRouteFocus } from './components/feedback';
 import { Icon } from './components/icons';
 import MochiBuddy from './components/MochiBuddy';
+import { installArtMotion } from './components/artMotion';
 import { Disclaimer, Loading } from './components/ui';
 import { DEMO_ENABLED } from './demo/DemoContext';
 import DemoStart from './demo/DemoStart';
@@ -21,6 +22,7 @@ import QrEntry from './pages/QrEntry';
 import Reconsent from './pages/Reconsent';
 import Signup from './pages/Signup';
 import Support from './pages/Support';
+import Facilities from './pages/facilities/Facilities';
 import Terms from './pages/Terms';
 import { useMotionOn } from './motion';
 import { NativeBridge } from './native';
@@ -39,16 +41,44 @@ import TalkPage from './talk/TalkPage';
 import DuoDemo, { DuoEnter } from './demo/DuoDemo';
 
 /** 약관 다시 동의를 받는 동안에도 열 수 있는 화면(바뀐 내용 읽기, 도움받기, 내 데이터 내려받기·탈퇴). */
-const OPEN_DURING_RECONSENT = ['/terms', '/privacy', '/support', '/account'];
+const OPEN_DURING_RECONSENT = ['/terms', '/privacy', '/support', '/support/facilities', '/account'];
 
 /** 돌아다니는 모찌를 두지 않는 화면: 촬영·실시간 카메라(영상과 버튼을 가리지 않게). */
 const NO_BUDDY = /\/(record|observe|talk)$|^\/demo\/duo/;
+
+/**
+ * 화면 전환: 주소가 바뀌면 새 화면이 살짝 밀려 들어온다(앞으로 가기는 오른쪽에서, 뒤로 가기는 왼쪽에서).
+ * 화면을 다시 만들지 않고 <main>의 CSS 애니메이션만 다시 튼다(입력 중인 값·스크롤이 그대로).
+ * View Transitions API는 쓰지 않았다: BrowserRouter는 화면이 바뀌기 전에 끼어들 자리가 없어서다(보고서 T-019).
+ * '움직이는 캐릭터'가 꺼져 있으면 CSS가 아무것도 하지 않는다(즉시 바뀜).
+ */
+function useRouteTransition() {
+  const { pathname } = useLocation();
+  const type = useNavigationType();
+  const ref = useRef<HTMLElement>(null);
+  const first = useRef(true);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (first.current || !el) {
+      first.current = false;
+      return;
+    }
+    el.dataset.dir = type === 'POP' ? 'back' : 'forward';
+    el.classList.remove('route-in');
+    void el.offsetWidth; // 같은 이름을 다시 달아도 처음부터 다시 돌게
+    el.classList.add('route-in');
+  }, [pathname, type]);
+  return ref;
+}
 
 function Layout() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const motionOn = useMotionOn();
   useRouteFocus();
+  const mainRef = useRouteTransition();
+  // 코칭 모찌 그림: 화면에 보이는 동안만 움직이고, 들어올 때 한 번 톡(components/artMotion.ts).
+  useEffect(() => installArtMotion(), []);
   const home = user ? (user.role === 'PARENT' ? '/p' : '/t') : '/';
   const pending = user?.pendingConsents ?? [];
   const blocked = pending.length > 0 && !OPEN_DURING_RECONSENT.includes(pathname);
@@ -86,7 +116,7 @@ function Layout() {
           </Link>
         )}
       </header>
-      <main>
+      <main ref={mainRef} onAnimationEnd={(e) => e.target === e.currentTarget && e.currentTarget.classList.remove('route-in')}>
         <ScreenErrorBoundary resetKey={pathname}>{blocked ? <Reconsent pending={pending} /> : <Outlet />}</ScreenErrorBoundary>
       </main>
       <Disclaimer />
@@ -128,6 +158,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/support/facilities" element={<Facilities />} />
         <Route path="/qr" element={<QrEntry />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />

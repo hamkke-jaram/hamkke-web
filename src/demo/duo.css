@@ -89,6 +89,11 @@
   margin: 0;
 }
 
+/* '아이 홈'이 두 줄로 꺾이지 않게 */
+.duo-tabs button {
+  white-space: nowrap;
+}
+
 .duo-phone {
   width: 390px;
   height: min(820px, calc(100dvh - 150px));

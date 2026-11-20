@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Card, MetricFocus } from '../api/types';
-import { ART_BY_POSE, KNOWN_CODES, POSES, poseFor, poseSrc } from './coachingArt';
+import { ART_BY_POSE, KNOWN_CODES, POSES, artMotionFor, poseFor, poseSrc } from './coachingArt';
 import { CoachingCardView } from './ui';
 
 // public/art 에 실제로 있는 그림 파일(불러오지는 않고 이름만 본다).
@@ -94,5 +94,23 @@ describe('코칭 카드 화면', () => {
     expect(html).toContain('data-demo="coach-tried"');
     expect(html).toContain('data-demo="coach-evidence"');
     expect(html).toContain('src="/art/mochi-blocks.webp"');
+  });
+
+  it('그림 움직임(artMotionFor): 모든 포즈에 이름이 있고, 같은 그림은 같은 움직임이다', () => {
+    const byArt = new Map<string, string>();
+    for (const pose of POSES) {
+      const cls = artMotionFor(pose);
+      expect(cls).toMatch(/^art-motion art-(hug|cuddle|ball|stack|wave)$/);
+      const art = ART_BY_POSE[pose];
+      if (byArt.has(art)) expect(cls).toBe(byArt.get(art));
+      byArt.set(art, cls);
+    }
+    expect(artMotionFor('ball-wait')).toBe('art-motion art-ball');
+    expect(artMotionFor('breathe')).toBe('art-motion art-hug'); // mochi-hug: 큰 모찌가 작은 모찌를 안은 그림
+  });
+
+  it('코칭 카드 그림에 움직임 이름이 붙는다', () => {
+    const html = renderToStaticMarkup(<CoachingCardView card={card({ code: 'RS-A-01' })} />);
+    expect(html).toContain('class="art-motion art-ball"');
   });
 });

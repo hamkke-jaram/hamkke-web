@@ -5,6 +5,7 @@ import ObservationList from '../../ai/ObservationList';
 import { ApiError, api } from '../../api/client';
 import type { Delivery, Goal, GoalStatus, Observation, SharedItem, SharedSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import { buddy } from '../../components/buddyBus';
 import { BackLink, DangerAction, Field, TextAreaField, refocus, useToast } from '../../components/feedback';
 import { usePagedList } from '../../components/paging';
 import {
@@ -220,6 +221,7 @@ export default function TeacherChild() {
       setGoalTitle('');
       setGoalDesc('');
       toast('목표를 추가했어요.');
+      buddy.emit('cheer');
       goals.reload();
     } catch (err) {
       setGoalFormError(err);
@@ -283,6 +285,7 @@ export default function TeacherChild() {
       goals.setData((cur) => (cur ? cur.map((x) => (x.id === g.id ? { ...x, ...saved } : x)) : cur));
       setEdit(null);
       toast('목표를 고쳤어요.');
+      buddy.emit('cheer');
       goals.reload();
     } catch (err) {
       const field = err instanceof ApiError ? err.fieldErrors[0] : undefined;
@@ -327,6 +330,7 @@ export default function TeacherChild() {
       // 같은 날 메모를 이어 쓰기 쉽도록 날짜는 그대로 둔다.
       setNote('');
       toast('메모를 남겼어요.');
+      buddy.emit('cheer');
       notes.reload();
     } catch (err) {
       setNoteFormError(err);

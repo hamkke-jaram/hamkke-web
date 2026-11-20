@@ -11,7 +11,7 @@ import './duo.css';
 /*
  * /demo/duo — 보호자 화면과 선생님 화면을 나란히 띄워 둘이 주고받는 모습을 한 화면에 담는다(시연 영상용, 개발·시연 빌드에서만).
  * - '시연 준비'가 시연 보호자·아이(콩이)·지난 기록·시연 선생님을 만들고 연결한다(features/session.ts prepare('linked')).
- * - 두 휴대폰은 서로 다른 주소(localhost · 127.0.0.1)로 연다. 브라우저 저장소가 주소마다 따로라 한 화면에 두 계정이 함께 로그인된다.
+ * - 두 휴대폰은 서로 다른 주소(localhost · teacher.localhost)로 연다. 브라우저 저장소가 주소마다 따로라 한 화면에 두 계정이 함께 로그인된다.
  *   계정 토큰은 주소의 # 뒤(서버로 가지 않는다)로 넘기고, 받은 화면(/demo/duo/enter)이 곧바로 지운다.
  * - 한쪽에서 보낸 이야기는 몇 초 안에 다른 쪽에 나타나고(talk/talk.ts), 아이 홈·선생님 화면의 배지가 바로 늘어난다.
  */
@@ -34,10 +34,15 @@ const PAGES: Record<Side, Pane[]> = {
   ],
 };
 
-/** 두 휴대폰에 쓸 서로 다른 주소. 같은 컴퓨터의 개발 서버를 이름만 달리 부른다. */
+/**
+ * 두 휴대폰에 쓸 서로 다른 주소. 같은 컴퓨터의 개발 서버를 이름만 달리 부른다.
+ * 선생님 쪽은 `teacher.localhost`: 브라우저(크롬·엣지·파이어폭스)가 *.localhost를 이 컴퓨터로 풀고, 개발 서버(vite)도 기본으로 받는다.
+ * 127.0.0.1을 쓰지 않는 까닭: 윈도우에서 `npm run dev`의 vite는 IPv6 [::1]에만 열려 127.0.0.1(IPv4)은 연결이 거부된다.
+ * *.localhost는 [::1]·127.0.0.1 어느 쪽으로 열려 있어도 닿는다. 와이파이(LAN)에는 열지 않는다.
+ */
 export function duoOrigins(loc: { protocol: string; port: string }) {
   const port = loc.port ? `:${loc.port}` : '';
-  return { PARENT: `${loc.protocol}//localhost${port}`, TEACHER: `${loc.protocol}//127.0.0.1${port}` };
+  return { PARENT: `${loc.protocol}//localhost${port}`, TEACHER: `${loc.protocol}//teacher.localhost${port}` };
 }
 
 export function enterUrl(origin: string, tokens: { accessToken: string; refreshToken: string }, to: string, nonce: number) {

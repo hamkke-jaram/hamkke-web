@@ -5,6 +5,7 @@ import { ApiError, api, errorMessage } from '../../api/client';
 import type { TeacherChild } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import EmptyState from '../../components/EmptyState';
+import { buddy } from '../../components/buddyBus';
 import { Field, refocus, useToast } from '../../components/feedback';
 import { ErrorText, Loading, Section, formatAge, formatDate, useLoad } from '../../components/ui';
 
@@ -93,6 +94,7 @@ export default function TeacherHome() {
     try {
       const c = await api<TeacherChild>('POST', '/teacher/links', { code });
       toast(`연결했어요. ${c.nickname} 화면이에요.`);
+      buddy.emit('wave');
       nav(`/t/children/${c.id}`);
     } catch (err) {
       // 인터넷 연결·서버·시도 횟수 문제는 코드가 틀린 게 아니므로 칸을 오류로 표시하지 않는다.

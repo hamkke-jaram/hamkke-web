@@ -1,4 +1,5 @@
 import { formatDuration } from '../../components/ui';
+import { useCountUp } from './parentMotion';
 import { WEEKDAYS, shortDate, type ThisWeek } from './week';
 
 /**
@@ -8,6 +9,9 @@ import { WEEKDAYS, shortDate, type ThisWeek } from './week';
  */
 export default function WeekCard({ week }: { week: ThisWeek }) {
   const max = Math.max(...week.days, 0);
+  // 숫자는 0에서 올라가며 나타난다(꾸밈, 움직임이 꺼져 있으면 처음부터 최종 값). 읽기 프로그램에는 최종 값만 읽힌다.
+  const shownSec = useCountUp(week.totalSeconds);
+  const shownCount = useCountUp(week.count, 500);
   const spoken = week.days.map((sec, i) => `${WEEKDAYS[i]}요일 ${sec > 0 ? formatDuration(sec) : '없음'}`).join(', ');
   return (
     <div className="wk">
@@ -17,11 +21,17 @@ export default function WeekCard({ week }: { week: ThisWeek }) {
       <dl className="wk-stats">
         <div>
           <dt>함께한 시간</dt>
-          <dd>{formatDuration(week.totalSeconds)}</dd>
+          <dd>
+            <span aria-hidden="true">{formatDuration(shownSec)}</span>
+            <span className="sr-only">{formatDuration(week.totalSeconds)}</span>
+          </dd>
         </div>
         <div>
           <dt>기록한 영상</dt>
-          <dd>{week.count}개</dd>
+          <dd>
+            <span aria-hidden="true">{shownCount}개</span>
+            <span className="sr-only">{week.count}개</span>
+          </dd>
         </div>
       </dl>
       <div className="wk-bars" role="img" aria-label={`이번 주 요일별 함께한 시간. ${spoken}`}>

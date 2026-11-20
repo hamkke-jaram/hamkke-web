@@ -49,7 +49,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // 개발 서버가 API로 넘길 때 브라우저의 Origin을 뺀다. API(local)는 http://localhost:5173만 허용하므로,
-      // 그대로 넘기면 와이파이 주소(휴대폰·QR)나 127.0.0.1(보호자·선생님 함께 보기)에서 쓰는 요청(POST 등)이 403이 된다.
+      // 그대로 넘기면 와이파이 주소(휴대폰·QR)나 teacher.localhost(보호자·선생님 함께 보기)에서 쓰는 요청(POST 등)이 403이 된다.
+      // teacher.localhost: vite는 *.localhost를 기본으로 받으므로 allowedHosts에 따로 넣지 않는다.
       // 개발 서버를 거치는 요청은 같은 컴퓨터의 API로만 가므로 Origin 검사가 필요 없다.
       '/api': {
         target: 'http://localhost:8080',

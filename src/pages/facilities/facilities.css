@@ -1,0 +1,235 @@
+/*
+ * 지역 기관 찾기(pages/facilities/Facilities.tsx). styles.css의 색·움직임 변수만 쓴다(밝게·어둡게·고대비).
+ */
+
+.fac-notice {
+  margin: 4px 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius, 15px);
+  background: var(--surface-2);
+  border: 1px solid var(--edge, transparent);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.fac-notice p {
+  margin: 0;
+}
+
+.fac-notice p + p {
+  margin-top: 4px;
+  color: var(--ink-2);
+}
+
+.fac-filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.fac-field {
+  display: grid;
+  gap: 4px;
+}
+
+.fac-field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.fac-field select,
+.fac-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius-field, 23px);
+  border: 1px solid var(--control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.fac-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fac-search input {
+  flex: 1;
+}
+
+.fac-search .btn {
+  flex: none;
+  min-height: 48px;
+}
+
+/* 유형 칩: 넘치면 옆으로 밀어 본다(360px에서도 한 줄). */
+.fac-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--gutter, 16px)) 6px;
+  padding: 2px var(--gutter, 16px) 6px;
+  scrollbar-width: none;
+}
+
+.fac-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.fac-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fac-chip[aria-pressed='true'] {
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-color: var(--cta-line);
+}
+
+.fac-chip-n {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.fac-chip[aria-pressed='true'] .fac-chip-n {
+  background: rgb(255 255 255 / 0.55);
+  color: var(--cta-ink);
+}
+
+.fac-count {
+  min-height: 1.5em;
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+
+.fac-list {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+/* 조건을 바꿔 다시 불러오는 동안은 옛 목록을 옅게 둔다(자리가 흔들리지 않게). */
+.fac-list.is-loading {
+  opacity: 0.55;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.fac-card {
+  padding: 14px 16px;
+  border-radius: var(--radius, 15px);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.fac-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fac-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fac-badge.confirmed {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.fac-name {
+  margin: 8px 0 2px;
+  font-size: 18px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.fac-addr {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.fac-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fac-tags li {
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+
+.fac-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fac-actions .btn {
+  flex: 1 1 auto;
+}
+
+.fac-source {
+  margin: 8px 0 0;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.fac-foot {
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+/* 아직 자료가 없는 유형(0곳): 흐리게, 누를 수 없음(고른 채로 0이 된 칩은 그대로 진하게). */
+.fac-chip.is-empty[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fac-collecting {
+  margin: -2px 0 6px;
+  font-size: 13px;
+}

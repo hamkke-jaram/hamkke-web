@@ -13,7 +13,7 @@ export default function NotFound() {
   const home = useHome();
   return (
     <EmptyState
-      mascot="friend"
+      mascot="dome"
       title="찾으시는 화면이 없어요"
       titleAs="h1"
       action={

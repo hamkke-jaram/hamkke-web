@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BuddyFace, EYE_RIG } from './BuddyFace';
 
 /**
  * 모찌 캐릭터 그림(public/characters/<이름>.webp, 투명 바탕). 모두 꾸밈이라 alt는 비우고, 뜻은 곁의 글이 전한다.
@@ -13,6 +14,11 @@ export interface MascotProps {
   /** 그림 너비(px). 기본 120. 높이는 그림 비율을 따르고, 좁은 자리에서는 너비에 맞춰 줄어든다. */
   size?: number;
   className?: string;
+  /**
+   * 살아 있는 듯: 화면에 통통 튀어 들어오고(등장), 눈을 깜빡인다(눈 자리를 아는 dome·teacher만).
+   * '움직이는 캐릭터'가 꺼져 있으면 그냥 그림이다(styles.css '움직임 체계').
+   */
+  live?: boolean;
 }
 
 /**
@@ -35,12 +41,13 @@ export function mascotSrc(name: MascotName): string {
 const failed = new Set<MascotName>();
 
 /** 그림을 못 불러오면 자리째 빠진다(깨진 그림 표시 없음). */
-export default function Mascot({ name, size = 120, className }: MascotProps) {
+export default function Mascot({ name, size = 120, className, live }: MascotProps) {
   const [, rerender] = useState(0);
   if (failed.has(name)) return null;
-  return (
+  const cls = ['mascot', live && 'mascot-live', className].filter(Boolean).join(' ');
+  const img = (
     <img
-      className={className ? `mascot ${className}` : 'mascot'}
+      className={live ? 'mascot-img' : cls}
       src={mascotSrc(name)}
       alt=""
       width={size}
@@ -51,5 +58,13 @@ export default function Mascot({ name, size = 120, className }: MascotProps) {
         rerender((n) => n + 1);
       }}
     />
+  );
+  if (!live) return img;
+  // 숨쉬기·등장은 감싼 칸이 맡아 눈 덮개가 그림과 함께 움직인다.
+  return (
+    <span className={cls} style={{ width: size }} aria-hidden="true">
+      {img}
+      {EYE_RIG[name] && <BuddyFace name={name} eyes="closed" className="mascot-blink" />}
+    </span>
   );
 }

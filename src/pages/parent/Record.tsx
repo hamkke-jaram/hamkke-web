@@ -19,12 +19,14 @@ import {
   type Stage,
 } from '@hamkke-jaram/analysis';
 import { runAudioInWorker } from '../../analysis/runAudioInWorker';
+import Mascot from '../../components/Mascot';
 import SubHead from '../../components/SubHead';
 import TriableCard from '../../components/TriableCard';
 import { refocus } from '../../components/feedback';
 import { ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
 import { firstSentence } from './coachText';
 import { ChevronIcon } from './icons';
+import { useCueOnce } from './parentMotion';
 import './parent.css';
 
 type Phase =
@@ -120,6 +122,8 @@ export default function Record() {
   /** 결과 화면에서 AI 서버가 준비되지 않아 관찰 기록을 만들지 않았다. */
   const [aiSkipped, setAiSkipped] = useState(false);
   const ai = useObservationRun(id);
+  /** 분석을 시작한 횟수. 모찌에게 '생각' 신호를 분석 한 번에 한 번만 보내는 데 쓴다. */
+  const runSeq = useRef(0);
   const { start: startAi, reset: resetAi } = ai;
   /** 방금 분석한 영상(메모리에만 둔다). 같은 영상에서 장면 사진을 뽑을 때만 쓴다. */
   const fileRef = useRef<File | null>(null);
@@ -172,6 +176,13 @@ export default function Record() {
     void tryObservation(savedRecordedAt);
   }, [savedRecordedAt, aiAgreed, tryObservation]);
 
+  // 돌아다니는 모찌(꾸밈): 분석을 시작하면 생각하는 모습, 기록이 저장되면 손을 흔들어 고마움을 전한다.
+  // 저장이라는 보호자의 일에 반응할 뿐, 기록 숫자나 추이(카드·상담 안내)에 따라 다르게 반응하지 않는다.
+  // 'celebrate'(폴짝·하트)가 아니라 'wave'인 까닭: 결과 화면에는 상담·긴급 연락처 안내가 함께 나올 수 있어서,
+  // 어떤 결과에도 어울리는 차분한 반응 하나로 똑같이 한다.
+  useCueOnce('think', phase.kind === 'analyzing' ? runSeq.current : null);
+  useCueOnce('wave', phase.kind === 'result' ? phase.data.record.id : null);
+
   // 관찰 기록이 저장되면 영상을 더 쥐고 있을 이유가 없다.
   const aiDone = ai.state.kind === 'done' || ai.state.kind === 'saved';
   useEffect(() => {
@@ -212,6 +223,7 @@ export default function Record() {
     abortRef.current = ctrl;
     // 멈춘 분석(또는 새 분석으로 바뀐 분석)은 진행 상황도 결과도 화면에 반영하지 않고, 서버로도 보내지 않는다.
     const stopped = () => ctrl.signal.aborted || abortRef.current !== ctrl;
+    runSeq.current += 1;
     setPhase({ kind: 'analyzing', stage: 'loading-model', ratio: 0 });
     try {
       const metrics = await analyzeVideo(
@@ -366,6 +378,14 @@ export default function Record() {
           {label}
         </p>
         <section className="rec-progress">
+          {/* 진행 막대 위를 따라 걷는 작은 모찌(꾸밈). 움직임이 꺼져 있으면 제자리에 서 있다(parent-motion.css). */}
+          <div className="rec-walk" aria-hidden="true" style={{ ['--p' as string]: p }}>
+            <span className="rec-walk-mover">
+              <span className="rec-walk-bob">
+                <Mascot name="dome" size={44} />
+              </span>
+            </span>
+          </div>
           <div
             className="progress"
             role="progressbar"
@@ -386,7 +406,15 @@ export default function Record() {
               const state = i < nowIndex ? 'done' : i === nowIndex ? 'now' : undefined;
               return (
                 <li key={s.stage} className={state} aria-current={state === 'now' ? 'step' : undefined}>
-                  <span>{s.label}</span>
+                  <span>
+                    {/* 끝난 단계에는 ✓가 톡 나타난다(꾸밈, 뜻은 '끝났어요'가 전한다). */}
+                    {state === 'done' && (
+                      <span className="stage-check" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
+                    {s.label}
+                  </span>
                   <span>{state === 'done' ? '끝났어요' : state === 'now' ? '살펴보는 중' : ''}</span>
                 </li>
               );
@@ -437,7 +465,8 @@ export default function Record() {
   const { record, coaching } = phase.data;
   const msg = TREND_MESSAGE[record.changeTrend];
   return (
-    <div className="rec-page">
+    // rec-result: 제목 → 숫자 → 안내 → 코칭 순서대로 떠오른다(parent-motion.css, 움직임이 켜져 있을 때만).
+    <div className="rec-page rec-result">
       <SubHead title="분석 결과" fallback={`/p/children/${id}`} />
       <h2 ref={headingRef} tabIndex={-1} className="rec-result-title">
         {msg.title}

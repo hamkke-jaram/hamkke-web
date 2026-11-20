@@ -4,7 +4,9 @@ import { api } from '../api/client';
 import type { Child, Observation, TeacherChild } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import Mascot from '../components/Mascot';
+import MiniBuddy from '../components/MiniBuddy';
 import SubHead from '../components/SubHead';
+import { buddy } from '../components/buddyBus';
 import { useToast } from '../components/feedback';
 import { Disclaimer, ErrorText, Loading, formatAge, useLoad } from '../components/ui';
 import { haptic } from '../native';
@@ -75,9 +77,21 @@ export default function TalkPage() {
   const [replyTo, setReplyTo] = useState<Observation | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<unknown>(null);
+  /** 보내는 중인 이야기(서버가 받기 전까지 흐릿한 말풍선으로 먼저 보인다)와, 방금 보낸 이야기 id('보냄' 표시). */
+  const [pending, setPending] = useState<string | null>(null);
+  const [sentId, setSentId] = useState<number | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const seen = useRef<Set<number> | null>(null);
+  /** 화면을 열 때 이미 있던 이야기. 그 뒤에 도착한 상대 이야기만 '톡' 하고 나타난다. */
+  const initialIds = useRef<Set<number> | null>(null);
+  if (initialIds.current === null && talk.messages) initialIds.current = new Set(talk.messages.map((m) => m.id));
+
+  useEffect(() => {
+    if (sentId === null) return;
+    const t = window.setTimeout(() => setSentId(null), 2500);
+    return () => window.clearTimeout(t);
+  }, [sentId]);
 
   // 이 화면에서는 면책 문구를 이야기 흐름 맨 위에 두고, 아래 공통 문구는 감춘다(입력칸이 늘 맨 아래에 오게).
   useEffect(() => {
@@ -97,7 +111,10 @@ export default function TalkPage() {
     const incoming = msgs.filter((m) => !known.has(m.id) && !m.mine);
     msgs.forEach((m) => known.add(m.id));
     seen.current = known;
-    if (!first && incoming.length) haptic('light');
+    if (!first && incoming.length) {
+      haptic('light');
+      buddy.emit('wave'); // 상대가 보냈다는 것에만 반응한다(내용과 상관없이)
+    }
     const bottomGap = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
     if (first || bottomGap < 260 || msgs.some((m) => m.mine && !known.has(m.id))) {
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: first ? 'auto' : 'smooth' });
@@ -110,15 +127,23 @@ export default function TalkPage() {
     if (!content || sending) return;
     setSending(true);
     setSendError(null);
+    // 보내는 동안은 입력칸을 비우고 흐릿한 말풍선으로 먼저 보여 준다. 못 보내면 글을 입력칸에 되돌린다.
+    setPending(content);
+    setText('');
+    requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }));
     try {
-      await talk.send(content, replyTo?.id ?? null);
-      setText('');
+      const m = await talk.send(content, replyTo?.id ?? null);
+      setPending(null);
+      setSentId(m.id);
       setReplyTo(null);
       haptic('success');
+      buddy.emit('cheer');
       requestAnimationFrame(() =>
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }),
       );
     } catch (err) {
+      setPending(null);
+      setText((t) => t || content);
       setSendError(err);
     } finally {
       setSending(false);
@@ -177,7 +202,7 @@ export default function TalkPage() {
       <div className="talk-list" ref={listRef} aria-live="polite" aria-relevant="additions">
         {timeline.length === 0 && talk.messages !== null && (
           <div className="talk-empty">
-            <Mascot name="friend" size={120} />
+            <Mascot name={isParent ? 'dome' : 'teacher'} size={120} live />
             <p>
               아직 주고받은 이야기가 없어요.
               <br />
@@ -194,11 +219,26 @@ export default function TalkPage() {
               {item.kind === 'note' ? (
                 <NoteCard note={item.note} onReply={() => startReply(item.note)} />
               ) : (
-                <Bubble message={item.message} quoted={item.message.observationId ? notesById.get(item.message.observationId) : undefined} prev={prev} />
+                <Bubble
+                  message={item.message}
+                  quoted={item.message.observationId ? notesById.get(item.message.observationId) : undefined}
+                  prev={prev}
+                  sent={item.message.id === sentId}
+                  arrived={!item.message.mine && initialIds.current !== null && !initialIds.current.has(item.message.id)}
+                />
               )}
             </div>
           );
         })}
+        {pending !== null && (
+          // 낭독은 보낸 뒤 실제 이야기가 붙을 때 한 번만(보내는 중 말풍선은 눈으로만).
+          <div className="talk-row mine pending" aria-hidden="true">
+            <div className="talk-bubble">
+              <span className="talk-text">{pending}</span>
+            </div>
+            <span className="talk-status">보내는 중…</span>
+          </div>
+        )}
       </div>
 
       <form className="talk-compose" onSubmit={submit} data-demo="talk-compose">
@@ -212,6 +252,9 @@ export default function TalkPage() {
             </button>
           </div>
         )}
+        <div className="talk-quick-row">
+        {/* 입력칸 곁에 앉은 작은 모찌: 보내면 두 번 뛰고(cheer), 상대 이야기가 오면 몸을 흔든다(wave). */}
+        <MiniBuddy name={isParent ? 'dome' : 'teacher'} size={32} className="talk-mochi" />
         <div className="talk-quick" role="group" aria-label="빠른 답">
           {QUICK[role].map((q) => (
             <button
@@ -227,6 +270,7 @@ export default function TalkPage() {
               {q}
             </button>
           ))}
+        </div>
         </div>
         <div className="talk-input-row">
           <label htmlFor="talk-input" className="sr-only">
@@ -288,11 +332,25 @@ function NoteCard({ note, onReply }: { note: Observation; onReply: () => void })
   );
 }
 
-function Bubble({ message: m, quoted, prev }: { message: TalkMessage; quoted?: Observation; prev?: TimelineItem }) {
+function Bubble({
+  message: m,
+  quoted,
+  prev,
+  sent,
+  arrived,
+}: {
+  message: TalkMessage;
+  quoted?: Observation;
+  prev?: TimelineItem;
+  /** 방금 보낸 것: '보내는 중' 말풍선이 그대로 이것이 되므로 다시 들어오지 않고 '보냄'만 잠깐 보인다. */
+  sent?: boolean;
+  /** 화면을 연 뒤 도착한 상대 이야기: 톡 하고 나타난다. */
+  arrived?: boolean;
+}) {
   // 같은 사람이 이어 보낸 것은 이름을 한 번만.
   const sameAuthor = prev?.kind === 'message' && prev.message.mine === m.mine && prev.message.authorName === m.authorName;
   return (
-    <div className={`talk-row ${m.mine ? 'mine' : 'theirs'}`}>
+    <div className={`talk-row ${m.mine ? 'mine' : 'theirs'}${sent ? ' sent' : ''}${arrived ? ' arrived' : ''}`}>
       {!m.mine && !sameAuthor && (
         <div className="talk-author">
           {m.authorName}
@@ -309,6 +367,11 @@ function Bubble({ message: m, quoted, prev }: { message: TalkMessage; quoted?: O
         <span className="talk-text">{m.content}</span>
       </div>
       <time className="talk-time" dateTime={m.createdAt}>
+        {sent && (
+          <span className="talk-status sent" aria-hidden="true">
+            보냄 ✓{' '}
+          </span>
+        )}
         {timeLabel(m.createdAt)}
       </time>
     </div>

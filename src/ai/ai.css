@@ -250,3 +250,63 @@
     animation: none;
   }
 }
+
+/*
+ * 움직임(T-020). :root[data-motion='on']일 때만: 화면 설정 '움직이는 캐릭터'가 꺼져 있거나 기기의 '동작 줄이기'를 따라
+ * 꺼져 있으면 움직이지 않고 처음부터 마지막 모습이다. transform·opacity만 바꾼다.
+ * 관찰 기록 내용(태그·문장)에 따라 다르게 움직이지 않는다 — 모든 기록이 똑같이 떠오른다.
+ */
+@keyframes ai-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ai-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 관찰 기록 한 건·목록의 줄, 동의 내용 펼침, 확인 상자가 부드럽게 떠오른다. */
+:root[data-motion='on'] :is(.card.ai-obs, .ai-obs-row, .ai-facts, .ai-confirm) {
+  animation: ai-rise 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+/* 목록의 줄은 앞의 5줄까지 차례로. */
+:root[data-motion='on'] .ai-obs-row:nth-child(2) {
+  animation-delay: 60ms;
+}
+:root[data-motion='on'] .ai-obs-row:nth-child(3) {
+  animation-delay: 120ms;
+}
+:root[data-motion='on'] .ai-obs-row:nth-child(4) {
+  animation-delay: 180ms;
+}
+:root[data-motion='on'] .ai-obs-row:nth-child(n + 5) {
+  animation-delay: 240ms;
+}
+
+/* 태그 칩은 기록이 나온 뒤 톡톡 나타난다(모든 태그가 같은 모양, 같은 차례). */
+:root[data-motion='on'] .ai-chips > li {
+  animation: ai-pop 0.3s ease-out backwards;
+  animation-delay: 180ms;
+}
+
+/* 동의를 켜면 '켜져 있어요' 표시가 한 번 톡 나타난다. */
+:root[data-motion='on'] .ai-on-chip {
+  animation: ai-pop 0.36s ease-out backwards;
+}
