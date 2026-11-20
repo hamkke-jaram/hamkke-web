@@ -1,6 +1,9 @@
 import type { Card } from '../api/types';
 
-/** 코칭 카드에 곁들이는 병아리 그림(public/coaching/<포즈>.webp, 384×384). 꾸밈이라 뜻은 카드 제목이 전한다. */
+/**
+ * 코칭 카드에 곁들이는 모찌 그림(public/art/mochi-*.webp, Figma '해커톤_발자국'의 코칭 모찌). 꾸밈이라 뜻은 카드 제목이 전한다.
+ * 포즈(놀이 종류)는 8가지, 그림은 6장이라 비슷한 놀이는 같은 그림을 쓴다.
+ */
 export const POSES = ['ball-wait', 'blocks', 'book', 'clap-sing', 'comfort', 'listen', 'breathe', 'laugh'] as const;
 export type Pose = (typeof POSES)[number];
 
@@ -50,8 +53,20 @@ export function poseFor(card: Pick<Card, 'code' | 'metricFocus'>): Pose {
   return lookup(POSE_BY_CODE, card.code?.trim().toUpperCase()) ?? lookup(POSE_BY_FOCUS, card.metricFocus) ?? FALLBACK;
 }
 
+/** 포즈 → 그림 파일(public/art/<이름>.webp). */
+export const ART_BY_POSE: Record<Pose, string> = {
+  'ball-wait': 'mochi-ball', // 보랏빛 공을 굴리고 기다리기
+  blocks: 'mochi-blocks', // 블록 쌓기
+  book: 'mochi-tower', // 함께 하나씩 쌓아 올리기(차례 주고받기)
+  'clap-sing': 'mochi-tower',
+  comfort: 'mochi-bunny', // 꼭 안아 주기
+  breathe: 'mochi-hug', // 곁에 머물며 차분히
+  listen: 'mochi-wave', // 작은 표현에 답하기
+  laugh: 'mochi-wave',
+};
+
 export function poseSrc(pose: Pose): string {
-  return `${import.meta.env.BASE_URL}coaching/${pose}.webp`;
+  return `${import.meta.env.BASE_URL}art/${ART_BY_POSE[pose]}.webp`;
 }
 
 /** 테스트용: 코드 표에 적힌 코드들. */

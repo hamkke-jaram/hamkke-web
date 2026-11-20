@@ -104,7 +104,7 @@ export const DEMO_STEPS: DemoStep[] = [
     key: 'wrap',
     role: 'PARENT',
     path: '/p/children/:id',
-    title: '정리 — 함께자람이 지키는 것',
+    title: '정리 — 시나브로가 지키는 것',
     body: [
       '영상 원본과 소리는 기기 밖으로 나가지 않아요. 보호자가 AI 관찰 기록을 켠 아이만 장면 사진 최대 6장을 AI 서버로 보내고, 살펴본 직후 지워요.',
       '서버에는 숫자, AI와 선생님이 적은 글, 계정 정보만 있어요. 영상과 사진은 없어요.',

@@ -1,6 +1,6 @@
 import { api } from '../api/client';
 import type { SupportResource } from '../api/types';
-import { BackLink } from '../components/feedback';
+import SubHead from '../components/SubHead';
 import { SupportList, useLoad } from '../components/ui';
 import { FALLBACK_SUPPORT_RESOURCES, withPolice112 } from '../support/fallback';
 
@@ -14,13 +14,14 @@ export default function Support() {
   const resources = withPolice112(fromServer ? data : FALLBACK_SUPPORT_RESOURCES);
   return (
     <div>
-      <BackLink />
-      <h1>도움받을 수 있는 곳</h1>
-      <p className="lead">
-        아이를 돌보는 일은 혼자 감당하기 버거울 때가 있어요. 지치거나 마음이 쓰일 때 편하게 연락해 보세요.
-        함께자람은 상담을 대신하지 않고, 도움받을 수 있는 곳을 안내해 드려요.
+      {/* Figma 2판 '상담': 머리 '상담 · 기관 안내', 큰 제목, 한 단락, 기관마다 이름 · 설명 · 오른쪽 전화 버튼 */}
+      <SubHead title="상담 · 기관 안내" />
+      <h2 className="support-title">도움을 받을 수 있는 곳</h2>
+      <p className="support-lead">
+        혼자 감당하기 버거울 때 언제든 도움을 요청해도 괜찮아요. 지치거나 마음이 쓰일 때 편하게 연락해 보세요.
+        시나브로는 상담을 대신하지 않고, 도움받을 수 있는 곳을 안내해 드려요.
       </p>
-      <section className="card" aria-label="상담·기관 목록" aria-busy={loading} data-demo="support-list">
+      <section className="card support-card" aria-label="상담·기관 목록" aria-busy={loading} data-demo="support-list">
         <SupportList resources={resources} />
       </section>
       {!fromServer && !loading && error != null && (

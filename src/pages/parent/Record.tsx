@@ -19,11 +19,12 @@ import {
   type Stage,
 } from '@hamkke-jaram/analysis';
 import { runAudioInWorker } from '../../analysis/runAudioInWorker';
-import Mascot from '../../components/Mascot';
+import SubHead from '../../components/SubHead';
 import TriableCard from '../../components/TriableCard';
-import { BackLink, refocus } from '../../components/feedback';
+import { refocus } from '../../components/feedback';
 import { ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
-import { AlbumIcon, CameraIcon, InfoIcon } from './icons';
+import { firstSentence } from './coachText';
+import { ChevronIcon } from './icons';
 import './parent.css';
 
 type Phase =
@@ -258,22 +259,18 @@ export default function Record() {
 
   if (phase.kind === 'guide' || phase.kind === 'failed') {
     return (
-      <div>
-        <BackLink to={`/p/children/${id}`} label={nickname ?? '아이 홈'} />
+      <div className="rec-page">
+        <SubHead title="영상 기록하기" titleRef={headingRef} fallback={`/p/children/${id}`} />
         {fileInputs}
-        <h1 ref={headingRef} tabIndex={-1}>
-          함께 논 영상 기록하기
-        </h1>
-        {nickname && (
-          <p className="status-line" style={{ margin: '0 0 6px' }}>
-            기록할 아이: {nickname}
+        {/* Figma '기록하기': 포옹하는 두 모찌 → 큰 한 줄 → 부제 → 크림 단계 상자 → 두 버튼 → 작은 안내 */}
+        <div className="rec-hero">
+          <img src={`${import.meta.env.BASE_URL}art/mochi-hug.webp`} alt="" width={180} height={177} decoding="async" />
+          <h2 className="rec-hero-title">평소처럼 함께 놀아 주세요</h2>
+          <p className="rec-hero-sub">
+            휴대폰을 세워 두고 두 사람이 함께 나오게 해 주세요.
+            {nickname && <span className="rec-who"> 기록할 아이: {nickname}</span>}
           </p>
-        )}
-        <p className="lead" data-demo="record-lead">
-          {aiAgreed
-            ? '영상 원본과 소리는 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요. AI 관찰 기록이 켜져 있어서, 분석이 끝나면 같은 영상의 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 바로 지워요.'
-            : '영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.'}
-        </p>
+        </div>
         {aiNotice && (
           // 숫자 기록은 그대로 할 수 있다. AI 관찰 기록만 이번에는 만들지 않을 수 있다는 안내.
           <div className="notice" role="status" style={{ margin: '0 0 14px' }}>
@@ -305,31 +302,18 @@ export default function Record() {
             {phase.message}
           </p>
         )}
-        <section className="rec-guide" aria-labelledby="record-steps-title">
-          {/* 촬영 화면처럼 보이는 꾸밈 자리(시안 '영상 기록'). 실제 미리보기가 아니라서 화면 낭독기에는 읽히지 않는다.
-              촬영은 폰의 카메라 앱이 하고, 이 화면은 카메라를 켜지 않는다. */}
-          <div className="rec-frame" aria-hidden="true">
-            <span className="rec-frame-badge">
-              <CameraIcon size={18} />
-            </span>
-            <Mascot name="family" size={168} />
-          </div>
-          <h2 id="record-steps-title">이렇게 찍어 주세요</h2>
-          <ol className="steps">
-            <li>폰을 선반이나 거치대에 세워 두세요.</li>
-            <li>부모님과 아이 두 사람의 상반신이 함께 나오게 맞춰 주세요.</li>
-            <li>평소처럼 1~3분 놀아 주세요. 조용한 곳이면 소리를 더 잘 살펴볼 수 있어요.</li>
+        <section className="rec-steps" aria-labelledby="record-steps-title">
+          <h2 id="record-steps-title" className="sr-only">
+            이렇게 찍어 주세요
+          </h2>
+          <ol>
+            <li>휴대폰을 선반이나 거치대에 세워 두세요</li>
+            <li>조용하고 밝은 곳에서 1~3분 함께 놀아요</li>
+            <li>영상은 기기 안에서만 분석돼요</li>
           </ol>
         </section>
-        {/* 데이터 사용 안내는 시작 버튼보다 먼저 읽히게 둔다. */}
-        <p className="muted" style={{ margin: '0 0 14px' }}>
-          처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
-        </p>
         <div className="rec-actions">
-          <button type="button" className="rec-shutter" data-demo="record-camera" onClick={() => cameraRef.current?.click()}>
-            <span className="rec-shutter-dot" aria-hidden="true">
-              <CameraIcon size={30} />
-            </span>
+          <button type="button" className="btn block" data-demo="record-camera" onClick={() => cameraRef.current?.click()}>
             지금 촬영하기
           </button>
           <button
@@ -338,17 +322,15 @@ export default function Record() {
             data-demo="record-gallery"
             onClick={() => galleryRef.current?.click()}
           >
-            <AlbumIcon />
             앨범에서 영상 고르기
           </button>
         </div>
-        <p className="rec-note">
-          <InfoIcon size={18} />
-          <span>
-            {aiAgreed
-              ? '영상 원본과 소리는 기기에서 분석해요. 장면 사진만 AI 서버로 보내요.'
-              : '영상은 기기에서 분석해요.'}
-          </span>
+        {/* 무엇이 기기 밖으로 나가는지와 데이터 안내. 시연이 이 문장을 가리킨다(record-lead). */}
+        <p className="rec-note" data-demo="record-lead">
+          {aiAgreed
+            ? '영상 원본과 소리는 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요. AI 관찰 기록이 켜져 있어서, 분석이 끝나면 같은 영상의 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 바로 지워요.'
+            : '영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.'}{' '}
+          처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
         </p>
       </div>
     );
@@ -361,26 +343,28 @@ export default function Record() {
     // 'done'은 목록에 없으므로 모두 끝난 것으로 센다.
     const nowIndex = phase.stage === 'done' ? STAGE_STEPS.length : STAGE_STEPS.findIndex((s) => s.stage === phase.stage);
     return (
-      <div>
-        <h1 ref={headingRef} tabIndex={-1}>
-          살펴보는 중이에요
-        </h1>
-        <p className="lead">
-          {aiAgreed
-            ? '영상 원본과 소리는 이 폰 밖으로 나가지 않아요. 분석이 끝나면 장면 사진만 AI 서버로 보내요.'
-            : '영상은 이 폰 밖으로 나가지 않아요.'}
-        </p>
+      <div className="rec-page rec-analyzing">
+        {/* Figma '기록 분석 중': 포옹하는 두 모찌 + 돋보기 → 큰 한 줄 → 노란 진행 막대 → 분석 중단 */}
+        <div className="rec-hero">
+          <span className="rec-hero-art">
+            <img src={`${import.meta.env.BASE_URL}art/mochi-hug.webp`} alt="" width={180} height={177} decoding="async" />
+            <img className="rec-lens" src={`${import.meta.env.BASE_URL}art/magnifier.webp`} alt="" width={110} height={117} decoding="async" />
+          </span>
+          <h1 ref={headingRef} tabIndex={-1} className="rec-hero-title">
+            함께한 순간을 살펴보고 있어요
+          </h1>
+          <p className="rec-hero-sub">
+            앱을 닫지 않고 잠시만 기다려 주세요.{' '}
+            {aiAgreed
+              ? '영상 원본과 소리는 이 폰 밖으로 나가지 않아요. 분석이 끝나면 장면 사진만 AI 서버로 보내요.'
+              : '영상은 이 폰 밖으로 나가지 않아요.'}
+          </p>
+        </div>
         {/* 단계가 바뀔 때만 읽히게, 단계 이름만 담는다(퍼센트마다 읽지 않는다). */}
         <p className="sr-only" role="status">
           {label}
         </p>
-        <section className="card">
-          <div className="row between" style={{ marginBottom: 8 }}>
-            <strong>{label}</strong>
-            <span className="muted" aria-hidden="true">
-              {pct}%
-            </span>
-          </div>
+        <section className="rec-progress">
           <div
             className="progress"
             role="progressbar"
@@ -391,6 +375,10 @@ export default function Record() {
             aria-valuetext={`${label} ${pct}%`}
           >
             <div style={{ width: `${p * 100}%` }} />
+          </div>
+          <div className="rec-progress-meta">
+            <span>{label}</span>
+            <span aria-hidden="true">{pct}%</span>
           </div>
           <ol className="stage-list" data-demo="record-stages">
             {STAGE_STEPS.map((s, i) => {
@@ -404,11 +392,8 @@ export default function Record() {
             })}
           </ol>
         </section>
-        <p className="muted" style={{ margin: '0 0 14px' }}>
-          분석하는 동안 화면을 켜 두세요.
-        </p>
         <button type="button" className="btn secondary block" data-demo="record-stop" onClick={stop}>
-          멈추기
+          분석 중단
         </button>
       </div>
     );
@@ -451,15 +436,19 @@ export default function Record() {
   const { record, coaching } = phase.data;
   const msg = TREND_MESSAGE[record.changeTrend];
   return (
-    <div>
-      <h1 ref={headingRef} tabIndex={-1}>
+    <div className="rec-page">
+      <SubHead title="분석 결과" fallback={`/p/children/${id}`} />
+      <h2 ref={headingRef} tabIndex={-1} className="rec-result-title">
         {msg.title}
-      </h1>
-      {msg.body && <p className="lead">{msg.body}</p>}
+      </h2>
+      {msg.body && <p className="rec-hero-sub" style={{ textAlign: 'left' }}>{msg.body}</p>}
 
-      <section className="card" aria-labelledby="record-today-title" data-demo="record-result">
-        <h2 id="record-today-title">오늘의 기록</h2>
-        <div className="metrics">
+      {/* Figma '분석 결과': 크림 숫자 칸 셋 → 회색 안내 상자 → 보랏빛 오늘의 코칭 → 확인하고 홈으로 */}
+      <section aria-labelledby="record-today-title" data-demo="record-result">
+        <h3 id="record-today-title" className="sr-only">
+          오늘의 기록
+        </h3>
+        <div className="metrics rec-metrics">
           <div className="metric">
             <div className="label">함께한 시간</div>
             <div className="value">{formatDuration(record.jointPlaySeconds)}</div>
@@ -485,16 +474,25 @@ export default function Record() {
             </div>
           </div>
         </div>
-        <p className="muted" style={{ margin: '12px 0 0' }}>
-          숫자는 같은 집의 변화를 보기 위한 기록이에요. 다른 아이와 비교하지 않아요.
-        </p>
-        {/* DS 규칙: 주의 문구는 화면 하단과 함께 결과 화면의 숫자 곁에도 그대로 싣는다. */}
-        <p className="muted" style={{ margin: '8px 0 0' }}>
-          {policies?.disclaimer ?? FALLBACK_DISCLAIMER}
-        </p>
+        <div className="rec-gray-note">
+          <p>이 수치는 같은 아이의 기록 변화를 살펴보기 위한 참고 정보예요. 다른 아이와 비교하지 않아요.</p>
+          {/* DS 규칙: 주의 문구는 화면 하단과 함께 결과 화면의 숫자 곁에도 그대로 싣는다. */}
+          <p>{policies?.disclaimer ?? FALLBACK_DISCLAIMER}</p>
+        </div>
       </section>
 
-      {coaching.delivery && <TriableCard childId={id} delivery={coaching.delivery} />}
+      {coaching.delivery && (
+        <Link
+          to={`/p/children/${id}/coaching/${coaching.delivery.id}`}
+          state={{ delivery: coaching.delivery }}
+          className="rec-coach-link"
+        >
+          <span className="rec-coach-label">오늘의 코칭</span>
+          <strong>{coaching.delivery.card.title}</strong>
+          <span className="rec-coach-line">{firstSentence(coaching.delivery.card.body)}</span>
+          <ChevronIcon size={22} />
+        </Link>
+      )}
 
       {coaching.guidance && (
         <section className="card warm" data-demo="record-guidance">
@@ -542,7 +540,7 @@ export default function Record() {
       )}
 
       <Link to={`/p/children/${id}`} className="btn block" data-demo="record-done">
-        확인했어요
+        확인하고 홈으로
       </Link>
     </div>
   );

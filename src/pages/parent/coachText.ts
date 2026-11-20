@@ -23,3 +23,42 @@ export function coachDateLabel(deliveredAt: string, now = new Date()): string {
     d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
   return today ? `오늘 · ${md}` : md;
 }
+
+/**
+ * 카드 본문을 '이렇게 해주세요'의 단계로 나눈다(Figma 오늘의 코칭: 번호 붙은 2~4줄).
+ * 문장 끝 부호 뒤 공백에서 자르고(firstSentence와 같은 규칙), maxSteps를 넘으면 남은 문장은 마지막 단계에 이어 붙인다.
+ */
+export function splitSteps(body: string | null | undefined, maxSteps = 4): string[] {
+  const steps: string[] = [];
+  let rest = (body ?? '').trim();
+  while (rest) {
+    const one = firstSentence(rest);
+    steps.push(one);
+    rest = rest.slice(one.length).trim();
+  }
+  if (steps.length <= maxSteps) return steps;
+  return [...steps.slice(0, maxSteps - 1), steps.slice(maxSteps - 1).join(' ')];
+}
+
+/** 달 묶음 열쇠와 이름: '2026-11', '2026년 11월'(이 기기의 날짜 기준). */
+export function monthKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function monthLabel(key: string): string {
+  const [y, m] = key.split('-');
+  return `${y}년 ${Number(m)}월`;
+}
+
+/** 목록의 날짜: 어제면 '어제 · 11월 20일', 오늘이면 '오늘 · 11월 21일', 아니면 '11월 19일'. */
+export function dayLabel(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const md = `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((startOf(now) - startOf(d)) / 86_400_000);
+  if (diff === 0) return `오늘 · ${md}`;
+  if (diff === 1) return `어제 · ${md}`;
+  return md;
+}

@@ -101,7 +101,7 @@ export default function Reconsent({ pending }: { pending: PolicyConsentType[] })
     <form onSubmit={submit} noValidate>
       <h1>약관 다시 동의</h1>
       <p className="lead">
-        함께자람의 약관 내용이 바뀌었어요. 바뀐 내용을 읽고 동의해 주시면 이어서 쓸 수 있어요. 그동안의 기록은 그대로
+        시나브로의 약관 내용이 바뀌었어요. 바뀐 내용을 읽고 동의해 주시면 이어서 쓸 수 있어요. 그동안의 기록은 그대로
         있어요.
       </p>
       <div className="card" role="group" aria-label="바뀐 약관 동의" style={{ paddingTop: 6, paddingBottom: 6 }}>

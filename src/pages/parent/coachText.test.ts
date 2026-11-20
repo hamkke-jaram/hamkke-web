@@ -48,3 +48,22 @@ describe('coachDateLabel', () => {
     expect(coachDateLabel('날짜 아님', now)).toBe('');
   });
 });
+
+describe('코칭 화면 문구(2판)', () => {
+  it('본문을 단계로 나누고, 넘치면 마지막 단계에 이어 붙인다', async () => {
+    const { splitSteps } = await import('./coachText');
+    expect(splitSteps('아이를 봐요. 잠깐 기다려요! 짧게 말해요.')).toEqual(['아이를 봐요.', '잠깐 기다려요!', '짧게 말해요.']);
+    expect(splitSteps('하나. 둘. 셋. 넷. 다섯.', 3)).toEqual(['하나.', '둘.', '셋. 넷. 다섯.']);
+    expect(splitSteps('"높다!" 하고 말해요. 1.5초 기다려요.')).toEqual(['"높다!" 하고 말해요.', '1.5초 기다려요.']);
+    expect(splitSteps('')).toEqual([]);
+  });
+
+  it('달 묶음과 날짜 이름', async () => {
+    const { dayLabel, monthKey, monthLabel } = await import('./coachText');
+    const now = new Date(2026, 10, 21, 10);
+    expect(dayLabel(new Date(2026, 10, 21, 8).toISOString(), now)).toBe('오늘 · 11월 21일');
+    expect(dayLabel(new Date(2026, 10, 20, 8).toISOString(), now)).toBe('어제 · 11월 20일');
+    expect(dayLabel(new Date(2026, 10, 18, 8).toISOString(), now)).toBe('11월 18일');
+    expect(monthLabel(monthKey(new Date(2026, 10, 3).toISOString()))).toBe('2026년 11월');
+  });
+});

@@ -54,7 +54,7 @@ export function haptic(style: HapticStyle) {
 function screenTitle() {
   const h1 = document.querySelector('main h1');
   const t = h1?.textContent?.replace(/\s+/g, ' ').trim();
-  return t || '함께자람';
+  return t || '시나브로';
 }
 
 /** 누르면 짧게 진동할 것들(버튼·목록 행·스위치). */

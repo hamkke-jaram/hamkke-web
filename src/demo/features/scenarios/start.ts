@@ -78,7 +78,7 @@ export const signup: Scenario = {
     {
       kind: 'say',
       target: '#signup-terms-desc',
-      say: n('서비스 이용약관', '함께자람은 의료기기가 아닌 웰니스 서비스이고, 발달 상태를 판단하지 않는다는 데 동의하는 칸이에요.'),
+      say: n('서비스 이용약관', '시나브로는 의료기기가 아닌 웰니스 서비스이고, 발달 상태를 판단하지 않는다는 데 동의하는 칸이에요.'),
     },
     { kind: 'click', target: '@signup-terms' },
     {

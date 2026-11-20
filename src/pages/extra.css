@@ -42,3 +42,112 @@
   border-radius: var(--radius);
   background: var(--surface-2);
 }
+
+/*
+ * Figma 2판 '설정': 묶음 제목(19 Bold) 아래 테두리 없는 행(16 Medium · 오른쪽 '›'). 아이콘은 두지 않는다.
+ * 펼침(details) 내용은 그대로 행 아래에 열린다. 고대비에서는 --edge 선이 행을 나눈다.
+ */
+.settings-page .menu-title {
+  margin: 28px 0 6px;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.settings-page .menu-list {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.settings-page .menu-list > * + *,
+.settings-page .menu-list > .menu-row + .menu-row,
+.settings-page .menu-list > * + .menu-row {
+  border-top: 1px solid var(--edge, transparent);
+}
+
+.settings-page .menu-row,
+.settings-page details.menu-details > summary.menu-row {
+  min-height: 48px;
+  padding: 6px 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.settings-page .menu-row .menu-icon {
+  display: none;
+}
+
+.settings-page .menu-chev {
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.settings-page .menu-value {
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.settings-page .menu-value + .menu-chev {
+  margin-left: 6px;
+}
+
+.settings-page .switch-menu-row input {
+  margin-left: auto;
+  width: 44px;
+  height: 26px;
+  accent-color: var(--cta);
+}
+
+.settings-page .menu-body {
+  padding: 4px 0 16px;
+}
+
+.settings-page .card.profile-card {
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* Figma 2판 '상담 · 기관 안내' */
+.support-title {
+  margin: 4px 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.support-lead {
+  margin: 0 0 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.card.support-card {
+  padding: 4px 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* Figma 2판 선생님 홈: 크림 카드 두 장(초대 코드 · 연결된 아이), 테두리 없음. 연결된 아이 위에 노란 가는 선. */
+.teacher-home .card {
+  border: 0;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+
+.teacher-home .card h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.teacher-home .card .list-item {
+  border-top: 1px solid var(--brand-soft, #ffdd99);
+}
+
+.teacher-home .card .avatar {
+  background: var(--brand-soft, #ffdd99);
+  color: #6d4f12;
+}

@@ -144,7 +144,7 @@ export default function ChildNew() {
             <section className="card warm" aria-labelledby="child-guardian-title" data-demo="child-guardian-info">
               <h2 id="child-guardian-title">법정대리인 동의</h2>
               <p style={{ marginTop: 0 }}>
-                만 14세 미만 아동의 정보는 법정대리인(보호자)의 동의가 있어야 저장할 수 있어요. 함께자람은 아래 정보만 저장해요.
+                만 14세 미만 아동의 정보는 법정대리인(보호자)의 동의가 있어야 저장할 수 있어요. 시나브로는 아래 정보만 저장해요.
               </p>
               <ul style={{ paddingLeft: 20, fontSize: 14, color: 'var(--ink-2)' }}>
                 <li>아이 별칭, 태어난 해와 달</li>

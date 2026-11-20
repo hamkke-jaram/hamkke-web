@@ -8,7 +8,8 @@ import { forgetGuest, guestPasswordFor, isGuestUser } from '../auth/guest';
 import { DangerAction, Field, PasswordField, refocus, useToast } from '../components/feedback';
 import { Icon } from '../components/icons';
 import { ErrorText, Loading, formatDate, useLoad } from '../components/ui';
-import { ThemeSettings } from '../theme';
+import SubHead from '../components/SubHead';
+import { ThemeSettings, useThemePref } from '../theme';
 import './extra.css';
 
 const CONSENT_LABEL: Record<string, string> = {
@@ -230,9 +231,11 @@ export default function Account() {
   const nameLabel = isParent ? '앱에서 부를 이름' : '표시 이름';
 
   return (
-    <div>
-      <h1 className="settings-title">내 정보</h1>
-      <div className="card soft row" style={{ gap: 14 }}>
+    <div className="settings-page">
+      {/* Figma 2판 '설정': 내 정보 · 아이 정보 · 앱 설정 · 이용 안내 · 계정 관리. 행은 테두리 없이 글과 '›'. */}
+      <SubHead title="설정" fallback={isParent ? '/p' : '/t'} />
+      <h2 className="menu-title">내 정보</h2>
+      <div className="card soft row profile-card" style={{ gap: 14 }}>
         <div className="avatar" aria-hidden="true">
           {initial}
         </div>
@@ -247,11 +250,8 @@ export default function Account() {
         </div>
       </div>
 
-      {/* 시안 '설정' 화면 모양: 아이콘 · 글 · '›' 행을 누르면 그 자리에서 펼쳐진다. 닫혀 있어도 내용은 화면에 있어 시연이 찾아서 연다. */}
-      <h2 className="menu-title" id="account-settings-h">
-        로그인/회원정보
-      </h2>
-      <div className="menu-list">
+      {/* 행을 누르면 그 자리에서 펼쳐진다. 닫혀 있어도 내용은 화면에 있어 시연이 찾아서 연다. */}
+      <div className="menu-list" aria-label="이름·비밀번호">
         <details className="menu-details">
           <summary className="menu-row" data-demo="account-row-name">
             <Icon name="edit" />
@@ -350,16 +350,22 @@ export default function Account() {
             아이 정보
           </h2>
           <nav className="menu-list" aria-labelledby="account-children-h">
-            <Link to="/p/children/new" className="menu-row" data-demo="account-child-new">
-              <Icon name="plus" />
-              <span className="menu-text">아이 추가</span>
+            <Link to="/p/children" className="menu-row" data-demo="account-child-list">
+              <Icon name="user" />
+              <span className="menu-text">등록된 아이</span>
+              {kids.data && <span className="menu-value">{kids.data.length}명</span>}
               <span className="menu-chev" aria-hidden="true">
                 ›
               </span>
             </Link>
-            <Link to="/p" className="menu-row" data-demo="account-child-list">
-              <Icon name="user" />
-              <span className="menu-text">아이 기록 보기</span>
+            {/* 선생님 연결은 아이마다 한다. 한 명이면 그 아이의 공유 화면, 여럿이면 등록된 아이에서 고른다. */}
+            <Link
+              to={kids.data && kids.data.length === 1 ? `/p/children/${kids.data[0].id}/share` : '/p/children'}
+              className="menu-row"
+              data-demo="account-teacher-link"
+            >
+              <Icon name="consent" />
+              <span className="menu-text">선생님 연결 관리</span>
               <span className="menu-chev" aria-hidden="true">
                 ›
               </span>
@@ -368,7 +374,9 @@ export default function Account() {
         </>
       )}
 
-      <div className="menu-list" style={{ marginTop: 24 }}>
+      <h2 className="menu-title">앱 설정</h2>
+      <div className="menu-list">
+        <DarkModeRow />
         <details className="menu-details">
           <summary className="menu-row" data-demo="account-row-theme">
             <Icon name="screen" />
@@ -383,7 +391,35 @@ export default function Account() {
             <ThemeSettings />
           </div>
         </details>
+      </div>
 
+      <h2 className="menu-title">이용 안내</h2>
+      <nav className="menu-list" aria-label="이용 안내">
+        <Link to="/privacy" className="menu-row">
+          <Icon name="info" />
+          <span className="menu-text">서비스 소개</span>
+          <span className="menu-chev" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+        <Link to="/support" className="menu-row">
+          <Icon name="info" />
+          <span className="menu-text">상담 · 기관 안내</span>
+          <span className="menu-chev" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+        <Link to="/terms" className="menu-row">
+          <Icon name="consent" />
+          <span className="menu-text">이용약관 · 개인정보 처리 안내</span>
+          <span className="menu-chev" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+      </nav>
+
+      <h2 className="menu-title">계정 관리</h2>
+      <div className="menu-list">
         <details className="menu-details">
           <summary className="menu-row" data-demo="account-row-consents">
             <Icon name="consent" />
@@ -533,3 +569,22 @@ const DeletePassword = forwardRef<
     />
   );
 });
+
+/** 앱 설정의 '다크 모드' 한 줄(Figma). 화면 설정의 밝기와 같은 값을 바꾼다(켜면 어둡게, 끄면 밝게). */
+function DarkModeRow() {
+  const { pref, update, deviceDark } = useThemePref();
+  const on = pref.scheme === 'dark' || (pref.scheme === 'system' && deviceDark);
+  return (
+    <label className="menu-row switch-menu-row">
+      <Icon name="screen" />
+      <span className="menu-text">다크 모드</span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={on}
+        data-demo="account-dark-mode"
+        onChange={(e) => update({ scheme: e.target.checked ? 'dark' : 'light' })}
+      />
+    </label>
+  );
+}

@@ -8,7 +8,7 @@ export default function Privacy() {
     <div>
       <BackLink />
       <h1>개인정보 처리 안내</h1>
-      <p className="lead">함께자람이 무엇을 저장하고, 무엇을 저장하지 않는지 알려 드려요.</p>
+      <p className="lead">시나브로가 무엇을 저장하고, 무엇을 저장하지 않는지 알려 드려요.</p>
 
       <section className="card">
         <h2>저장하지 않는 것</h2>
