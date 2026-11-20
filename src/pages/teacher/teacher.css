@@ -3,6 +3,42 @@
  * 색은 styles.css의 토큰만 쓴다(크림 --surface-2, 연보라 --lavender, 노란 버튼 --cta). 다크 모드는 토큰이 맡는다.
  */
 
+.coach-rows .daycare-coaching {
+  border-radius: var(--radius);
+  background: var(--lavender);
+  color: var(--lavender-ink);
+}
+
+.daycare-coaching summary.coach-row {
+  background: var(--lavender);
+  border-color: var(--edge);
+  color: var(--lavender-ink);
+  cursor: pointer;
+  list-style: none;
+}
+
+.daycare-coaching summary::-webkit-details-marker { display: none; }
+.daycare-coaching summary::before { content: none; }
+.daycare-coaching details[open] .coach-row-line { display: none; }
+.daycare-coaching .coach-row-date,
+.daycare-coaching .coach-row-line,
+.daycare-coaching summary > .p-icon { color: inherit; }
+.daycare-coaching .coach-row-date { font-weight: 700; }
+.daycare-coaching details[open] summary > .p-icon { transform: rotate(90deg); }
+
+.daycare-details {
+  margin: 0 14px;
+  padding: 12px 0 14px;
+  border-top: 1px solid currentColor;
+  border-top-color: color-mix(in srgb, currentColor 20%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.daycare-details p { margin: 0; line-height: 1.55; }
+.daycare-details .daycare-source { margin-top: 8px; font-size: .875rem; }
+.daycare-source a { display: inline-block; min-height: 24px; color: inherit; text-underline-offset: 3px; }
+.daycare-status { margin: 0 0 8px; font-size: .875rem; }
+
 /* ── 보호자 초대코드 ── */
 .invite-page {
   display: flex;
@@ -371,6 +407,23 @@
   margin-top: auto;
   padding-top: 24px;
 }
+
+.story-draft {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  overflow-wrap: anywhere;
+}
+
+.story-draft > p,
+.story-draft-error { margin: 0 0 10px; font-size: .875rem; }
+.story-draft-preview h2 { margin: 14px 0 8px; font-size: .9375rem; }
+.story-draft-preview p { margin: 6px 0 12px; white-space: pre-wrap; }
+.story-draft-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.story-draft-error { display: block; margin: 8px 0 0; }
 
 .story-attach-h {
   margin: 0 0 10px;

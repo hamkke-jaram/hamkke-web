@@ -1,6 +1,11 @@
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** 서버와 같은 한국 달력에서 날짜를 구한다. */
+export function kstDateKey(time: number) {
+  return Number.isFinite(time) ? new Date(time + KST_OFFSET_MS).toISOString().slice(0, 10) : '';
+}
+
 /** 이번 주 월요일(한국 시간, 'YYYY-MM-DD'). 서버의 주간 요약도 한국 시간 월요일로 주를 나눈다. */
 export function thisWeekStart(now = Date.now()) {
   const kst = new Date(now + KST_OFFSET_MS);

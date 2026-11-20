@@ -245,7 +245,7 @@ async function recoverSaved(childId: number, recordedAt: string | undefined): Pr
 
   // 가정 기록이면 저장할 때 카드 1장이 함께 전달되었다. 방금 전달된 카드를 찾아 함께 돌려준다(못 찾아도 기록은 돌려준다).
   let coaching: SaveAiObservationResponse['coaching'] = null;
-  if (found.source === 'HOME') {
+  if (found.source === 'HOME' && !found.reviewStatus) {
     try {
       const latest = (await api<Delivery[]>('GET', `/children/${childId}/card-deliveries?limit=1`))?.[0];
       const gap = latest ? Date.parse(latest.deliveredAt) - Date.parse(found.createdAt) : NaN;

@@ -91,7 +91,7 @@ describe('단계 진행', () => {
     const r = make(
       [
         { kind: 'as', account: null },
-        { kind: 'goto', path: '/signup', target: '@signup-email' },
+        { kind: 'goto', path: '/register', target: '@signup-email' },
         { kind: 'type', target: '@signup-email', text: (d) => d.vars.email },
         { kind: 'click', target: '@signup-submit' },
         { kind: 'wait', route: /^\/p/ },
@@ -103,7 +103,7 @@ describe('단계 진행', () => {
       'spot -',
       'as 로그아웃',
       'spot -',
-      'goto /signup',
+      'goto /register',
       'find @signup-email',
       'reveal @signup-email',
       'spot @signup-email',

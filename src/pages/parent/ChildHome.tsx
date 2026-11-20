@@ -6,6 +6,9 @@ import { aiConsentState, consentCardPlace, keepsAiRecords } from '../../ai/conse
 import { ApiError, api } from '../../api/client';
 import type { AiConsent, Child, Delivery, Goal, Observation, RecordItem, WeekSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import { isDemoWorkspaceChild } from '../../auth/demoLogin';
+import DemoObservationExample from '../../ai/DemoObservationExample';
+import ConversationSuggestions from '../../components/ConversationSuggestions';
 import TriableCard from '../../components/TriableCard';
 import { BackLink, DangerAction, useToast } from '../../components/feedback';
 import { usePagedList } from '../../components/paging';
@@ -80,7 +83,7 @@ export default function ChildHome() {
   const id = Number(childId);
   const nav = useNavigate();
   const toast = useToast();
-  const { policies } = useAuth();
+  const { policies, user } = useAuth();
   // AI 서버가 설정되지 않았으면(또는 아직 모르면) 새로 만드는 화면(켜기, 촬영 버튼)을 숨긴다. 나머지 기능은 그대로다.
   // 다만 이미 동의해 둔 아이라면, 그동안 쌓인 기록을 보고 지우거나 동의를 끄는 것은 AI 서버가 꺼져 있어도 할 수 있어야
   // 하므로(서버도 허용한다) 동의 상태는 늘 확인한다.
@@ -407,6 +410,7 @@ export default function ChildHome() {
       )}
 
       {/* 동의를 거두지 않았으면 AI 서버가 꺼져 있어도, 동의 문서가 바뀌어 다시 동의하기 전이어도 그동안의 기록은 보고 지울 수 있다. */}
+      {isDemoWorkspaceChild(user, id) && <DemoObservationExample />}
       {hasAiRecords && (
         <ObservationList
           childId={id}
@@ -428,6 +432,7 @@ export default function ChildHome() {
             선생님 이야기
           </h2>
         </div>
+        <ConversationSuggestions key={id} role="PARENT" hasNotes={!!notes.items?.length} />
         {goals.error != null && loadStateView(goals, '선생님 목표를')}
         {notes.error != null && loadStateView(notes, '관찰 메모를')}
         {noStories && (

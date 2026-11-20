@@ -1,4 +1,4 @@
-import type { Child, InviteCode, Policies, TokenResponse } from '../api/types';
+import type { Child, InviteCode, Policies, Role, SaveRecordResponse, TokenResponse } from '../api/types';
 import { newUuid } from '../api/uuid';
 
 /**
@@ -26,9 +26,13 @@ export type SeedProgress = (label: string, ratio: number) => void;
 
 const BASE = '/api/v1';
 
-class SeedError extends Error {}
+export class SeedError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
 
-async function call<T>(token: string | null, method: string, path: string, body?: unknown): Promise<T> {
+export async function demoRequest<T>(token: string | null, method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(BASE + path, {
     method,
     headers: {
@@ -46,7 +50,7 @@ async function call<T>(token: string | null, method: string, path: string, body?
   }
   if (!res.ok) {
     const msg = (data as { message?: string } | undefined)?.message;
-    throw new SeedError(msg ? `${msg} (${res.status})` : `데모 데이터를 만들지 못했어요. (${res.status})`);
+    throw new SeedError(res.status, msg ? `${msg} (${res.status})` : `데모 데이터를 만들지 못했어요. (${res.status})`);
   }
   return data as T;
 }
@@ -73,10 +77,20 @@ function birthMonth(monthsAgo: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-async function signup(role: 'PARENT' | 'TEACHER', displayName: string, policies: Policies): Promise<DemoAccount> {
+export type DemoCredentials = Pick<DemoAccount, 'email' | 'password'>;
+export type DemoPair = Record<Role, DemoCredentials>;
+
+function newCredentials(role: Role): DemoCredentials {
   const email = `demo-${role === 'PARENT' ? 'parent' : 'teacher'}-${randomId()}@demo.hamkke.test`;
-  const password = randomPassword();
-  const t = await call<TokenResponse>(null, 'POST', '/auth/signup', {
+  return { email, password: randomPassword() };
+}
+
+export function newDemoPair(): DemoPair {
+  return { PARENT: newCredentials('PARENT'), TEACHER: newCredentials('TEACHER') };
+}
+
+async function signup(role: Role, displayName: string, policies: Policies, {email, password}: DemoCredentials): Promise<DemoAccount> {
+  const t = await demoRequest<TokenResponse>(null, 'POST', '/auth/signup', {
     email,
     password,
     displayName,
@@ -99,26 +113,26 @@ export const SAMPLE_RECORDS = [
 ];
 
 /** 중간에 실패하면 이미 만든 데모 계정을 지우고 오류를 그대로 알린다(계정이 남지 않게). */
-export async function createDemo(policies: Policies, onProgress: SeedProgress): Promise<DemoData> {
+export async function createDemo(policies: Policies, onProgress: SeedProgress, pair = newDemoPair()): Promise<DemoData> {
   const made: DemoAccount[] = [];
   try {
-    return await seed(policies, onProgress, made);
+    return await seed(policies, onProgress, made, pair);
   } catch (e) {
     await Promise.all(made.map((a) => deleteDemoAccount(a)));
     throw e;
   }
 }
 
-async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAccount[]): Promise<DemoData> {
+async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAccount[], pair: DemoPair): Promise<DemoData> {
   const steps = 7 + SAMPLE_RECORDS.length;
   let done = 0;
   const tick = (label: string) => onProgress(label, ++done / steps);
 
-  const parent = await signup('PARENT', '데모 보호자', policies);
+  const parent = await signup('PARENT', '데모 보호자', policies, pair.PARENT);
   made.push(parent);
   tick('데모 보호자 계정을 만들었어요');
 
-  const child = await call<Child>(parent.accessToken, 'POST', '/children', {
+  const child = await demoRequest<Child>(parent.accessToken, 'POST', '/children', {
     nickname: '콩이',
     birthYearMonth: birthMonth(38),
     guardianConsent: { agreed: true, version: policies.guardianVersion },
@@ -126,8 +140,9 @@ async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAcco
   tick('법정대리인 동의와 함께 아이를 등록했어요');
 
   const now = Date.now();
+  let cardDeliveryId: number | undefined;
   for (const r of SAMPLE_RECORDS) {
-    await call(parent.accessToken, 'POST', `/children/${child.id}/interaction-records`, {
+    const result = await demoRequest<SaveRecordResponse>(parent.accessToken, 'POST', `/children/${child.id}/interaction-records`, {
       clientRecordId: newUuid(),
       recordedAt: new Date(now - r.daysAgo * 86_400_000).toISOString(),
       analyzedSeconds: r.analyzed,
@@ -139,10 +154,11 @@ async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAcco
       modelVersion: 'demo-sample-data',
       specVersion: 'metrics-v1',
     });
+    cardDeliveryId = result.coaching.delivery?.id ?? cardDeliveryId;
     tick('지난 기록 예시를 넣었어요');
   }
 
-  await call(parent.accessToken, 'PUT', `/children/${child.id}/share-settings`, {
+  await demoRequest(parent.accessToken, 'PUT', `/children/${child.id}/share-settings`, {
     jointPlay: true,
     responseLatency: true,
     distress: false,
@@ -153,26 +169,35 @@ async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAcco
   });
   tick('공유할 항목을 골랐어요');
 
-  const code = await call<InviteCode>(parent.accessToken, 'POST', `/children/${child.id}/invite-codes`);
+  const code = await demoRequest<InviteCode>(parent.accessToken, 'POST', `/children/${child.id}/invite-codes`);
   tick('선생님 초대 코드를 만들었어요');
 
-  const teacher = await signup('TEACHER', '데모 선생님', policies);
+  const teacher = await signup('TEACHER', '데모 선생님', policies, pair.TEACHER);
   made.push(teacher);
-  await call(teacher.accessToken, 'POST', '/teacher/links', { code: code.code });
+  await demoRequest(teacher.accessToken, 'PUT', '/me/teacher-profile', { institution: '예시 한빛어린이집', className: '새싹반' });
+  await demoRequest(teacher.accessToken, 'POST', '/teacher/links', { code: code.code });
   tick('데모 선생님이 초대 코드로 연결했어요');
 
-  await call(teacher.accessToken, 'POST', `/children/${child.id}/goals`, {
+  await demoRequest(teacher.accessToken, 'POST', `/children/${child.id}/goals`, {
     title: '놀잇감을 친구에게 건네 보기',
     description: '놀이 시간에 하루 한 번, 먼저 건넬 때까지 잠깐 기다려 주기',
   });
   tick('선생님이 아이 목표를 적었어요');
 
   const yesterday = new Date(now - 86_400_000);
-  await call(teacher.accessToken, 'POST', `/children/${child.id}/observations`, {
-    content: '블록 놀이를 하다가 친구에게 블록을 먼저 건넸어요. 친구와 눈을 맞추고 웃는 시간도 길어졌어요.',
+  const story = await demoRequest<{id: number}>(teacher.accessToken, 'POST', `/children/${child.id}/observations`, {
+    title: '콩이가 고른 블록',
+    content: '콩이가 노란 블록을 골라 파란 블록 위에 올렸어요. 다음 블록을 고를 때까지 잠깐 기다려 보았어요.',
+    cardDeliveryId,
     observedOn: ymd(yesterday),
   });
-  tick('선생님이 관찰 메모를 남겼어요');
+  await demoRequest(parent.accessToken, 'POST', `/children/${child.id}/messages`, {
+    content: '집에서도 콩이가 블록을 골라요. 오늘 올려 주신 코칭을 해 볼게요.', observationId: story.id,
+  });
+  await demoRequest(teacher.accessToken, 'POST', `/children/${child.id}/messages`, {
+    content: '좋아요. 다음 놀이에서도 콩이가 먼저 고르는 블록을 함께 살펴볼게요.', observationId: story.id,
+  });
+  tick('선생님 이야기와 예시 대화를 준비했어요');
 
   return { parent, teacher, childId: child.id };
 }
@@ -181,11 +206,11 @@ async function seed(policies: Policies, onProgress: SeedProgress, made: DemoAcco
 export async function deleteDemoAccount(account: { accessToken: string; refreshToken: string; password: string }) {
   try {
     let token = account.accessToken;
-    const del = () => call(token, 'DELETE', '/me', { password: account.password });
+    const del = () => demoRequest(token, 'DELETE', '/me', { password: account.password });
     try {
       await del();
     } catch {
-      const t = await call<TokenResponse>(null, 'POST', '/auth/refresh', { refreshToken: account.refreshToken });
+      const t = await demoRequest<TokenResponse>(null, 'POST', '/auth/refresh', { refreshToken: account.refreshToken });
       token = t.accessToken;
       await del();
     }

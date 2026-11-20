@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
@@ -8,12 +8,26 @@ import BrandMark from '../components/BrandMark';
 import { Field, PasswordField, looksLikeEmail, refocus } from '../components/feedback';
 import { Icon } from '../components/icons';
 import { ErrorText } from '../components/ui';
+import DemoLoginForm from './DemoLoginForm';
 
 /**
  * 로그인. 검사는 제출할 때만 하고(버튼은 요청 중에만 막는다), 고칠 칸이 있으면 그 칸 아래에 알리고 첫 칸으로 포커스를 옮긴다.
  * 서버가 거절하면(이메일·비밀번호가 맞지 않음 등) 버튼 바로 위에 알린다. 칸을 고치기 시작하면 그 알림은 지운다.
  */
 export default function Login() {
+  const [params] = useSearchParams();
+  return (
+    <>
+      <div className="login-mark"><BrandMark width={112} /></div>
+      <h1>로그인</h1>
+      {params.get('demo') === '1'
+        ? <DemoLoginForm switchRole={params.get('switch') === '1'} />
+        : <PersonalLoginForm />}
+    </>
+  );
+}
+
+function PersonalLoginForm() {
   const { login } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
@@ -56,11 +70,6 @@ export default function Login() {
 
   return (
     <form onSubmit={submit} noValidate>
-      {/* 시안: 로고 마크만 두고 캐릭터는 넣지 않는다. */}
-      <div className="login-mark">
-        <BrandMark width={112} />
-      </div>
-      <h1>로그인</h1>
       <p className="lead">다시 오셨네요, 반가워요.</p>
       <Field
         ref={emailRef}
@@ -98,7 +107,7 @@ export default function Login() {
       </button>
       <p className="status-line link-row" style={{ marginTop: 14 }}>
         처음이신가요?{' '}
-        <Link to="/signup" className="link-btn">
+        <Link to="/register" className="link-btn">
           가입하기
         </Link>
       </p>

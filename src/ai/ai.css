@@ -46,16 +46,73 @@
 
 .ai-moments {
   list-style: none;
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   padding: 0;
 }
 
-.ai-moments li {
+.ai-response {
+  margin-top: 16px;
+}
+
+.ai-response h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.ai-response-tip {
+  margin: 4px 0;
+  color: var(--ink-2);
+}
+
+.ai-moment {
   display: flex;
   gap: 10px;
   align-items: baseline;
-  padding: 6px 0;
-  border-top: 1px dashed var(--line);
+  width: 100%;
+  padding: 7px 0;
+  overflow-wrap: anywhere;
+}
+
+button.ai-moment {
+  min-height: 44px;
+  padding: 9px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn, 12px);
+  cursor: pointer;
+}
+
+button.ai-moment[aria-pressed="true"] {
+  background: var(--surface-2);
+  border-color: var(--ink-2);
+}
+
+.ai-moment-safety {
+  display: block;
+  font-size: 0.875rem;
+}
+
+.ai-response-plan {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--ink-2);
+  background: var(--surface-2);
+}
+
+.ai-response-plan p {
+  margin: 6px 0 0;
+}
+
+.ai-response-plan .ai-response-title {
+  margin-top: 0;
+  font-weight: 700;
+}
+
+.ai-response-follow strong {
+  margin-right: 3px;
 }
 
 .ai-time {
@@ -310,3 +367,26 @@
 :root[data-motion='on'] .ai-on-chip {
   animation: ai-pop 0.36s ease-out backwards;
 }
+.th-review-link { margin: 0 0 20px; }
+.observation-review section, .review-result { margin-block: 20px; }
+.observation-review h2, .review-result h3 { margin: 0 0 8px; font-size: 1.08rem; }
+.review-summary, .evidence-item, .review-scenes li, .review-queue strong { white-space: pre-line; overflow-wrap: anywhere; }
+.review-date, .review-status { margin: 10px 0; color: var(--ink-2); font-size: .875rem; }
+.review-status { color: var(--lavender-ink); font-weight: 700; }
+.review-result { padding: 15px; border-radius: var(--radius); background: var(--lavender); color: var(--lavender-ink); }
+.review-result h3:not(:first-child) { margin-top: 15px; }
+.review-result a, .evidence-source a { text-decoration: underline; text-underline-offset: 3px; color: inherit; }
+.review-result p, .evidence-item p { margin: 6px 0; line-height: 1.55; }
+.review-queue, .review-scenes { list-style: none; padding: 0; margin: 0; }
+.review-queue li + li, .review-scenes li + li { margin-top: 8px; }
+.review-queue a, .review-choice { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.review-queue a { display: grid; gap: 4px; color: inherit; }
+.review-queue span, .evidence-scene, .evidence-source { font-size: .875rem; }
+.review-scenes li { display: flex; gap: 8px; align-items: baseline; }
+.observation-review textarea { min-height: 88px; width: 100%; margin-bottom: 10px; }
+.review-choice { margin: 12px 0; }
+.review-choice label { min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.review-choice input { width: 18px; height: 18px; flex: none; }
+.evidence-item + .evidence-item { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.evidence-action { font-weight: 700; }
+.evidence-source span { display: block; }

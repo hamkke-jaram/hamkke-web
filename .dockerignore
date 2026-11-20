@@ -8,6 +8,11 @@ dist
 public/mediapipe
 # 촬영 영상은 이미지에 넣지 않는다
 **/*.mp4
+!src/demo/teacher-review/media/block-play.mp4
+!public/media/sinabro-guide-v1.mp4
+!public/media/sinabro-walkthrough-v2.mp4
+!public/media/sinabro-walkthrough-v3.mp4
+!public/media/sinabro-touch-v4.mp4
 **/*.mov
 **/*.webm
 **/*.m4v

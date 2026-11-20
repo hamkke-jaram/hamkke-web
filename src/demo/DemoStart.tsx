@@ -108,6 +108,9 @@ export default function DemoStart() {
           기능별로 보기
         </Link>
       </section>
+      {import.meta.env.VITE_TEACHER_REVIEW_DEMO === true && (
+        <Link to="/demo/teacher-review" className="btn block secondary">영상 관찰과 교사 검토 시연</Link>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, api, onSessionChange } from '../api/client';
 import type { Role, TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
@@ -37,7 +37,7 @@ function isGoodPassword(v: string) {
 const CONSENT_DESC = { margin: '-10px 0 0', padding: '0 0 12px 34px' } as const;
 
 export default function Signup() {
-  const { user, login, policies, policiesError, reloadPolicies } = useAuth();
+  const { user, loading, login, policies, policiesError, reloadPolicies } = useAuth();
   const nav = useNavigate();
   const { key } = useLocation();
   const toast = useToast();
@@ -71,6 +71,8 @@ export default function Signup() {
     };
   }, [key]);
 
+  if (loading) return <Loading />;
+  if (user) return <Navigate to={user.role === 'PARENT' ? '/p' : '/t'} replace />;
   if (!policies) {
     if (!policiesError)
       return (

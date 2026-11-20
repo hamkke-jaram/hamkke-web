@@ -1,4 +1,4 @@
-import type { TokenResponse } from './types';
+import { STORY_TITLE_LIMIT, STORY_BODY_LIMIT, type DaycareRecommendation, type GuidancePreview, type TeacherStoryDraft, type TokenResponse } from './types';
 
 /**
  * API 호출 도우미. JSON만 주고받는다(영상·파일 업로드 기능 없음).
@@ -130,6 +130,12 @@ export function getRefreshToken() {
   return session?.refreshToken ?? null;
 }
 
+/** 다른 탭의 로그인·로그아웃이 반영되기 직전에 긴 준비 작업의 세션으로 덮어쓰지 않는다. */
+export function sessionMatches(refreshToken: string | null): boolean {
+  syncFromStorage();
+  return getRefreshToken() === refreshToken;
+}
+
 /** 지금 쓰는 토큰 한 쌍(데모에서 보호자·선생님 계정을 오갈 때 회전된 토큰을 잃지 않으려고 쓴다). */
 export function currentSession(): { accessToken: string; refreshToken: string } | null {
   return session ? { ...session } : null;
@@ -207,40 +213,72 @@ async function rotate(rejected: string | undefined): Promise<boolean> {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-export async function api<T>(method: Method, path: string, body?: unknown, retry = true): Promise<T> {
+export function api<T>(method: Method, path: string, body?: unknown, retry = true): Promise<T> {
+  return sendJson<T>('/api/v1', method, path, body, retry);
+}
+
+export function requestDaycareCoaching(childId: number, month: string, signal: AbortSignal) {
+  return sendJson<{ recommendation: DaycareRecommendation | null }>(
+    '/ai/v1', 'POST', '/daycare-coaching', { childId, month }, true, signal,
+  );
+}
+
+export function requestObservationGuidance(childId: number, observationId: number, summary: string | undefined, signal: AbortSignal) {
+  return sendJson<GuidancePreview>('/ai/v1', 'POST', '/observation-guidance', { childId, observationId, summary }, true, signal);
+}
+
+export async function requestTeacherStoryDraft(childId: number, memo: string, signal: AbortSignal): Promise<TeacherStoryDraft> {
+  const draft = await sendJson<Partial<TeacherStoryDraft> | null>(
+    '/ai/v1', 'POST', '/teacher-story-draft', { childId, memo }, true, signal,
+  );
+  const title = typeof draft?.title === 'string' ? draft.title.trim() : '';
+  const content = typeof draft?.content === 'string' ? draft.content.trim() : '';
+  if (!title || !content || title.length > STORY_TITLE_LIMIT || content.length > STORY_BODY_LIMIT) {
+    throw new ApiError(502, 'INVALID_AI_DRAFT', '초안을 다시 만들어 주세요.');
+  }
+  return { title, content };
+}
+
+async function sendJson<T>(
+  base: '/api/v1' | '/ai/v1', method: Method, path: string, body: unknown, retry: boolean, signal?: AbortSignal,
+): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const sentWith = session?.accessToken;
   if (sentWith) headers.Authorization = `Bearer ${sentWith}`;
+  // 기능 시연의 API 기록창에 AI로 보내는 관찰 메모와 초안 원문을 남기지 않는다.
+  const hooks = base === '/api/v1' ? observer : null;
 
   let res: Response;
   try {
-    if (observer?.before?.({ method, path, body }) === 'offline') throw new TypeError('Failed to fetch');
-    res = await fetch(`/api/v1${path}`, {
+    if (hooks?.before?.({ method, path, body }) === 'offline') throw new TypeError('Failed to fetch');
+    res = await fetch(`${base}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
+      ...(base === '/ai/v1' ? { cache: 'no-store', redirect: 'error' } as const : {}),
     });
   } catch {
-    observer?.failed?.({ method, path, body });
+    hooks?.failed?.({ method, path, body });
     throw new ApiError(0, 'NETWORK', '인터넷 연결을 확인해 주세요.');
   }
 
   if (res.status === 204) {
-    observer?.after?.({ method, path, body, status: 204, data: undefined });
+    hooks?.after?.({ method, path, body, status: 204, data: undefined });
     return undefined as T;
   }
 
   const text = await res.text().catch(() => '');
   let data = parseBody(text);
-  if (observer?.after) {
-    const replaced = observer.after({ method, path, body, status: res.status, data });
+  if (hooks?.after) {
+    const replaced = hooks.after({ method, path, body, status: res.status, data });
     if (replaced !== undefined) data = replaced as ErrorBody;
   }
 
   // 비밀번호가 틀린 경우(INVALID_CREDENTIALS, 예: DELETE /me)도 401이지만 토큰 문제가 아니므로 갱신하지 않는다.
-  if (res.status === 401 && retry && session && !path.startsWith('/auth/') && data?.code !== 'INVALID_CREDENTIALS') {
-    if (await refresh(sentWith)) return api<T>(method, path, body, false);
+  if (res.status === 401 && retry && session && !signal?.aborted && !path.startsWith('/auth/') && data?.code !== 'INVALID_CREDENTIALS') {
+    if (await refresh(sentWith)) return sendJson<T>(base, method, path, body, false, signal);
   }
 
   if (!res.ok) {

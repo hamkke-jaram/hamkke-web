@@ -5,7 +5,10 @@ import ObservationList from '../../ai/ObservationList';
 import { ApiError, api } from '../../api/client';
 import type { Delivery, Goal, GoalStatus, Observation, SharedItem, SharedSummary } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
+import { isDemoWorkspaceChild } from '../../auth/demoLogin';
+import DemoObservationExample from '../../ai/DemoObservationExample';
 import { buddy } from '../../components/buddyBus';
+import ConversationSuggestions from '../../components/ConversationSuggestions';
 import { BackLink, DangerAction, Field, TextAreaField, refocus, useToast } from '../../components/feedback';
 import { usePagedList } from '../../components/paging';
 import {
@@ -44,6 +47,7 @@ const SHARED_NAMES: [SharedItem, string][] = [
 const AI_LIST_LIMIT = 20;
 /** 관찰 메모를 한 번에 가져오는 개수(최신순). 더 있으면 '더 보기'로 이어서 가져온다. */
 const NOTE_LIMIT = 20;
+const NOTE_CONTENT_LIMIT = 1000;
 /** 가정에서 받은 코칭 카드를 한 번에 가져오는 개수(최신순). 본문까지 보여 주어 길어서 적게 받고, 더 있으면 '더 보기'. */
 const CARD_LIMIT = 5;
 
@@ -76,7 +80,10 @@ function today() {
 
 export default function TeacherChild() {
   const { childId } = useParams();
-  const id = Number(childId);
+  return <TeacherChildView key={childId} id={Number(childId)} />;
+}
+
+function TeacherChildView({ id }: { id: number }) {
   const { user, policies } = useAuth();
   const toast = useToast();
   const nav = useNavigate();
@@ -308,6 +315,23 @@ export default function TeacherChild() {
   }
 
   // ---------- 관찰 메모 ----------
+
+  function appendSuggestion(text: string) {
+    if (noteBusy) return;
+    const next = note.trim() ? `${note}\n\n${text}` : text;
+    if (next.length > NOTE_CONTENT_LIMIT) {
+      toast('메모가 1,000자를 넘어요. 내용을 줄인 뒤 추가해 주세요.');
+      return;
+    }
+    flushSync(() => {
+      setNote(next);
+      setNoteError(null);
+      setNoteFormError(null);
+    });
+    noteRef.current?.setSelectionRange(next.length, next.length);
+    refocus(noteRef.current);
+    toast('메모 끝에 문장을 추가했어요.');
+  }
 
   async function addNote(e: FormEvent) {
     e.preventDefault();
@@ -559,6 +583,7 @@ export default function TeacherChild() {
             AI 서버가 꺼져 있어도(aiOn=false) 이미 있는 기록은 보고 지울 수 있게 목록은 남긴다(없으면 제목까지 숨긴다).
             기관에서 촬영하고 돌아오면 처음 탭(가정 기록)이 열리므로, 방금 남긴 기록이 바로 보이게 이 탭에 둔다. */}
         <ObservationList
+          teacher
           childId={id}
           limit={AI_LIST_LIMIT}
           canDelete={(o) => o.mine === true}
@@ -664,12 +689,13 @@ export default function TeacherChild() {
               setNoteDateError(null);
             }}
           />
+          <ConversationSuggestions role="TEACHER" onAddToNote={appendSuggestion} noteBusy={noteBusy} />
           <TextAreaField
             id="tc-note-text"
             data-demo="tc-note-text"
             ref={noteRef}
             label="메모"
-            maxLength={1000}
+            maxLength={NOTE_CONTENT_LIMIT}
             showCount
             placeholder="잘한 점, 즐거워한 활동을 중심으로 적어 주세요."
             error={noteError}
@@ -758,6 +784,7 @@ export default function TeacherChild() {
       </div>
 
       {tab === 'records' && recordsPanel()}
+      {tab === 'records' && isDemoWorkspaceChild(user, id) && <DemoObservationExample />}
       {tab === 'goals' && goalsPanel()}
       {tab === 'notes' && notesPanel()}
 

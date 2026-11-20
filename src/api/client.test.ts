@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, api, currentSession, errorMessage, hasSession, setSession } from './client';
+import {
+  ApiError, api, currentSession, errorMessage, hasSession, requestDaycareCoaching, requestTeacherStoryDraft, setApiObserver, setSession,
+} from './client';
 import type { TokenResponse } from './types';
 
 /*
@@ -61,10 +63,49 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  setApiObserver(null);
   setSession(null);
 });
 
+describe('선생님 이야기 초안', () => {
+  it('이야기를 저장하지 않고, 선택한 아이 번호와 교사의 메모를 AI 경로에만 보낸다', async () => {
+    const memo = '블록을 두 개 쌓고 파란 블록을 건넸어요.';
+    const draft = { title: '블록 놀이', content: memo };
+    const before = vi.fn();
+    const after = vi.fn();
+    setApiObserver({ before, after });
+    mockFetch(() => json(200, draft));
+    await expect(requestTeacherStoryDraft(7, memo, new AbortController().signal)).resolves.toEqual(draft);
+    expect(calls).toEqual([{ method: 'POST', url: '/ai/v1/teacher-story-draft', auth: 'Bearer access-1', body: { childId: 7, memo } }]);
+    expect(before).not.toHaveBeenCalled();
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it.each([null, {}, { title: ' ', content: '메모' }, { title: '가'.repeat(41), content: '메모' },
+    { title: '메모', content: '가'.repeat(1001) }])('형식이나 길이가 맞지 않는 초안은 편집기에 넘기지 않는다', async draft => {
+    mockFetch(() => json(200, draft));
+    await expect(requestTeacherStoryDraft(7, '공을 굴렸어요.', new AbortController().signal))
+      .rejects.toMatchObject({ code: 'INVALID_AI_DRAFT' });
+  });
+});
+
 describe('api: 토큰 갱신', () => {
+  it('어린이집 추천은 아이 번호와 달만 보내고 만료된 세션을 갱신한 뒤 같은 AI 경로로 다시 보낸다', async () => {
+    mockFetch(c => {
+      if (c.url === '/api/v1/auth/refresh') return json(200, tokens(2));
+      return c.auth === 'Bearer access-2' ? json(200, { recommendation: null }) : json(401, {});
+    });
+    const body = { childId: 7, month: '2026-11' };
+    const url = '/ai/v1/daycare-coaching';
+    await expect(requestDaycareCoaching(7, body.month, new AbortController().signal))
+      .resolves.toEqual({ recommendation: null });
+    expect(calls).toEqual([
+      { url, method: 'POST', auth: 'Bearer access-1', body },
+      { url: '/api/v1/auth/refresh', method: 'POST', auth: null, body: { refreshToken: 'refresh-1' } },
+      { url, method: 'POST', auth: 'Bearer access-2', body },
+    ]);
+  });
+
   it('401이면 리프레시 토큰으로 한 번 갱신하고 새 토큰으로 다시 보낸다', async () => {
     mockFetch((c) => {
       if (c.url === '/api/v1/auth/refresh') return json(200, tokens(2));

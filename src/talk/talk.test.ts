@@ -62,5 +62,6 @@ describe('QR 데모 입구', () => {
     expect(entryUrlFrom('http://10.0.0.5:5173/')).toBe('http://10.0.0.5:5173/try');
     expect(entryUrlFrom('https://example.test', 'https://sinabro.example/')).toBe('https://sinabro.example/try');
     expect(entryUrlFrom('https://example.test')).toBe('https://example.test/try');
+    expect(entryUrlFrom('https://example.test/')).toBe('https://example.test/try');
   });
 });

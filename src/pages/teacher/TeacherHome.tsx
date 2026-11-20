@@ -39,7 +39,7 @@ export default function TeacherHome() {
   if (fail) return fail;
   const list = children.data ?? [];
   const child = currentChild(list, picked ?? undefined);
-  if (!child) return <InviteCode />;
+  if (!child) return <InviteCode onLinked={children.reload} />;
 
   return (
     <StoryHome
@@ -88,6 +88,9 @@ function StoryHome({ child, others, onPick }: { child: TeacherChild; others: Tea
       <Link to={`/t/children/${id}/story/new`} className="btn block th-write" data-demo="th-write">
         이야기 작성
       </Link>
+      <Link to={`/t/children/${id}/ai-reviews`} className="btn secondary block th-review-link" data-demo="th-ai-reviews">
+        가정 영상 검토
+      </Link>
 
       <section aria-labelledby="th-story-h">
         <h2 id="th-story-h" className="th-section-title">
@@ -105,7 +108,7 @@ function StoryHome({ child, others, onPick }: { child: TeacherChild; others: Tea
                 const pose = storyPose(n);
                 return (
                   <li key={n.id}>
-                    <Link to={`/t/children/${id}/story/${n.id}`} state={{ note: n }} className="story-row">
+                    <Link to={`/t/children/${id}/story/${n.id}`} className="story-row">
                       <span className={`story-row-art${i % 2 ? ' lavender' : ''}`}>
                         <img className={artClass(pose) || undefined} src={poseSrc(pose)} alt="" width={56} height={56} loading="lazy" decoding="async" />
                       </span>

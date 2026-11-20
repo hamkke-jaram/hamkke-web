@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api, setSession } from '../api/client';
 import type { Child, ConsentRecord, TokenResponse, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { isCurrentDemoUser } from '../auth/demoLogin';
+import { DeleteDemoAccounts } from '../auth/DemoSessionTools';
 import { forgetGuest, guestPasswordFor, isGuestUser } from '../auth/guest';
 import { buddy } from '../components/buddyBus';
 import { DangerAction, Field, PasswordField, refocus, useToast } from '../components/feedback';
@@ -50,6 +52,7 @@ export default function Account() {
   const { user, logout, login, setUser } = useAuth();
   // 로그인 없이 시작한 이 기기 계정(auth/guest.ts). 비밀번호를 모르므로 비밀번호 칸을 보이지 않고 저장해 둔 값을 쓴다.
   const guest = isGuestUser(user);
+  const qrDemo = isCurrentDemoUser(user);
   const guestPw = guestPasswordFor(user);
   const nav = useNavigate();
   const toast = useToast();
@@ -247,7 +250,7 @@ export default function Account() {
             <span className="chip brand">{isParent ? '보호자' : '기관 선생님'}</span>
           </div>
           <p className="muted" style={{ margin: 0 }}>
-            {guest ? '이 기기에서만 쓰는 계정이에요' : user?.email}
+            {qrDemo ? '이 브라우저에서 만든 체험 계정이에요' : guest ? '이 기기에서만 쓰는 계정이에요' : user?.email}
           </p>
         </div>
       </div>
@@ -293,7 +296,7 @@ export default function Account() {
         {!isParent && <TeacherProfileRow />}
 
         {/* 이 기기 계정은 비밀번호를 쓰지 않으므로 바꾸기를 보이지 않는다. */}
-        {!guest && (
+        {!guest && !qrDemo && (
         <details className="menu-details">
           <summary className="menu-row" data-demo="account-row-pw">
             <Icon name="lock" />
@@ -522,14 +525,14 @@ export default function Account() {
           <summary className="menu-row" data-demo="account-row-delete">
             <Icon name="leave" />
             <h2 className="menu-text" id="account-delete-h">
-              회원 탈퇴
+              {qrDemo ? '체험 계정 삭제' : '회원 탈퇴'}
             </h2>
             <span className="menu-chev" aria-hidden="true">
               ›
             </span>
           </summary>
           <div className="menu-body" role="group" aria-labelledby="account-delete-h">
-            <DangerAction
+            {qrDemo ? <DeleteDemoAccounts /> : <DangerAction
               label="탈퇴하기"
               question="정말 탈퇴할까요?"
               detail={
@@ -554,7 +557,7 @@ export default function Account() {
                 onClose={resetPassword}
               />
               )}
-            </DangerAction>
+            </DangerAction>}
           </div>
         </details>
       </div>

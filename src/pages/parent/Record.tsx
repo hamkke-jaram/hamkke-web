@@ -21,7 +21,7 @@ import {
 import { runAudioInWorker } from '../../analysis/runAudioInWorker';
 import Mascot from '../../components/Mascot';
 import SubHead from '../../components/SubHead';
-import TriableCard from '../../components/TriableCard';
+import { useReviewAccess } from '../../ai/ReviewResult';
 import { refocus } from '../../components/feedback';
 import { ErrorText, SupportList, formatDuration, useLoad } from '../../components/ui';
 import { firstSentence } from './coachText';
@@ -76,7 +76,11 @@ function overallProgress(stage: Stage, ratio: number) {
 
 export default function Record() {
   const { childId } = useParams();
-  const id = Number(childId);
+  const { user } = useAuth();
+  return <ChildRecord key={`${user?.id}-${childId}`} id={Number(childId)} />;
+}
+
+function ChildRecord({ id }: { id: number }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'guide' });
   const abortRef = useRef<AbortController | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -122,6 +126,7 @@ export default function Record() {
   /** 결과 화면에서 AI 서버가 준비되지 않아 관찰 기록을 만들지 않았다. */
   const [aiSkipped, setAiSkipped] = useState(false);
   const ai = useObservationRun(id);
+  const reviewAccess = useReviewAccess(ai.state.kind === 'done' && ai.state.data.observation.reviewStatus === 'PENDING' ? id : null);
   /** 분석을 시작한 횟수. 모찌에게 '생각' 신호를 분석 한 번에 한 번만 보내는 데 쓴다. */
   const runSeq = useRef(0);
   const { start: startAi, reset: resetAi } = ai;
@@ -194,6 +199,7 @@ export default function Record() {
     try {
       const data = await api<SaveRecordResponse>('POST', `/children/${id}/interaction-records`, {
         clientRecordId,
+        ...(aiAgreed ? { awaitingAiReview: true } : {}),
         recordedAt: metrics.recordedAt,
         analyzedSeconds: metrics.analyzedSeconds,
         jointPlaySeconds: metrics.jointPlaySeconds,
@@ -341,7 +347,7 @@ export default function Record() {
         {/* 무엇이 기기 밖으로 나가는지와 데이터 안내. 시연이 이 문장을 가리킨다(record-lead). */}
         <p className="rec-note" data-demo="record-lead">
           {aiAgreed
-            ? '영상 원본과 소리는 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요. AI 관찰 기록이 켜져 있어서, 분석이 끝나면 같은 영상의 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 바로 지워요.'
+            ? '영상 원본과 소리는 이 기기에서 분석해요. 숫자 3개를 저장하고, 장면 사진 최대 6장을 AI 서버로 보내 살펴본 뒤 지워요. 가정의 AI 관찰 기록을 공유하면 연결된 선생님이 관찰 문장과 대응 근거를 검토해 보내요.'
             : '영상은 이 폰 안에서만 분석하고, 서버에는 숫자 3개만 보내요.'}{' '}
           처음 분석할 때는 분석 도구(약 17MB)를 내려받아요. 와이파이 연결을 권해요. 분석하는 동안 화면을 켜 두세요.
         </p>
@@ -463,7 +469,7 @@ export default function Record() {
   }
 
   const { record, coaching } = phase.data;
-  const msg = TREND_MESSAGE[record.changeTrend];
+  const msg = aiAgreed ? { title: '영상의 수치 기록을 남겼어요', body: '' } : TREND_MESSAGE[record.changeTrend];
   return (
     // rec-result: 제목 → 숫자 → 안내 → 코칭 순서대로 떠오른다(parent-motion.css, 움직임이 켜져 있을 때만).
     <div className="rec-page rec-result">
@@ -511,7 +517,7 @@ export default function Record() {
         </div>
       </section>
 
-      {coaching.delivery && (
+      {!aiAgreed && coaching.delivery && (
         <Link
           to={`/p/children/${id}/coaching/${coaching.delivery.id}`}
           state={{ delivery: coaching.delivery }}
@@ -524,7 +530,7 @@ export default function Record() {
         </Link>
       )}
 
-      {coaching.guidance && (
+      {!aiAgreed && coaching.guidance && (
         <section className="card warm" data-demo="record-guidance">
           <p style={{ marginTop: 0 }}>{coaching.guidance.message}</p>
           <SupportList resources={coaching.guidance.resources} />
@@ -535,8 +541,7 @@ export default function Record() {
       {ai.state.kind === 'done' ? (
         <>
           <h2>AI 관찰 기록</h2>
-          <ObservationCard observation={ai.state.data.observation} />
-          {ai.state.data.coaching?.delivery && <TriableCard childId={id} delivery={ai.state.data.coaching.delivery} />}
+          <ObservationCard observation={ai.state.data.observation} childId={id} reviewAccess={reviewAccess} />
         </>
       ) : aiSkipped && ai.state.kind === 'idle' ? (
         <section className="card" aria-label="AI 관찰 기록">

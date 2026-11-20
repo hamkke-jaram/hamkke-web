@@ -18,7 +18,7 @@ export const signup: Scenario = {
     { kind: 'as', account: null, say: n('로그아웃 상태에서 시작해요', '가입은 로그인하지 않은 사람이 여는 화면이에요.') },
     {
       kind: 'goto',
-      path: '/signup',
+      path: '/register',
       target: '@signup-role-parent',
       say: n('가입 유형 고르기', '보호자와 기관 선생님은 가입 유형만 달라요. 선생님은 보호자가 준 초대 코드로 연결된 아이만 볼 수 있어요.'),
     },

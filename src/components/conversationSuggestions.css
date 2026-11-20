@@ -1,0 +1,39 @@
+.conversation-suggestions {
+  margin: 0 0 14px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.conversation-suggestions > summary {
+  min-height: 44px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.conversation-suggestions-body {
+  padding: 6px 0 12px;
+}
+
+.conversation-suggestions-topics,
+.conversation-suggestions-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conversation-suggestions-topics {
+  margin-bottom: 12px;
+}
+
+.conversation-suggestions-topics .btn,
+.conversation-suggestions-actions .btn {
+  min-height: 44px;
+}
+
+.conversation-suggestions-topics .btn[aria-pressed='true'] {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: var(--brand);
+}

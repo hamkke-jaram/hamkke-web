@@ -2,17 +2,18 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, api } from '../../api/client';
-import type { AttachedCard, Delivery, Observation } from '../../api/types';
+import { STORY_BODY_LIMIT, STORY_TITLE_LIMIT, type AttachedCard, type Delivery, type Observation } from '../../api/types';
 import SubHead from '../../components/SubHead';
 import { poseFor, poseSrc } from '../../components/coachingArt';
 import { buddy } from '../../components/buddyBus';
 import { refocus, useToast } from '../../components/feedback';
-import { usePagedList } from '../../components/paging';
+import { useSharedDetail } from './useSharedDetail';
 import { ErrorText, Loading, loadStateView } from '../../components/ui';
 import { useAuth } from '../../auth/AuthContext';
 import { firstSentence } from '../parent/coachText';
 import { ChevronIcon } from '../parent/icons';
 import { CoachPicker } from './TeacherCoaching';
+import { StoryDraftTools } from './StoryDraftTools';
 import { storyDate, storyPose, todayIso } from './storyUtils';
 import '../parent/parent.css';
 import './teacher.css';
@@ -23,9 +24,6 @@ import './teacher.css';
  * - /t/children/:id/story/:noteId  보기: ‹ 선생님 이야기 / 날짜 / 본문 / 첨부한 코칭.
  * 보낸 이야기는 보호자 아이 홈의 '선생님 이야기'에 제목·첨부 코칭과 함께 보인다.
  */
-
-const MAX_TITLE = 40;
-const MAX_BODY = 1000;
 
 /** 첨부한 코칭 한 줄(연보라). onRemove가 있으면 오른쪽에 빼기(×). */
 function AttachedRow({ card, deliveredLabel, onOpen, onRemove }: { card: AttachedCard; deliveredLabel?: string; onOpen?: () => void; onRemove?: () => void }) {
@@ -74,13 +72,20 @@ function deliveredDate(d: Delivery): string {
 
 export function StoryCompose() {
   const id = Number(useParams().childId);
+  const { user } = useAuth();
+  return <StoryEditor key={`${user?.id}-${id}`} id={id} />;
+}
+
+function StoryEditor({ id }: { id: number }) {
   const nav = useNavigate();
   const toast = useToast();
-  const passed = (useLocation().state as { delivery?: Delivery } | null)?.delivery ?? null;
+  const passed = useLocation().state as { deliveryId?: number; delivery?: { id: number } } | null;
   const [date, setDate] = useState(todayIso);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [attached, setAttached] = useState<Delivery | null>(passed);
+  const [selectedId, setSelectedId] = useState<number | null>(passed?.deliveryId ?? passed?.delivery?.id ?? null);
+  const shared = useSharedDetail<Delivery>(selectedId ? `/children/${id}/card-deliveries/${selectedId}` : null);
+  const attached = shared.data;
   const [picking, setPicking] = useState(false);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [formError, setFormError] = useState<unknown>(null);
@@ -106,6 +111,10 @@ export function StoryCompose() {
   async function send(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
+    if (selectedId && !attached) {
+      setFormError(new Error('첨부할 코칭을 확인하거나 첨부를 빼 주세요.'));
+      return;
+    }
     if (!content.trim()) {
       flushSync(() => setBodyError('아이와 있었던 일을 적어 주세요.'));
       refocus(bodyRef.current);
@@ -125,7 +134,8 @@ export function StoryCompose() {
       nav('/t', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.status === 404 && attached) {
-        setFormError(new Error('보호자가 코칭 카드 공유를 꺼서 이 코칭을 첨부할 수 없어요. 첨부를 빼고 보내 주세요.'));
+        setSelectedId(null);
+        setFormError(new Error('이 코칭을 공유할 수 없어 첨부를 뺐어요. 이야기를 확인한 뒤 다시 보내 주세요.'));
       } else {
         setFormError(err);
       }
@@ -138,10 +148,10 @@ export function StoryCompose() {
     return (
       <CoachPicker
         childId={id}
-        selectedId={attached?.id ?? null}
+        selectedId={selectedId}
         onClose={closePicker}
         onPick={(d) => {
-          setAttached(d);
+          setSelectedId(d.id);
           setFormError(null);
           closePicker();
         }}
@@ -172,7 +182,7 @@ export function StoryCompose() {
         data-demo="th-story-title"
         type="text"
         placeholder="제목 (예: 즐거운 공놀이)"
-        maxLength={MAX_TITLE}
+        maxLength={STORY_TITLE_LIMIT}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
@@ -185,7 +195,7 @@ export function StoryCompose() {
         className="story-body-input"
         data-demo="th-story-body"
         placeholder="오늘 아이와 있었던 일을 보호자에게 전해 주세요."
-        maxLength={MAX_BODY}
+        maxLength={STORY_BODY_LIMIT}
         rows={8}
         value={content}
         aria-invalid={bodyError ? true : undefined}
@@ -196,13 +206,21 @@ export function StoryCompose() {
         }}
       />
       <div className="story-count" id="story-body-count">
-        {content.length}/{MAX_BODY}
+        {content.length}/{STORY_BODY_LIMIT}
       </div>
       {bodyError && (
         <p className="error" id="story-body-err" role="alert">
           {bodyError}
         </p>
       )}
+
+      <StoryDraftTools childId={id} title={title} memo={content} sending={busy} onApply={(draft) => {
+        setTitle(previous => previous.trim() ? previous : draft.title);
+        setContent(draft.content);
+        setBodyError(null);
+        toast('초안을 적용했어요. 보내기 전에 내용을 확인해 주세요.');
+        refocus(bodyRef.current);
+      }} />
 
       <div className="story-bottom" ref={attachArea}>
         <h2 className="story-attach-h">코칭 첨부하기</h2>
@@ -212,10 +230,15 @@ export function StoryCompose() {
             deliveredLabel={deliveredDate(attached)}
             onOpen={() => setPicking(true)}
             onRemove={() => {
-              setAttached(null);
+              setSelectedId(null);
               setFormError(null);
             }}
           />
+        ) : selectedId ? (
+          <div>
+            {loadStateView(shared, '첨부할 코칭을')}
+            <button type="button" className="btn secondary" onClick={() => setSelectedId(null)}>첨부 빼기</button>
+          </div>
         ) : (
           <button type="button" className="story-attach-add" data-demo="th-story-attach" onClick={() => setPicking(true)}>
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -240,10 +263,8 @@ export function StoryView() {
   const nav = useNavigate();
   const toast = useToast();
   const { user } = useAuth();
-  const passed = (useLocation().state as { note?: Observation } | null)?.note;
-  const fromState = passed && passed.id === nid ? passed : null;
-  const list = usePagedList<Observation>(fromState ? null : `/children/${id}/observations`, 100, [id, nid]);
-  const note = fromState ?? (list.items ?? []).find((n) => n.id === nid);
+  const list = useSharedDetail<Observation>(`/children/${id}/observations/${nid}`);
+  const note = list.data;
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);

@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useSharedDetail, watchSharedVisibility } from './useSharedDetail';
 import { ApiError } from '../../api/client';
 import type { Delivery } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import SubHead from '../../components/SubHead';
 import { poseFor, poseSrc } from '../../components/coachingArt';
 import { usePagedList, type PagedList } from '../../components/paging';
 import { Loading, MoreButton, loadStateView } from '../../components/ui';
-import { dayLabel, firstSentence, monthKey, monthLabel, splitSteps } from '../parent/coachText';
+import { firstSentence, monthLabel, splitSteps } from '../parent/coachText';
+import { kstDateKey } from '../parent/week';
+import { DaycareCoaching } from './DaycareCoaching';
+import { CoachingRows, sharedDayLabel, type CoachPick } from './CoachingRows';
 import { ChevronIcon } from '../parent/icons';
 import { artClass } from '../parent/parentMotion';
 import '../parent/parent.css';
@@ -21,6 +26,10 @@ import './teacher.css';
  */
 
 const PAGE = 30;
+
+function monthKey(iso: string) {
+  return kstDateKey(Date.parse(iso)).slice(0, 7);
+}
 
 function notShared(error: unknown) {
   return error instanceof ApiError && (error.status === 404 || error.status === 403);
@@ -41,22 +50,26 @@ export function useDeliveries(childId: number): PagedList<Delivery> {
 /** 달 넘김 + 카드 줄. pick이 있으면 줄이 '고르기' 버튼이 되고, 고른 줄을 연보라로 칠한다. */
 function CoachMonths({
   childId,
-  list,
+  picked,
+  setPicked,
   pick,
+  onAccessChanged,
 }: {
   childId: number;
-  list: PagedList<Delivery>;
-  pick?: { selectedId: number | null; onPick: (d: Delivery) => void };
+  picked: string | null;
+  setPicked: (month: string) => void;
+  pick?: CoachPick;
+  onAccessChanged?: (reason: ApiError) => void;
 }) {
+  const list = useDeliveries(childId);
   const months = useMemo(() => {
     const keys: string[] = [];
     for (const d of list.items ?? []) {
       const k = monthKey(d.deliveredAt);
-      if (!keys.includes(k)) keys.push(k);
+      if (k && !keys.includes(k)) keys.push(k);
     }
     return keys; // 최신 달이 앞
   }, [list.items]);
-  const [picked, setPicked] = useState<string | null>(null);
 
   if (list.loading && !list.items) return <Loading />;
   if (list.error && !list.items && notShared(list.error)) return <NotSharedNote />;
@@ -81,51 +94,9 @@ function CoachMonths({
           <ChevronIcon size={22} />
         </button>
       </div>
-      <ul className="coach-rows">
-        {rows.map((d) => {
-          const pose = poseFor(d.card);
-          const selected = pick?.selectedId === d.id;
-          const inner = (
-            <>
-              <span className="coach-row-art">
-                <img className={artClass(pose) || undefined} src={poseSrc(pose)} alt="" width={64} height={64} loading="lazy" decoding="async" />
-              </span>
-              <span className="coach-row-text">
-                <span className="coach-row-date">{dayLabel(d.deliveredAt)}</span>
-                <strong>{d.card.title}</strong>
-                <span className="coach-row-line">{firstSentence(d.card.body)}</span>
-              </span>
-              {selected ? (
-                <span className="coach-row-check" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="22" height="22">
-                    <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              ) : (
-                <ChevronIcon size={20} />
-              )}
-            </>
-          );
-          return (
-            <li key={d.id}>
-              {pick ? (
-                <button
-                  type="button"
-                  className={`coach-row th-pick${selected ? ' picked' : ''}`}
-                  aria-pressed={selected}
-                  onClick={() => pick.onPick(d)}
-                >
-                  {inner}
-                </button>
-              ) : (
-                <Link to={`/t/children/${childId}/coaching/${d.id}`} state={{ delivery: d }} className="coach-row">
-                  {inner}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {onAccessChanged ? (
+        <DaycareCoaching key={month} childId={childId} month={month} rows={rows} onAccessChanged={onAccessChanged} />
+      ) : <CoachingRows childId={childId} rows={rows} pick={pick} />}
       <MoreButton list={list} label="이전 코칭 더 불러오기" />
     </>
   );
@@ -134,11 +105,31 @@ function CoachMonths({
 /** 선생님 홈 → AI 코칭 확인하기. */
 export function TeacherCoachingList() {
   const id = Number(useParams().childId);
-  const list = useDeliveries(id);
+  const { user } = useAuth();
+  return <SharedCoachingPage key={`${user?.id}-${id}`} childId={id} />;
+}
+
+function SharedCoachingPage({ childId }: { childId: number }) {
+  const [visible, setVisible] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [accessError, setAccessError] = useState<ApiError | null>(null);
+  useEffect(() => watchSharedVisibility(
+    () => { setAccessError(null); setVisible(true); },
+    () => setVisible(false),
+  ), []);
+
   return (
     <div className="coach-list-page">
       <SubHead title="가정에서 공유된 코칭" icon="close" fallback="/t" />
-      <CoachMonths childId={id} list={list} />
+      {!visible ? <Loading /> : accessError ? (
+        <div>
+          {accessError.status === 409 ? <p>공유된 코칭이 바뀌었어요.</p> : accessError.status === 401
+            ? <p>로그인 상태를 확인해 주세요.</p> : <NotSharedNote />}
+          <button type="button" className="btn secondary small" onClick={() => setAccessError(null)}>다시 불러오기</button>
+        </div>
+      ) : (
+        <CoachMonths childId={childId} picked={picked} setPicked={setPicked} onAccessChanged={setAccessError} />
+      )}
     </div>
   );
 }
@@ -155,7 +146,7 @@ export function CoachPicker({
   onPick: (d: Delivery) => void;
   onClose: () => void;
 }) {
-  const list = useDeliveries(childId);
+  const [picked, setPicked] = useState<string | null>(null);
   return (
     <div className="coach-list-page" data-demo="th-coach-picker">
       <div className="sub-head">
@@ -167,7 +158,7 @@ export function CoachPicker({
         <h1 className="sub-head-title">첨부할 코칭 고르기</h1>
         <span className="sub-head-btn" aria-hidden="true" />
       </div>
-      <CoachMonths childId={childId} list={list} pick={{ selectedId, onPick }} />
+      <CoachMonths key={childId} childId={childId} picked={picked} setPicked={setPicked} pick={{ selectedId, onPick }} />
       {/* iOS 앱은 웹의 머리줄(×)을 감추고, 이 고르기는 따로 된 화면이 아니라 앱의 뒤로도 닿지 않는다. 늘 보이는 닫기를 둔다. */}
       <button type="button" className="btn secondary block" data-demo="th-coach-picker-cancel" onClick={onClose}>
         고르지 않고 돌아가기
@@ -181,10 +172,8 @@ export function TeacherCoachingDetail() {
   const id = Number(childId);
   const did = Number(deliveryId);
   const nav = useNavigate();
-  const passed = (useLocation().state as { delivery?: Delivery } | null)?.delivery;
-  const fromState = passed && passed.id === did ? passed : null;
-  const list = usePagedList<Delivery>(fromState ? null : `/children/${id}/card-deliveries`, PAGE, [id, did]);
-  const delivery = fromState ?? (list.items ?? []).find((d) => d.id === did);
+  const list = useSharedDetail<Delivery>(`/children/${id}/card-deliveries/${did}`);
+  const delivery = list.data;
 
   if (!delivery) {
     return (
@@ -206,7 +195,7 @@ export function TeacherCoachingDetail() {
     <div className="coach-detail">
       <SubHead title="가정에서 받은 코칭" fallback={`/t/children/${id}/coaching`} />
       <section className="cd-hero" aria-labelledby="tcd-title">
-        <p className="cd-label">{dayLabel(delivery.deliveredAt)}</p>
+        <p className="cd-label">{sharedDayLabel(delivery.deliveredAt)}</p>
         <img className={`cd-art ${artClass(pose)}`.trim()} src={poseSrc(pose)} alt="" width={200} height={200} decoding="async" />
         <h2 id="tcd-title" className="cd-title">
           {card.title}
@@ -235,7 +224,7 @@ export function TeacherCoachingDetail() {
         type="button"
         className="btn block cd-done"
         data-demo="th-coach-write"
-        onClick={() => nav(`/t/children/${id}/story/new`, { state: { delivery } })}
+        onClick={() => nav(`/t/children/${id}/story/new`, { state: { deliveryId: delivery.id } })}
       >
         이 코칭으로 이야기 쓰기
       </button>

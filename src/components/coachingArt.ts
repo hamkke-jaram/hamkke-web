@@ -49,7 +49,7 @@ function lookup(table: Record<string, Pose>, key: unknown): Pose | undefined {
   return typeof key === 'string' && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
 }
 
-export function poseFor(card: Pick<Card, 'code' | 'metricFocus'>): Pose {
+export function poseFor(card: Partial<Pick<Card, 'code' | 'metricFocus'>>): Pose {
   return lookup(POSE_BY_CODE, card.code?.trim().toUpperCase()) ?? lookup(POSE_BY_FOCUS, card.metricFocus) ?? FALLBACK;
 }
 

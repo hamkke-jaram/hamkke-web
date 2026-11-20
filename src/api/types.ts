@@ -91,6 +91,13 @@ export interface Delivery {
   card: Card;
 }
 
+export interface DaycareRecommendation {
+  title: string;
+  action: string;
+  sourceCode: string;
+  sourceTitle: string;
+}
+
 export interface SupportResource {
   id: number;
   name: string;
@@ -192,6 +199,14 @@ export interface Observation {
   createdAt: string;
 }
 
+export const STORY_TITLE_LIMIT = 40;
+export const STORY_BODY_LIMIT = 1000;
+
+export interface TeacherStoryDraft {
+  title: string;
+  content: string;
+}
+
 export interface ConsentRecord {
   type: string;
   version: string;
@@ -254,6 +269,39 @@ export interface AiObservation extends ObservationContent {
   /** 지금 로그인한 사람이 만든 기록인지(선생님 화면의 삭제 버튼에 쓴다) */
   mine?: boolean;
   modelVersion: string;
+  reviewStatus?: 'PENDING' | 'PUBLISHED' | null;
+  publishedGuidance?: PublishedGuidance | null;
+}
+
+export interface EvidenceRecommendation {
+  observation: string;
+  action: string;
+  reason: string;
+  sourceId: string;
+  sourceTitle: string;
+  sourcePublisher: string;
+  sourceUrl: string;
+  sourceSection: string;
+}
+
+export interface ObservationGuidance {
+  summary: string;
+  recommendations: EvidenceRecommendation[];
+  corpusVersion: string;
+}
+
+export interface GuidancePreview extends ObservationGuidance {
+  receipt: string;
+}
+
+export interface PublishedGuidance extends ObservationGuidance {
+  reviewedAt: string;
+}
+
+export interface TeacherObservationReview {
+  reviewerId: number;
+  status: 'PENDING' | 'PUBLISHED';
+  observation: AiObservation;
 }
 
 /** POST /children/{id}/ai-observations 응답. 기관 기록이면 coaching은 null. */

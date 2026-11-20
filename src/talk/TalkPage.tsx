@@ -5,6 +5,7 @@ import type { Child, Observation, TeacherChild } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import Mascot from '../components/Mascot';
 import MiniBuddy from '../components/MiniBuddy';
+import ConversationSuggestions from '../components/ConversationSuggestions';
 import SubHead from '../components/SubHead';
 import { buddy } from '../components/buddyBus';
 import { useToast } from '../components/feedback';
@@ -252,6 +253,13 @@ export default function TalkPage() {
             </button>
           </div>
         )}
+        <ConversationSuggestions key={id} role={role} hasNotes={notes.length > 0}
+          noteBusy={sending} messageSpace={MAX - text.length - (text.length ? 1 : 0)}
+          onAddToMessage={(suggestion) => {
+            setText((draft) => draft ? draft + '\n' + suggestion : suggestion);
+            setSendError(null);
+            inputRef.current?.focus();
+          }} />
         <div className="talk-quick-row">
         {/* 입력칸 곁에 앉은 작은 모찌: 보내면 두 번 뛰고(cheer), 상대 이야기가 오면 몸을 흔든다(wave). */}
         <MiniBuddy name={isParent ? 'dome' : 'teacher'} size={32} className="talk-mochi" />

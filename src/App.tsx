@@ -1,15 +1,17 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import Observe from './ai/Observe';
+import { TeacherReviewDetail, TeacherReviewInbox } from './ai/TeacherReview';
 import type { Role } from './api/types';
-import { useAuth } from './auth/AuthContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import DemoSessionTools from './auth/DemoSessionTools';
 import BrandMark from './components/BrandMark';
 import { useRouteFocus } from './components/feedback';
 import { Icon } from './components/icons';
 import MochiBuddy from './components/MochiBuddy';
 import { installArtMotion } from './components/artMotion';
 import { Disclaimer, Loading } from './components/ui';
-import { DEMO_ENABLED } from './demo/DemoContext';
+import { DEMO_ENABLED, DemoProvider } from './demo/DemoContext';
 import DemoStart from './demo/DemoStart';
 import DemoTour from './demo/DemoTour';
 import { FeatureMenuRoute } from './demo/features/entry';
@@ -19,12 +21,11 @@ import Login from './pages/Login';
 import NotFound, { ScreenErrorBoundary } from './pages/NotFound';
 import Privacy from './pages/Privacy';
 import QrEntry from './pages/QrEntry';
-import TryDemo from './pages/TryDemo';
-import { TRY_ENABLED } from './auth/guest';
 import Reconsent from './pages/Reconsent';
 import Signup from './pages/Signup';
 import Support from './pages/Support';
 import Facilities from './pages/facilities/Facilities';
+import ServiceFilm from './pages/ServiceFilm';
 import Terms from './pages/Terms';
 import { useMotionOn } from './motion';
 import { NativeBridge } from './native';
@@ -47,9 +48,12 @@ import DuoDemo, { DuoEnter } from './demo/DuoDemo';
 
 /** 약관 다시 동의를 받는 동안에도 열 수 있는 화면(바뀐 내용 읽기, 도움받기, 내 데이터 내려받기·탈퇴). */
 const OPEN_DURING_RECONSENT = ['/terms', '/privacy', '/support', '/support/facilities', '/account'];
+const TeacherReviewDemo = import.meta.env.DEV && import.meta.env.VITE_TEACHER_REVIEW_DEMO === true
+  ? lazy(() => import('./demo/teacher-review/TeacherReviewDemo'))
+  : null;
 
-/** 돌아다니는 모찌를 두지 않는 화면: 촬영·실시간 카메라(영상과 버튼을 가리지 않게). */
-const NO_BUDDY = /\/(record|observe|talk)$|^\/demo\/duo/;
+/** 촬영·대화·영상 시연 화면에서는 움직이는 모찌가 조작 버튼이나 자막을 가리지 않게 한다. */
+const NO_BUDDY = /\/(record|observe|talk)$|^\/guide\/?$|^\/demo\/duo/;
 
 /**
  * 화면 전환: 주소가 바뀌면 새 화면이 살짝 밀려 들어온다(앞으로 가기는 오른쪽에서, 뒤로 가기는 왼쪽에서).
@@ -121,6 +125,7 @@ function Layout() {
           </Link>
         )}
       </header>
+      {!blocked && <DemoSessionTools />}
       <main ref={mainRef} onAnimationEnd={(e) => e.target === e.currentTarget && e.currentTarget.classList.remove('route-in')}>
         <ScreenErrorBoundary resetKey={pathname}>{blocked ? <Reconsent pending={pending} /> : <Outlet />}</ScreenErrorBoundary>
       </main>
@@ -152,20 +157,25 @@ function RequireUser({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export default function App() {
+function ServiceRoutes() {
   return (
     <Routes>
+      {/* 이미 인쇄된 /signup QR과 /try QR은 같은 로그인 화면을 연다. */}
+      <Route path="/signup" element={<Navigate to="/login?demo=1" replace />} />
+      <Route path="/try/*" element={<Navigate to="/login?demo=1" replace />} />
       {/* 보호자·선생님 함께 보기(시연 영상용): 두 휴대폰을 나란히 두므로 앱 화면 폭(560px) 밖에 둔다. */}
       {DEMO_ENABLED && <Route path="/demo/duo" element={<DuoDemo />} />}
+      {TeacherReviewDemo && (
+        <Route path="/demo/teacher-review" element={<Suspense fallback={<Loading />}><TeacherReviewDemo /></Suspense>} />
+      )}
       <Route element={<Layout />}>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/register" element={<Signup />} />
         <Route path="/support" element={<Support />} />
         <Route path="/support/facilities" element={<Facilities />} />
+        <Route path="/guide" element={<ServiceFilm />} />
         <Route path="/qr" element={<QrEntry />} />
-        {/* QR로 들어오는 데모(예시 데이터, 로그인 없음). 실제 서비스 입구는 '/'(가입·로그인). 개발·시연 빌드에만. */}
-        {TRY_ENABLED && <Route path="/try" element={<TryDemo />} />}
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         {DEMO_ENABLED && <Route path="/demo" element={<DemoStart />} />}
@@ -194,10 +204,18 @@ export default function App() {
         <Route path="/t/children/:childId/coaching/:deliveryId" element={<RequireRole role="TEACHER"><TeacherCoachingDetail /></RequireRole>} />
         <Route path="/t/children/:childId" element={<RequireRole role="TEACHER"><TeacherChild /></RequireRole>} />
         <Route path="/t/children/:childId/observe" element={<RequireRole role="TEACHER"><Observe /></RequireRole>} />
+        <Route path="/t/children/:childId/ai-reviews" element={<RequireRole role="TEACHER"><TeacherReviewInbox /></RequireRole>} />
+        <Route path="/t/children/:childId/ai-reviews/:observationId" element={<RequireRole role="TEACHER"><TeacherReviewDetail /></RequireRole>} />
         <Route path="/t/children/:childId/talk" element={<RequireRole role="TEACHER"><TalkPage /></RequireRole>} />
 
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider><DemoProvider><ServiceRoutes /></DemoProvider></AuthProvider>
   );
 }

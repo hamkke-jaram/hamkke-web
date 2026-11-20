@@ -6,8 +6,7 @@ import { useToast } from '../components/feedback';
 import { Loading } from '../components/ui';
 
 /*
- * /qr — 휴대폰으로 데모 열기. 찍으면 데모 입구(/try)가 열려 로그인 없이 예시 데이터로 채운 화면을 바로 본다.
- * (실제 서비스는 '/'에서 가입·로그인한다.)
+ * /qr — 예시 기록이 들어 있는 체험 화면을 휴대폰으로 연다.
  * 들어올 주소:
  * - VITE_PUBLIC_URL을 정해 빌드했으면 그 주소(배포)
  * - 개발 서버를 이 컴퓨터(localhost)에서 보고 있으면 개발 서버가 알려 주는 와이파이 주소(npm run dev:lan일 때만)
@@ -16,10 +15,9 @@ import { Loading } from '../components/ui';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 
-/** QR이 가리킬 주소: 데모 입구(/try). 실제 서비스 입구('/')가 아니라 예시 데이터로 채운 화면이 바로 열린다. */
 export function entryUrlFrom(origin: string, publicUrl?: string): string {
   const base = (publicUrl?.trim() || origin).replace(/\/+$/, '');
-  return `${base}/try`;
+  return base + '/try';
 }
 
 type Target = { url: string; viaLan: boolean } | { url: null; reason: 'local-only' };
@@ -52,7 +50,7 @@ export default function QrEntry() {
       setTarget(t);
       if (t.url) {
         // 어두운 화면에서도 읽히도록 늘 흰 바탕에 진한 무늬로 그린다.
-        const data = await QRCode.toDataURL(t.url, { width: 560, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#2b1d14', light: '#ffffff' } });
+        const data = await QRCode.toDataURL(t.url, { width: 560, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#2b1d14', light: '#ffffff' } });
         if (alive) setImg(data);
       }
     });
@@ -78,7 +76,7 @@ export default function QrEntry() {
         </div>
         <Mascot name="friend" size={88} />
       </div>
-      <p className="lead">휴대폰 카메라로 아래 QR 코드를 찍으면 예시 아이와 기록으로 채운 데모가 바로 열려요. 로그인하지 않아도 돼요.</p>
+      <p className="lead">휴대폰 카메라로 QR 코드를 찍고 보호자나 선생님으로 로그인해 보세요. 각자의 홈에서 콩이의 기록과 코칭, 대화를 체험할 수 있어요.</p>
 
       {!target ? (
         <Loading />
@@ -106,17 +104,12 @@ export default function QrEntry() {
               주소 복사하기
             </button>
             {img && (
-              <a className="btn block ghost" href={img} download="hamkke-jaram-qr.png">
+              <a className="btn block ghost" href={img} download="sinabro-demo-qr.png">
                 QR 그림 저장하기
               </a>
             )}
           </div>
           {target.viaLan && <p className="muted qr-note">휴대폰이 이 컴퓨터와 같은 와이파이에 연결되어 있어야 해요.</p>}
-          {target.url.startsWith('http://') && (
-            <p className="muted qr-note">
-              보안 연결(https)이 아닌 주소라 휴대폰에서 실시간 카메라는 열리지 않아요. 찍어 둔 영상을 골라 기록하는 것은 그대로 돼요.
-            </p>
-          )}
         </section>
       )}
 

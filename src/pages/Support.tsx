@@ -40,6 +40,7 @@ export default function Support() {
           ›
         </span>
       </Link>
+      <Link to="/guide" className="btn block ghost">서비스 시연 영상 보기</Link>
     </div>
   );
 }

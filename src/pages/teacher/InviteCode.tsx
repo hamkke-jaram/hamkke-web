@@ -32,7 +32,7 @@ export function formatCode(value: string) {
  * 연결된 아이가 없을 때 선생님 홈(/t)이 이 화면이고, 아이가 있으면 떠 있는 버튼의 '아이 추가하기'(/t/link)로 온다.
  * 연결하면 그 아이를 고른 채로 선생님 홈으로 간다.
  */
-export default function InviteCode({ closable = false }: { closable?: boolean }) {
+export default function InviteCode({ closable = false, onLinked }: { closable?: boolean; onLinked?: () => void }) {
   const nav = useNavigate();
   const toast = useToast();
   const [code, setCode] = useState('');
@@ -88,7 +88,8 @@ export default function InviteCode({ closable = false }: { closable?: boolean })
       rememberChild(c.id);
       toast(`연결했어요. ${c.nickname} 이야기를 써 보세요.`);
       buddy.emit('wave');
-      nav('/t', { replace: closable });
+      if (onLinked) onLinked();
+      else nav('/t', { replace: closable });
     } catch (err) {
       // 인터넷 연결·서버·시도 횟수 문제는 코드가 틀린 게 아니므로 칸을 오류로 표시하지 않는다.
       if (err instanceof ApiError && CODE_ERRORS.includes(err.code)) fail(errorMessage(err));

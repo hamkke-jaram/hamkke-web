@@ -4,8 +4,8 @@ import { newUuid } from '../api/uuid';
 import { SAMPLE_RECORDS } from '../demo/seed';
 
 /*
- * QR 데모(/try)용 '이 기기 계정'. QR로 들어온 사람이 이메일·비밀번호를 만들지 않고 예시 데이터 화면을 바로 보게 한다.
- * (실제 서비스는 '/'에서 가입·로그인한다.)
+ * 이전 버전의 '이 기기 계정'. 설정에서 기존 계정의 표시 이름과 탈퇴를 처리할 때 사용한다.
+ * 현재 QR 체험의 보호자·선생님 계정 준비와 로그인은 demoLogin.ts에서 처리한다.
  * - 처음: 이 기기에서만 쓰는 계정을 공개 API(/auth/signup)로 만든다. 이메일·비밀번호는 무작위로 만들고
  *   이 기기(localStorage)에만 둔다. 약관·개인정보 처리 방침 동의는 데모 계정에 한해 자동으로 보낸다.
  * - 다음에: 세션이 끝났어도 저장해 둔 값으로 다시 로그인해 같은 데모를 이어 본다.
@@ -125,15 +125,6 @@ export async function startAsGuest(role: Role, policies: Policies): Promise<Gues
   saveGuest(fresh);
   return { tokens, created: true };
 }
-
-/* ───── QR 데모(/try, pages/TryDemo.tsx) ─────
- * QR로 들어오면 로그인 없이 데모 보호자 계정 + 예시 아이(콩이) + 지난 4주 예시 기록을 만들어 아이 홈을 바로 연다.
- * 개발 서버, 시연 빌드(VITE_DEMO_MODE=true), 또는 VITE_TRY_ENABLED=true로 빌드했을 때만 켜진다.
- * 실제 서비스의 입구는 '/'(가입·로그인)이다.
- * 법정대리인 동의는 예시 아이(시험 데이터)에 한해 자동으로 보낸다. 예시 기록은 modelVersion 'demo-sample-data'로 표시한다.
- */
-export const TRY_ENABLED =
-  import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true' || import.meta.env.VITE_TRY_ENABLED === 'true';
 
 export const SAMPLE_CHILD_NICKNAME = '콩이';
 

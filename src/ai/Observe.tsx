@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { AiConsent, Child, SharedSummary } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import TriableCard from '../components/TriableCard';
+import { useReviewAccess } from './ReviewResult';
 import { BackLink } from '../components/feedback';
 import { ErrorText, Loading, useLoad } from '../components/ui';
 import ObservationCard from './ObservationCard';
@@ -85,7 +85,11 @@ function environmentProblem(): CameraProblem | null {
 
 export default function Observe() {
   const { childId } = useParams();
-  const id = Number(childId);
+  const { user } = useAuth();
+  return <ChildObserve key={`${user?.id}-${childId}`} id={Number(childId)} />;
+}
+
+function ChildObserve({ id }: { id: number }) {
   const { user, policies, policiesError } = useAuth();
   const isTeacher = user?.role === 'TEACHER';
   const home = `${isTeacher ? '/t' : '/p'}/children/${id}`;
@@ -119,6 +123,7 @@ export default function Observe() {
   const shownHealth: AiHealth = health.kind === 'checking' && lastSettled.current ? lastSettled.current : health;
 
   const run = useObservationRun(id);
+  const reviewAccess = useReviewAccess(!isTeacher && run.state.kind === 'done' && run.state.data.observation.reviewStatus === 'PENDING' ? id : null);
   const startRun = run.start;
 
   const [phase, setPhase] = useState<Phase>('setup');
@@ -452,14 +457,13 @@ export default function Observe() {
 
   if (phase === 'review') {
     if (run.state.kind === 'done') {
-      const { observation, coaching } = run.state.data;
+      const { observation } = run.state.data;
       return (
         <div>
           <BackLink fallback={home} />
           <h1>관찰 기록을 남겼어요</h1>
-          <p className="lead">보낸 장면 사진은 살펴본 직후 지워져요. 아래 글만 저장했어요.</p>
-          <ObservationCard observation={observation} />
-          {!isTeacher && coaching?.delivery && <TriableCard childId={id} delivery={coaching.delivery} />}
+          <p className="lead">보낸 장면 사진은 살펴본 직후 지워지고, 관찰 기록은 글로 저장돼요.</p>
+          <ObservationCard observation={observation} childId={id} teacher={isTeacher} reviewAccess={reviewAccess} />
           <div className="stack">
             <Link to={home} className="btn block" data-demo="observe-done">
               확인했어요

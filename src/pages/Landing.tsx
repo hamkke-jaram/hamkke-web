@@ -6,7 +6,7 @@ import { DEMO_ENABLED } from '../demo/DemoContext';
 
 /**
  * 첫 화면(실제 서비스의 입구): 시작하기(가입)·로그인. 로그인되어 있으면 홈으로 간다.
- * QR로 들어오는 데모(예시 데이터로 채운 화면, 로그인 없음)는 따로 /try(pages/TryDemo.tsx)다.
+ * QR 입구(/try)는 체험 계정 로그인 뒤 같은 보호자·선생님 홈을 연다.
  */
 export default function Landing() {
   const { user, loading } = useAuth();
@@ -40,17 +40,16 @@ export default function Landing() {
       </section>
 
       <div className="stack">
-        <Link to="/signup" className="btn block">
+        <Link to="/register" className="btn block">
           시작하기
         </Link>
         <Link to="/login" className="btn block secondary">
           로그인
         </Link>
-        {DEMO_ENABLED && (
-          <Link to="/qr" className="btn block ghost" data-demo="landing-qr">
-            휴대폰으로 데모 열기 (QR)
-          </Link>
-        )}
+        <Link to="/guide" className="btn block ghost">서비스 시연 영상 보기</Link>
+        <Link to="/qr" className="btn block ghost" data-demo="landing-qr">
+          휴대폰으로 데모 열기 (QR)
+        </Link>
         {DEMO_ENABLED && (
           <Link to="/demo" className="btn block ghost">
             전체 흐름 보기 (시연용)

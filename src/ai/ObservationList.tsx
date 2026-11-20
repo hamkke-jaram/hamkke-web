@@ -1,12 +1,17 @@
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
+import { watchSharedVisibility } from '../pages/teacher/useSharedDetail';
 import type { AiObservation } from '../api/types';
 import { usePagedList } from '../components/paging';
 import { Loading, MoreButton, Section } from '../components/ui';
 import ObservationCard from './ObservationCard';
+import { useReviewAccess } from './ReviewResult';
 import './ai.css';
 
 interface Props {
   childId: number;
+  teacher?: boolean;
   /** 한 번에 가져올 개수(최신순). 더 있으면 '더 보기'로 이어서 가져온다. */
   limit?: number;
   /** 이 기록에 '삭제'를 보여 줄지. 권한은 서버가 다시 확인한다. */
@@ -20,9 +25,17 @@ interface Props {
 }
 
 /** 'AI 관찰 기록' 목록. 서버가 이 사용자에게 보여 주기로 한 기록만 온다. */
-export default function ObservationList({ childId, limit = 5, canDelete, emptyText, hideWhenEmpty, onDeleted }: Props) {
+export default function ObservationList(props: Props) {
+  const { user } = useAuth();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => watchSharedVisibility(() => setVisible(true), () => setVisible(false)), []);
+  return visible ? <ObservationRows key={`${user?.id}-${props.childId}`} {...props} /> : null;
+}
+
+function ObservationRows({ childId, teacher, limit = 5, canDelete, emptyText, hideWhenEmpty, onDeleted }: Props) {
   const list = usePagedList<AiObservation>(`/children/${childId}/ai-observations`, limit, [childId]);
   const items = list.items ?? [];
+  const access = useReviewAccess(!teacher && items.some(o => o.source === 'HOME' && o.reviewStatus === 'PENDING') ? childId : null);
 
   async function remove(o: AiObservation) {
     await api('DELETE', `/children/${childId}/ai-observations/${o.id}`);
@@ -56,6 +69,9 @@ export default function ObservationList({ childId, limit = 5, canDelete, emptyTe
             <ObservationCard
               key={o.id}
               observation={o}
+              childId={childId}
+              teacher={teacher}
+              reviewAccess={access}
               variant="row"
               onDelete={canDelete?.(o) ? () => remove(o) : undefined}
             />

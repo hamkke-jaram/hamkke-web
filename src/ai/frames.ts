@@ -20,6 +20,12 @@ export interface SampledFrames {
   durationSec: number | null;
 }
 
+/** 원본 영상 시간축에서 장면 사진을 뽑을 구간. */
+export interface VideoRange {
+  start: number;
+  end: number;
+}
+
 export const MAX_FRAMES = 6;
 export const FRAME_LONG_EDGE = 512;
 /** 한 장의 디코딩 크기 한도(AI 서버와 같은 값). */
@@ -177,7 +183,12 @@ export function frameTimes(durationSec: number, count: number): number[] {
  * 영상 파일에서 장면 사진을 고르게 뽑는다. 화면에 보이지 않는 <video>로 해당 시각을 찾아가 그린다.
  * 찾아가기가 제한 시간 안에 끝나지 않은 시각은 건너뛴다. 한 장도 못 뽑으면 FrameError.
  */
-export async function sampleFramesFromFile(file: File, count = MAX_FRAMES, signal?: AbortSignal): Promise<SampledFrames> {
+export async function sampleFramesFromFile(
+  file: File,
+  count = MAX_FRAMES,
+  signal?: AbortSignal,
+  range?: VideoRange,
+): Promise<SampledFrames> {
   throwIfAborted(signal);
   const n = Math.max(1, Math.min(MAX_FRAMES, Math.floor(count)));
   const maxBytes = frameByteLimit(n);
@@ -195,11 +206,16 @@ export async function sampleFramesFromFile(file: File, count = MAX_FRAMES, signa
     const duration = await resolveDuration(video, signal);
     if (!Number.isFinite(duration)) throw new FrameError('영상 길이를 알 수 없어서 장면 사진을 뽑지 못했어요.');
 
+    const start = range?.start ?? 0;
+    const end = range?.end ?? duration;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > duration || end <= start) {
+      throw new FrameError('영상 안에서 공유할 구간을 골라 주세요.');
+    }
     const frames: Frame[] = [];
-    for (const t of frameTimes(duration, n)) {
+    for (const relativeTime of frameTimes(end - start, n)) {
       throwIfAborted(signal);
       const seeked = waitFor(video, 'seeked', SEEK_TIMEOUT_MS, signal);
-      video.currentTime = t;
+      video.currentTime = start + relativeTime;
       if ((await seeked) === 'timeout') continue;
       // 찾아간 직후에는 그림이 아직 준비되지 않았을 수 있다(HAVE_CURRENT_DATA 미만).
       if (video.readyState < 2) {
