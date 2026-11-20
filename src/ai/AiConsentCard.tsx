@@ -247,7 +247,7 @@ export default function AiConsentCard({ childId, nickname, consent, paused = fal
           <ConsentFacts maxFrames={agreedMax} />
           {consent.version && <p className="muted">동의 내용 버전 {consent.version}</p>}
         </details>
-        {!paused && upgrading && (open ? agreeForm : (
+        {!paused && upgrading && !confirmOff && (open ? agreeForm : (
           <button type="button" className="btn block secondary" data-demo="ai-upgrade" onClick={() => setOpen(true)}>
             자세한 영상 분석 동의 내용 보기
           </button>
