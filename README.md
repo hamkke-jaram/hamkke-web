@@ -43,6 +43,22 @@ open ios/HamkkeJaram.xcodeproj                   # Xcode에서 HamkkeJaram 스�
 - 웹과 앱의 다리는 `src/native.tsx`: 앱 안에서는 `<html class="ios-app">`로 웹 상단바를 숨기고, 화면 주소·제목(`route`)과 진동(`haptic`)만 앱에 알린다. 앱은 `window.hjNavigate(path)`·`window.hjBack()`으로 화면을 바꾼다.
 - **QR 체험**은 기존 `/signup` QR과 새 `/try` QR 모두 같은 로그인 화면을 연다. 처음에는 역할을 고르고 약관에 동의한 뒤 체험 계정으로 로그인한다. 기기 전용 보호자·선생님 계정과 가상 아이의 예시 기록은 서버에 생성된다. 로그인에 성공하면 서비스의 보호자 홈(`/p`) 또는 교사 홈(`/t`)에서 기록을 열고 수정한다. 이미 개인 계정으로 로그인한 기기에서는 그 계정의 홈이 열린다.
 
+## 안드로이드 앱(Capacitor)
+
+같은 React 화면을 안드로이드 앱으로 감싼다(`android/`, `capacitor.config.ts`). 웹 빌드·배포는 바뀌지 않는다.
+필요한 것: JDK 21(`JAVA_HOME`), Android SDK(`ANDROID_HOME`, 윈도우는 기본 위치를 스스로 찾음), API 8080·AI 서버 8090.
+
+```bash
+npm run android:build                  # 웹 빌드(--mode android) + 앱에 복사(cap sync)
+npm run android:apk                    # 디버그 APK → android/app/build/outputs/apk/debug/app-debug.apk
+npm run android:install -- emulator-5556   # adb reverse 8080·8090 + 설치 + 앱 열기(기기가 하나면 이름 생략)
+```
+
+- 앱 화면은 기기 안 파일(`https://localhost`)에서 열려 프록시가 없다. 앱 빌드만 `.env.android`의 `VITE_API_ORIGIN`·`VITE_AI_ORIGIN`(기본 `http://localhost:8080`·`8090`)으로 `/api`·`/ai` 요청을 보낸다(`src/api/origin.ts`). 웹 빌드에서는 비어 있어 아무 일도 하지 않는다. 다른 주소는 `.env.android.local`에.
+- 요청은 Capacitor가 네이티브로 보낸다(`CapacitorHttp`). 그래서 서버에 CORS 설정이 없어도 된다. 평문 http는 디버그 빌드에서 localhost·127.0.0.1·10.0.2.2에만 허용한다(`android/app/src/debug/`).
+- 분석 모델(`public/mediapipe`)은 APK 안에 들어가 인터넷 없이 뜬다. 뒤로 가기 버튼은 앱 안 뒤로 가기, 첫 화면에서는 앱을 닫는다.
+- Android Studio로 열려면 `npx cap open android`.
+
 ## 검사
 
 ```bash

@@ -5,3 +5,8 @@
 *.tsx text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+# 안드로이드(Capacitor): gradlew 는 맥·리눅스 셸이 읽으니 LF, gradlew.bat 은 윈도우용이라 CRLF.
+android/gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary

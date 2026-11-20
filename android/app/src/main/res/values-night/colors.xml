@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 어두운 화면 바탕(styles.css 다크 테마의 bg 색). -->
+    <color name="app_bg">#1A1410</color>
+</resources>
