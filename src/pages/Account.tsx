@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api, setSession } from '../api/client';
 import type { Child, ConsentRecord, TokenResponse, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { forgetGuest, guestPasswordFor, isGuestUser } from '../auth/guest';
 import { DangerAction, Field, PasswordField, refocus, useToast } from '../components/feedback';
 import { Icon } from '../components/icons';
 import { ErrorText, Loading, formatDate, useLoad } from '../components/ui';
@@ -45,6 +46,9 @@ function saveJson(data: unknown, fileName: string) {
 
 export default function Account() {
   const { user, logout, login, setUser } = useAuth();
+  // 로그인 없이 시작한 이 기기 계정(auth/guest.ts). 비밀번호를 모르므로 비밀번호 칸을 보이지 않고 저장해 둔 값을 쓴다.
+  const guest = isGuestUser(user);
+  const guestPw = guestPasswordFor(user);
   const nav = useNavigate();
   const toast = useToast();
   const isParent = user?.role === 'PARENT';
@@ -52,7 +56,7 @@ export default function Account() {
   // 동의 기록에 어느 아이의 동의인지 적으려고만 불러온다. 못 불러오면 이름 없이 보여 준다.
   const kids = useLoad(() => (isParent ? api<Child[]>('GET', '/children') : Promise.resolve([] as Child[])), [isParent]);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [password, setPassword] = useState('');
+  const [typedPassword, setPassword] = useState('');
   const [pwError, setPwError] = useState<string | null>(null);
   const pwRef = useRef<HTMLInputElement>(null);
 
@@ -186,11 +190,13 @@ export default function Account() {
     if (loggingOut) return;
     setLoggingOut(true);
     await logout();
-    toast('로그아웃했어요.');
-    nav('/', { replace: true });
+    toast(guest ? '처음 화면으로 나왔어요. 다시 시작하면 지금 기록을 이어서 볼 수 있어요.' : '로그아웃했어요.');
+    // 시작 화면이 이 기기 계정으로 곧바로 다시 들어가지 않게 알린다.
+    nav('/', { replace: true, state: { left: true } });
   }
 
   async function deleteAccount() {
+    const password = guestPw ?? typedPassword;
     if (!password) {
       flushSync(() => setPwError('비밀번호를 입력해 주세요.'));
       refocus(pwRef.current);
@@ -207,6 +213,7 @@ export default function Account() {
       }
       throw e;
     }
+    if (guest) forgetGuest();
     setSession(null);
     toast('탈퇴를 마쳤어요. 그동안 함께해 주셔서 고마웠어요.');
     nav('/', { replace: true });
@@ -235,7 +242,7 @@ export default function Account() {
             <span className="chip brand">{isParent ? '보호자' : '기관 선생님'}</span>
           </div>
           <p className="muted" style={{ margin: 0 }}>
-            {user?.email}
+            {guest ? '이 기기에서만 쓰는 계정이에요' : user?.email}
           </p>
         </div>
       </div>
@@ -280,6 +287,8 @@ export default function Account() {
           </form>
         </details>
 
+        {/* 이 기기 계정은 비밀번호를 쓰지 않으므로 바꾸기를 보이지 않는다. */}
+        {!guest && (
         <details className="menu-details">
           <summary className="menu-row" data-demo="account-row-pw">
             <Icon name="lock" />
@@ -331,6 +340,7 @@ export default function Account() {
             </p>
           </form>
         </details>
+        )}
 
       </div>
 
@@ -457,7 +467,7 @@ export default function Account() {
           onClick={() => void doLogout()}
         >
           <Icon name="logout" />
-          <span className="menu-text">{loggingOut ? '로그아웃하는 중…' : '로그아웃'}</span>
+          <span className="menu-text">{loggingOut ? '나가는 중…' : guest ? '처음 화면으로 나가기' : '로그아웃'}</span>
         </button>
 
         <details className="menu-details">
@@ -484,9 +494,10 @@ export default function Account() {
               demo="account-delete"
               onConfirm={deleteAccount}
             >
+              {!guestPw && (
               <DeletePassword
                 ref={pwRef}
-                value={password}
+                value={typedPassword}
                 error={pwError}
                 onChange={(v) => {
                   setPassword(v);
@@ -494,6 +505,7 @@ export default function Account() {
                 }}
                 onClose={resetPassword}
               />
+              )}
             </DangerAction>
           </div>
         </details>

@@ -1,0 +1,280 @@
+/*
+ * 화면 아래를 돌아다니는 모찌(components/MochiBuddy.tsx). 꾸밈.
+ * 바닥 줄(.buddy-layer)은 높이 0으로 화면 아래에 붙어 있고, 모찌·그림자·하트는 그 줄을 기준으로 놓인다.
+ * 알림(30)·시연 패널(50~70)보다 아래, 상단바(5)보다 위.
+ */
+.buddy-layer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 6px);
+  height: 0;
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* 시연 안내 패널(아래 12px에 떠 있음)이 있으면 패널 윗변을 바닥으로 삼는다. */
+body.demo-on .buddy-layer {
+  bottom: calc(var(--demo-pad, 280px) - 12px);
+}
+
+body.fdemo-on .buddy-layer {
+  bottom: calc(var(--fdemo-pad, 320px) - 12px);
+}
+
+/* 화면 맨 아래 내용(면책 문구·마지막 버튼)이 모찌에 가리지 않게 모찌 키만큼 여백을 둔다. */
+body.buddy-on .app {
+  padding-bottom: 64px;
+}
+
+body.buddy-on.demo-on .app {
+  padding-bottom: calc(var(--demo-pad, 280px) + 64px);
+}
+
+body.buddy-on.fdemo-on .app {
+  padding-bottom: calc(var(--fdemo-pad, 320px) + 64px);
+}
+
+/* 버튼·링크 위에 서 있는 동안은 누름이 아래로 통과한다(MochiBuddy가 붙인다). */
+.buddy-layer.passthrough .buddy-squish {
+  pointer-events: none;
+}
+
+/* 입력칸에 글을 쓰는 동안은 숨는다. */
+.buddy-layer.typing {
+  opacity: 0;
+}
+
+.buddy-layer.typing .buddy-squish {
+  pointer-events: none;
+}
+
+.buddy,
+.buddy-shadow {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  will-change: transform;
+}
+
+/* 발바닥을 기준으로 납작해지고 늘어난다. */
+.buddy-squish {
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.buddy-layer.dragging .buddy-squish {
+  cursor: grabbing;
+  /* 들고 있으면 집은 곳(위쪽)을 축으로 진자처럼 흔들린다. */
+  transform-origin: 50% 12%;
+}
+
+.buddy-squish {
+  position: relative;
+}
+
+/* 눈(BuddyFace): 그림 위에 겹친다. 뜬 눈·정면이면 통째로 숨겨 원래 그림의 눈이 보인다. */
+.buddy-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.buddy-face .eye-open,
+.buddy-face .eye-closed,
+.buddy-face .eye-happy,
+.buddy-face .eye-dizzy {
+  display: none;
+}
+
+.buddy-face[data-eyes='open'] .eye-open,
+.buddy-face[data-eyes='closed'] .eye-closed,
+.buddy-face[data-eyes='happy'] .eye-happy,
+.buddy-face[data-eyes='dizzy'] .eye-dizzy {
+  display: inline;
+}
+
+.buddy-face .eye-dizzy {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: buddy-spin 0.7s linear infinite;
+}
+
+@keyframes buddy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 어지러울 때 머리 위를 도는 별 세 개(타원 궤도). */
+.buddy-stars {
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.buddy-layer.dizzy .buddy-stars {
+  display: block;
+}
+
+.buddy-stars span {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  font-size: 12px;
+  line-height: 12px;
+  color: #f5b301;
+  text-shadow: 0 0 1px rgb(60 38 18 / 0.6);
+  animation: buddy-orbit 0.9s linear infinite;
+}
+
+.buddy-stars span:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.buddy-stars span:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+@keyframes buddy-orbit {
+  0% { transform: translate(-20px, 0) scale(0.9); }
+  12.5% { transform: translate(-14px, 4px) scale(1.05); }
+  25% { transform: translate(0, 6px) scale(1.2); }
+  37.5% { transform: translate(14px, 4px) scale(1.05); }
+  50% { transform: translate(20px, 0) scale(0.9); }
+  62.5% { transform: translate(14px, -4px) scale(0.75); }
+  75% { transform: translate(0, -6px) scale(0.65); }
+  87.5% { transform: translate(-14px, -4px) scale(0.75); }
+  100% { transform: translate(-20px, 0) scale(0.9); }
+}
+
+/* 착지 먼지: 발 양쪽으로 퍼지며 사라진다(--dir: -1 왼쪽, 1 오른쪽). */
+.buddy-dust {
+  position: absolute;
+  bottom: 0;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--brand-soft, #ffdd99);
+  opacity: 0.9;
+  pointer-events: none;
+  animation: buddy-dust 0.5s ease-out forwards;
+}
+
+@keyframes buddy-dust {
+  from {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 0.9;
+  }
+  to {
+    transform: translate(calc(var(--dir, 1) * 22px), -10px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* 조는 동안 떠오르는 z, 놀라 깰 때의 ! */
+.buddy-z,
+.buddy-bang {
+  position: absolute;
+  pointer-events: none;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.buddy-z {
+  font-size: 14px;
+  color: var(--ink-2);
+  animation: buddy-z 1.8s ease-out forwards;
+}
+
+@keyframes buddy-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -40px) scale(1.3);
+  }
+}
+
+.buddy-bang {
+  font-size: 22px;
+  margin-left: -5px;
+  color: var(--accent, #a83a12);
+  animation: buddy-bang 0.8s ease-out forwards;
+}
+
+@keyframes buddy-bang {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.3);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px) scale(1);
+  }
+}
+
+.buddy-squish img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.buddy-shadow {
+  height: 10px;
+  margin-bottom: -4px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(60 38 18 / 0.3), rgb(60 38 18 / 0));
+  transform-origin: 50% 50%;
+}
+
+/* 누르면 떠오르는 하트. 모찌 볼 색. */
+.buddy-heart {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  color: #f2877a;
+  pointer-events: none;
+  animation: buddy-heart 0.9s ease-out forwards;
+}
+
+.buddy-heart svg {
+  display: block;
+}
+
+@keyframes buddy-heart {
+  0% {
+    opacity: 0;
+    transform: translate(0, 8px) scale(0.4);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift, 0px), -64px) scale(0.85);
+  }
+}
