@@ -20,6 +20,7 @@ import {
   useLoad,
 } from '../../components/ui';
 import '../extra.css';
+import TalkEntry from '../../talk/TalkEntry';
 
 const STATUS_LABEL: Record<GoalStatus, string> = { IN_PROGRESS: '진행 중', ACHIEVED: '이뤘어요', ARCHIVED: '보관' };
 /** 상태를 바꾼 뒤 잠깐 보여 줄 알림. 보관한 목표는 보호자 화면(아이 홈)에 보이지 않는다. */
@@ -740,6 +741,9 @@ export default function TeacherChild() {
           <div className="child-age">{formatAge(s.child.ageMonths)}</div>
         </div>
       </div>
+
+      {/* 보호자와 주고받는 이야기. 안 읽은 이야기 수를 배지로 보여 준다. */}
+      <TalkEntry childId={id} role="TEACHER" />
 
       <div className="tabs" role="group" aria-label="볼 내용">
         {TABS.map((t) => (

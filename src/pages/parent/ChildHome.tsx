@@ -27,6 +27,7 @@ import { CameraIcon, ChevronIcon } from './icons';
 import { thisWeekStats } from './week';
 import '../extra.css';
 import './parent.css';
+import TalkEntry from '../../talk/TalkEntry';
 
 const GOAL_STATUS: Record<string, string> = { IN_PROGRESS: '진행 중', ACHIEVED: '이뤘어요', ARCHIVED: '보관' };
 /** 서버의 ChildService.MAX_CHILDREN_PER_PARENT와 같은 값. */
@@ -461,6 +462,8 @@ export default function ChildHome() {
           </div>
         ))}
         <MoreButton list={notes} demo="childhome-notes-more" label="관찰 메모 더 보기" />
+        {/* 선생님과 주고받는 이야기(메모에 답하기·집 소식). 안 읽은 이야기 수를 배지로 보여 준다. */}
+        <TalkEntry childId={id} role="PARENT" />
         <Link to={`/p/children/${id}/share`} className="btn small ghost" data-demo="childhome-share-link">
           선생님과 공유
         </Link>

@@ -35,12 +35,14 @@ import Record from './pages/parent/Record';
 import Share from './pages/parent/Share';
 import TeacherChild from './pages/teacher/TeacherChild';
 import TeacherHome from './pages/teacher/TeacherHome';
+import TalkPage from './talk/TalkPage';
+import DuoDemo, { DuoEnter } from './demo/DuoDemo';
 
 /** 약관 다시 동의를 받는 동안에도 열 수 있는 화면(바뀐 내용 읽기, 도움받기, 내 데이터 내려받기·탈퇴). */
 const OPEN_DURING_RECONSENT = ['/terms', '/privacy', '/support', '/account'];
 
 /** 돌아다니는 모찌를 두지 않는 화면: 촬영·실시간 카메라(영상과 버튼을 가리지 않게). */
-const NO_BUDDY = /\/(record|observe)$/;
+const NO_BUDDY = /\/(record|observe|talk)$|^\/demo\/duo/;
 
 function Layout() {
   const { user } = useAuth();
@@ -119,6 +121,8 @@ function RequireUser({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      {/* 보호자·선생님 함께 보기(시연 영상용): 두 휴대폰을 나란히 두므로 앱 화면 폭(560px) 밖에 둔다. */}
+      {DEMO_ENABLED && <Route path="/demo/duo" element={<DuoDemo />} />}
       <Route element={<Layout />}>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -129,6 +133,7 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         {DEMO_ENABLED && <Route path="/demo" element={<DemoStart />} />}
         {DEMO_ENABLED && <Route path="/demo/features" element={<FeatureMenuRoute />} />}
+        {DEMO_ENABLED && <Route path="/demo/duo/enter" element={<DuoEnter />} />}
         <Route path="/account" element={<RequireUser><Account /></RequireUser>} />
 
         <Route path="/p" element={<RequireRole role="PARENT"><ParentHome /></RequireRole>} />
@@ -142,10 +147,12 @@ export default function App() {
         <Route path="/p/children/:childId/record" element={<RequireRole role="PARENT"><Record /></RequireRole>} />
         <Route path="/p/children/:childId/share" element={<RequireRole role="PARENT"><Share /></RequireRole>} />
         <Route path="/p/children/:childId/observe" element={<RequireRole role="PARENT"><Observe /></RequireRole>} />
+        <Route path="/p/children/:childId/talk" element={<RequireRole role="PARENT"><TalkPage /></RequireRole>} />
 
         <Route path="/t" element={<RequireRole role="TEACHER"><TeacherHome /></RequireRole>} />
         <Route path="/t/children/:childId" element={<RequireRole role="TEACHER"><TeacherChild /></RequireRole>} />
         <Route path="/t/children/:childId/observe" element={<RequireRole role="TEACHER"><Observe /></RequireRole>} />
+        <Route path="/t/children/:childId/talk" element={<RequireRole role="TEACHER"><TalkPage /></RequireRole>} />
 
         <Route path="*" element={<NotFound />} />
       </Route>
